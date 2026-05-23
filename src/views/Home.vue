@@ -164,6 +164,16 @@ const wires = ref<Wire[]>([
 
 const selectedPart = computed(() => parts.value.find((part) => part.id === selectedPartId.value));
 const selectedWire = computed(() => wires.value.find((wire) => wire.id === selectedWireId.value));
+const renderedWires = computed(() => {
+  if (!selectedWireId.value) {
+    return wires.value;
+  }
+
+  return [
+    ...wires.value.filter((wire) => wire.id !== selectedWireId.value),
+    ...wires.value.filter((wire) => wire.id === selectedWireId.value),
+  ];
+});
 const simulation = computed(() => evaluateCircuit(parts.value, wires.value));
 const mainBulb = computed(() => parts.value.find((part) => part.type === "bulb"));
 const mainBulbBrightness = computed(() =>
@@ -856,7 +866,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
         >
           <svg class="pointer-events-none absolute inset-0 z-30 h-full w-full">
             <g
-              v-for="wire in wires"
+              v-for="wire in renderedWires"
               :key="wire.id"
             >
               <path
@@ -877,33 +887,29 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 stroke-linecap="round"
                 :stroke-width="selectedWireId === wire.id ? 7 : 5"
               />
+              <circle
+                class="pointer-events-auto cursor-grab active:cursor-grabbing"
+                :cx="wireEndpointPosition(wire, 'from').x"
+                :cy="wireEndpointPosition(wire, 'from').y"
+                :r="selectedWireId === wire.id ? 8 : 5"
+                :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
+                stroke="#fff"
+                :stroke-width="selectedWireId === wire.id ? 3 : 0"
+                @click.stop="selectWire(wire.id)"
+                @pointerdown.stop="startEndpointDrag($event, wire, 'from')"
+              />
+              <circle
+                class="pointer-events-auto cursor-grab active:cursor-grabbing"
+                :cx="wireEndpointPosition(wire, 'to').x"
+                :cy="wireEndpointPosition(wire, 'to').y"
+                :r="selectedWireId === wire.id ? 8 : 5"
+                :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
+                stroke="#fff"
+                :stroke-width="selectedWireId === wire.id ? 3 : 0"
+                @click.stop="selectWire(wire.id)"
+                @pointerdown.stop="startEndpointDrag($event, wire, 'to')"
+              />
             </g>
-            <circle
-              v-for="wire in wires"
-              :key="`${wire.id}-from`"
-              class="pointer-events-auto cursor-grab active:cursor-grabbing"
-              :cx="wireEndpointPosition(wire, 'from').x"
-              :cy="wireEndpointPosition(wire, 'from').y"
-              :r="selectedWireId === wire.id ? 8 : 5"
-              :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
-              stroke="#fff"
-              :stroke-width="selectedWireId === wire.id ? 3 : 0"
-              @click.stop="selectWire(wire.id)"
-              @pointerdown.stop="startEndpointDrag($event, wire, 'from')"
-            />
-            <circle
-              v-for="wire in wires"
-              :key="`${wire.id}-to`"
-              class="pointer-events-auto cursor-grab active:cursor-grabbing"
-              :cx="wireEndpointPosition(wire, 'to').x"
-              :cy="wireEndpointPosition(wire, 'to').y"
-              :r="selectedWireId === wire.id ? 8 : 5"
-              :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
-              stroke="#fff"
-              :stroke-width="selectedWireId === wire.id ? 3 : 0"
-              @click.stop="selectWire(wire.id)"
-              @pointerdown.stop="startEndpointDrag($event, wire, 'to')"
-            />
           </svg>
 
           <div

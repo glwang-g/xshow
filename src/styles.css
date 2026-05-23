@@ -58,4 +58,27 @@
       linear-gradient(90deg, hsl(var(--canvas-grid) / 0.5) 1px, transparent 1px);
     background-size: 28px 28px;
   }
+
+  .wire-current {
+    animation: wire-current-flow var(--wire-current-duration, 1.2s) linear infinite;
+    filter: drop-shadow(0 0 5px rgba(245, 158, 11, 0.85));
+    stroke-dasharray: 2 20;
+    stroke-dashoffset: 0;
+  }
+
+  .wire-current-reverse {
+    animation-name: wire-current-flow-reverse;
+  }
+}
+
+@keyframes wire-current-flow {
+  to {
+    stroke-dashoffset: -22;
+  }
+}
+
+@keyframes wire-current-flow-reverse {
+  to {
+    stroke-dashoffset: 22;
+  }
 }

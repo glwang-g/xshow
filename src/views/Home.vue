@@ -626,7 +626,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
           @pointerleave="endDrag"
           @pointerdown.self="selectedTerminal = null"
         >
-          <svg class="pointer-events-none absolute inset-0 z-0 h-full w-full">
+          <svg class="pointer-events-none absolute inset-0 z-30 h-full w-full">
             <path
               v-for="wire in wires"
               :key="wire.id"
@@ -671,7 +671,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
             <button
               v-for="terminal in (['a', 'b'] as TerminalKey[])"
               :key="terminal"
-              class="absolute z-20 flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm transition-transform hover:scale-110"
+            class="absolute z-40 flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm transition-transform hover:scale-110"
               :class="isTerminalSelected(part, terminal) ? 'ring-4 ring-cyan-300' : ''"
               :style="terminalStyle(part, terminal)"
               :title="getSpec(part).terminals[terminal].label"

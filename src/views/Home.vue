@@ -44,6 +44,8 @@ type Wire = {
   to: TerminalRef;
 };
 
+type WireEnd = "from" | "to";
+
 type Edge = {
   from: string;
   to: string;
@@ -53,7 +55,9 @@ type Edge = {
 const board = useBoardStore();
 const workbenchRef = ref<HTMLElement | null>(null);
 const selectedTerminal = ref<TerminalRef | null>(null);
+const selectedWireId = ref<string | null>(null);
 const selectedPartId = ref("bulb-1");
+const rewiring = ref<{ wireId: string; end: WireEnd } | null>(null);
 const dragging = ref<{ id: string; offsetX: number; offsetY: number } | null>(null);
 
 const workbench = {
@@ -156,6 +160,7 @@ const wires = ref<Wire[]>([
 ]);
 
 const selectedPart = computed(() => parts.value.find((part) => part.id === selectedPartId.value));
+const selectedWire = computed(() => wires.value.find((wire) => wire.id === selectedWireId.value));
 const simulation = computed(() => evaluateCircuit(parts.value, wires.value));
 const mainBulb = computed(() => parts.value.find((part) => part.type === "bulb"));
 const mainBulbBrightness = computed(() =>
@@ -223,6 +228,19 @@ function wirePath(wire: Wire) {
   } ${end.y}, ${end.x} ${end.y}`;
 }
 
+function terminalLabel(ref: TerminalRef) {
+  const part = getPart(ref.partId);
+  if (!part) {
+    return "Missing terminal";
+  }
+
+  return `${part.name}${getSpec(part).terminals[ref.terminal].label}`;
+}
+
+function wireLabel(wire: Wire) {
+  return `${terminalLabel(wire.from)} -> ${terminalLabel(wire.to)}`;
+}
+
 function boardPoint(event: PointerEvent) {
   if (!workbenchRef.value) {
     return { x: 0, y: 0 };
@@ -241,6 +259,8 @@ function handlePartPointerDown(event: PointerEvent, part: CircuitPart) {
     return;
   }
 
+  selectedWireId.value = null;
+  rewiring.value = null;
   selectedPartId.value = part.id;
   const point = boardPoint(event);
   dragging.value = {
@@ -271,10 +291,77 @@ function endDrag() {
   dragging.value = null;
 }
 
+function clearCanvasSelection() {
+  selectedTerminal.value = null;
+  selectedWireId.value = null;
+  rewiring.value = null;
+}
+
+function selectWire(wireId: string) {
+  selectedWireId.value = wireId;
+  selectedTerminal.value = null;
+  rewiring.value = null;
+  board.setTool("select");
+}
+
+function startRewire(wireId: string, end: WireEnd) {
+  selectedWireId.value = wireId;
+  selectedTerminal.value = null;
+  rewiring.value = { wireId, end };
+  board.setTool("wire");
+}
+
+function finishRewire(target: TerminalRef) {
+  if (!rewiring.value) {
+    return;
+  }
+
+  const current = rewiring.value;
+  const wire = wires.value.find((item) => item.id === current.wireId);
+  if (!wire) {
+    rewiring.value = null;
+    return;
+  }
+
+  const otherEnd = current.end === "from" ? wire.to : wire.from;
+  if (sameTerminal(target, otherEnd)) {
+    return;
+  }
+
+  const hasSameWire = wires.value.some((item) => {
+    if (item.id === wire.id) {
+      return false;
+    }
+
+    const nextFrom = current.end === "from" ? target : wire.from;
+    const nextTo = current.end === "to" ? target : wire.to;
+    return (
+      (sameTerminal(item.from, nextFrom) && sameTerminal(item.to, nextTo)) ||
+      (sameTerminal(item.to, nextFrom) && sameTerminal(item.from, nextTo))
+    );
+  });
+
+  if (!hasSameWire) {
+    wire[current.end] = target;
+  }
+
+  selectedWireId.value = wire.id;
+  rewiring.value = null;
+  selectedTerminal.value = null;
+  board.setTool("select");
+}
+
 function handleTerminalClick(part: CircuitPart, terminal: TerminalKey) {
   selectedPartId.value = part.id;
   board.setTool("wire");
   const target = { partId: part.id, terminal };
+
+  if (rewiring.value) {
+    finishRewire(target);
+    return;
+  }
+
+  selectedWireId.value = null;
 
   if (!selectedTerminal.value) {
     selectedTerminal.value = target;
@@ -304,10 +391,19 @@ function handleTerminalClick(part: CircuitPart, terminal: TerminalKey) {
 }
 
 function isTerminalSelected(part: CircuitPart, terminal: TerminalKey) {
-  return (
+  const terminalRef = { partId: part.id, terminal };
+  const isPendingNewWire =
     selectedTerminal.value?.partId === part.id &&
-    selectedTerminal.value.terminal === terminal
-  );
+    selectedTerminal.value.terminal === terminal;
+
+  if (!rewiring.value) {
+    return isPendingNewWire;
+  }
+
+  const wire = wires.value.find((item) => item.id === rewiring.value?.wireId);
+  const isRewireEnd = wire ? sameTerminal(wire[rewiring.value.end], terminalRef) : false;
+
+  return isPendingNewWire || isRewireEnd;
 }
 
 function addPart(type: PartType) {
@@ -330,6 +426,8 @@ function addPart(type: PartType) {
   }
 
   parts.value.push(nextPart);
+  selectedWireId.value = null;
+  rewiring.value = null;
   selectedPartId.value = nextPart.id;
   board.setTool("select");
 }
@@ -346,15 +444,26 @@ function removeSelectedPart() {
   );
   selectedPartId.value = parts.value[0]?.id ?? "";
   selectedTerminal.value = null;
+  selectedWireId.value = null;
+  rewiring.value = null;
 }
 
 function removeWire(wireId: string) {
   wires.value = wires.value.filter((wire) => wire.id !== wireId);
+  if (selectedWireId.value === wireId) {
+    selectedWireId.value = null;
+  }
+
+  if (rewiring.value?.wireId === wireId) {
+    rewiring.value = null;
+  }
 }
 
 function clearWires() {
   wires.value = [];
   selectedTerminal.value = null;
+  selectedWireId.value = null;
+  rewiring.value = null;
 }
 
 function resetDemo() {
@@ -388,6 +497,8 @@ function resetDemo() {
   ];
   selectedPartId.value = "bulb-1";
   selectedTerminal.value = null;
+  selectedWireId.value = null;
+  rewiring.value = null;
   board.setZoom(86);
   board.setTool("select");
 }
@@ -608,6 +719,9 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
         <div class="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel">
           <CircuitBoard class="h-4 w-4 text-cyan-700" />
           <span class="text-sm font-medium">Workbench</span>
+          <span v-if="rewiring && selectedWire" class="text-xs text-muted-foreground">
+            重接{{ rewiring.end === "from" ? "左端" : "右端" }}：点击新的端子
+          </span>
           <span v-if="selectedTerminal" class="text-xs text-muted-foreground">
             {{ getPart(selectedTerminal.partId)?.name }} {{ getSpec(getPart(selectedTerminal.partId) ?? "battery").terminals[selectedTerminal.terminal].label }}
           </span>
@@ -624,25 +738,39 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
           @pointermove="handleWorkbenchPointerMove"
           @pointerup="endDrag"
           @pointerleave="endDrag"
-          @pointerdown.self="selectedTerminal = null"
+          @pointerdown.self="clearCanvasSelection"
         >
           <svg class="pointer-events-none absolute inset-0 z-30 h-full w-full">
-            <path
+            <g
               v-for="wire in wires"
               :key="wire.id"
-              :d="wirePath(wire)"
-              fill="none"
-              :stroke="simulation.closed ? '#0891b2' : '#64748b'"
-              stroke-linecap="round"
-              stroke-width="5"
-            />
+            >
+              <path
+                class="pointer-events-auto cursor-pointer"
+                :d="wirePath(wire)"
+                fill="none"
+                pointer-events="stroke"
+                stroke="transparent"
+                stroke-linecap="round"
+                stroke-width="18"
+                @click.stop="selectWire(wire.id)"
+                @pointerdown.stop
+              />
+              <path
+                :d="wirePath(wire)"
+                fill="none"
+                :stroke="selectedWireId === wire.id ? '#f59e0b' : simulation.closed ? '#0891b2' : '#64748b'"
+                stroke-linecap="round"
+                :stroke-width="selectedWireId === wire.id ? 7 : 5"
+              />
+            </g>
             <circle
               v-for="wire in wires"
               :key="`${wire.id}-from`"
               :cx="getTerminalPosition(wire.from).x"
               :cy="getTerminalPosition(wire.from).y"
               r="5"
-              fill="#0f172a"
+              :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
             />
             <circle
               v-for="wire in wires"
@@ -650,7 +778,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
               :cx="getTerminalPosition(wire.to).x"
               :cy="getTerminalPosition(wire.to).y"
               r="5"
-              fill="#0f172a"
+              :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
             />
           </svg>
 
@@ -671,8 +799,8 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
             <button
               v-for="terminal in (['a', 'b'] as TerminalKey[])"
               :key="terminal"
-            class="absolute z-40 flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm transition-transform hover:scale-110"
-              :class="isTerminalSelected(part, terminal) ? 'ring-4 ring-cyan-300' : ''"
+              class="absolute z-40 flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm transition-transform hover:scale-110"
+              :class="isTerminalSelected(part, terminal) ? 'ring-4 ring-amber-300' : ''"
               :style="terminalStyle(part, terminal)"
               :title="getSpec(part).terminals[terminal].label"
               @pointerdown.stop
@@ -775,7 +903,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
       <aside class="min-h-0 border-l bg-card">
         <div class="border-b px-4 py-3">
           <div class="text-sm font-semibold">状态</div>
-          <div class="text-xs text-muted-foreground">{{ selectedPart?.name ?? "未选择" }}</div>
+          <div class="text-xs text-muted-foreground">{{ selectedWire ? "导线" : selectedPart?.name ?? "未选择" }}</div>
         </div>
 
         <div class="space-y-5 overflow-y-auto p-4">
@@ -872,6 +1000,41 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
             </div>
           </section>
 
+          <section v-if="selectedWire" class="rounded-md border border-amber-300 bg-amber-50 p-3">
+            <div class="mb-3 flex items-center justify-between">
+              <span class="text-sm font-medium text-amber-950">选中导线</span>
+              <Button variant="ghost" size="icon" title="断开导线" @click="removeWire(selectedWire.id)">
+                <Trash2 class="h-4 w-4" />
+              </Button>
+            </div>
+            <div class="space-y-3 text-sm">
+              <div class="rounded-md border border-amber-200 bg-white/70 px-3 py-2 text-amber-950">
+                {{ wireLabel(selectedWire) }}
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  @click="startRewire(selectedWire.id, 'from')"
+                >
+                  <Cable class="h-4 w-4" />
+                  重接左端
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  @click="startRewire(selectedWire.id, 'to')"
+                >
+                  <Cable class="h-4 w-4" />
+                  重接右端
+                </Button>
+              </div>
+              <div v-if="rewiring" class="text-xs text-amber-800">
+                正在重接{{ rewiring.end === "from" ? "左端" : "右端" }}，请点击新的端子。
+              </div>
+            </div>
+          </section>
+
           <section>
             <div class="mb-3 flex items-center justify-between">
               <div class="text-xs font-medium uppercase text-muted-foreground">Wires</div>
@@ -881,14 +1044,14 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
               <div
                 v-for="wire in wires"
                 :key="wire.id"
-                class="flex items-center justify-between rounded-md border bg-background px-3 py-2 text-sm"
+                class="flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
+                :class="selectedWireId === wire.id ? 'border-amber-300 bg-amber-50' : 'bg-background hover:bg-muted'"
+                @click="selectWire(wire.id)"
               >
                 <span class="truncate">
-                  {{ getPart(wire.from.partId)?.name }}{{ getSpec(getPart(wire.from.partId) ?? "battery").terminals[wire.from.terminal].label }}
-                  ->
-                  {{ getPart(wire.to.partId)?.name }}{{ getSpec(getPart(wire.to.partId) ?? "battery").terminals[wire.to.terminal].label }}
+                  {{ wireLabel(wire) }}
                 </span>
-                <button class="ml-2 text-muted-foreground hover:text-foreground" @click="removeWire(wire.id)">
+                <button class="ml-2 text-muted-foreground hover:text-foreground" @click.stop="removeWire(wire.id)">
                   <Trash2 class="h-4 w-4" />
                 </button>
               </div>

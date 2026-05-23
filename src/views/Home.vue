@@ -58,6 +58,9 @@ const selectedTerminal = ref<TerminalRef | null>(null);
 const selectedWireId = ref<string | null>(null);
 const selectedPartId = ref("bulb-1");
 const rewiring = ref<{ wireId: string; end: WireEnd } | null>(null);
+const endpointDrag = ref<{ wireId: string; end: WireEnd; x: number; y: number; over: TerminalRef | null } | null>(
+  null,
+);
 const dragging = ref<{ id: string; offsetX: number; offsetY: number } | null>(null);
 
 const workbench = {
@@ -218,9 +221,20 @@ function partStyle(part: CircuitPart) {
   };
 }
 
+function wireEndpointPosition(wire: Wire, end: WireEnd) {
+  if (endpointDrag.value?.wireId === wire.id && endpointDrag.value.end === end) {
+    return {
+      x: endpointDrag.value.x,
+      y: endpointDrag.value.y,
+    };
+  }
+
+  return getTerminalPosition(wire[end]);
+}
+
 function wirePath(wire: Wire) {
-  const start = getTerminalPosition(wire.from);
-  const end = getTerminalPosition(wire.to);
+  const start = wireEndpointPosition(wire, "from");
+  const end = wireEndpointPosition(wire, "to");
   const direction = end.x >= start.x ? 1 : -1;
   const bend = Math.max(70, Math.abs(end.x - start.x) * 0.45);
   return `M ${start.x} ${start.y} C ${start.x + bend * direction} ${start.y}, ${
@@ -254,6 +268,35 @@ function boardPoint(event: PointerEvent) {
   };
 }
 
+function allTerminals() {
+  return parts.value.flatMap((part) =>
+    (["a", "b"] as TerminalKey[]).map((terminal) => ({
+      ref: { partId: part.id, terminal },
+      position: getTerminalPosition({ partId: part.id, terminal }),
+    })),
+  );
+}
+
+function closestTerminal(point: { x: number; y: number }, excluded?: TerminalRef) {
+  let best: { ref: TerminalRef; distance: number } | null = null;
+
+  for (const terminal of allTerminals()) {
+    if (excluded && sameTerminal(terminal.ref, excluded)) {
+      continue;
+    }
+
+    const distance = Math.hypot(terminal.position.x - point.x, terminal.position.y - point.y);
+    if (distance <= 28 && (!best || distance < best.distance)) {
+      best = {
+        ref: terminal.ref,
+        distance,
+      };
+    }
+  }
+
+  return best?.ref ?? null;
+}
+
 function handlePartPointerDown(event: PointerEvent, part: CircuitPart) {
   if (board.activeTool !== "select") {
     return;
@@ -272,6 +315,16 @@ function handlePartPointerDown(event: PointerEvent, part: CircuitPart) {
 }
 
 function handleWorkbenchPointerMove(event: PointerEvent) {
+  if (endpointDrag.value) {
+    const point = boardPoint(event);
+    const wire = wires.value.find((item) => item.id === endpointDrag.value?.wireId);
+    const otherEnd = wire ? (endpointDrag.value.end === "from" ? wire.to : wire.from) : undefined;
+    endpointDrag.value.x = Math.min(workbench.width, Math.max(0, point.x));
+    endpointDrag.value.y = Math.min(workbench.height, Math.max(0, point.y));
+    endpointDrag.value.over = closestTerminal(point, otherEnd);
+    return;
+  }
+
   if (!dragging.value) {
     return;
   }
@@ -289,12 +342,14 @@ function handleWorkbenchPointerMove(event: PointerEvent) {
 
 function endDrag() {
   dragging.value = null;
+  finishEndpointDrag();
 }
 
 function clearCanvasSelection() {
   selectedTerminal.value = null;
   selectedWireId.value = null;
   rewiring.value = null;
+  endpointDrag.value = null;
 }
 
 function selectWire(wireId: string) {
@@ -307,8 +362,43 @@ function selectWire(wireId: string) {
 function startRewire(wireId: string, end: WireEnd) {
   selectedWireId.value = wireId;
   selectedTerminal.value = null;
+  endpointDrag.value = null;
   rewiring.value = { wireId, end };
   board.setTool("wire");
+}
+
+function startEndpointDrag(event: PointerEvent, wire: Wire, end: WireEnd) {
+  if (selectedWireId.value !== wire.id) {
+    selectWire(wire.id);
+    return;
+  }
+
+  const point = boardPoint(event);
+  selectedTerminal.value = null;
+  selectedWireId.value = wire.id;
+  rewiring.value = { wireId: wire.id, end };
+  endpointDrag.value = {
+    wireId: wire.id,
+    end,
+    x: point.x,
+    y: point.y,
+    over: null,
+  };
+  board.setTool("wire");
+  (event.currentTarget as SVGCircleElement).setPointerCapture(event.pointerId);
+}
+
+function finishEndpointDrag() {
+  if (!endpointDrag.value) {
+    return;
+  }
+
+  const target = endpointDrag.value.over;
+  if (target) {
+    finishRewire(target);
+  }
+
+  endpointDrag.value = null;
 }
 
 function finishRewire(target: TerminalRef) {
@@ -325,6 +415,8 @@ function finishRewire(target: TerminalRef) {
 
   const otherEnd = current.end === "from" ? wire.to : wire.from;
   if (sameTerminal(target, otherEnd)) {
+    rewiring.value = null;
+    endpointDrag.value = null;
     return;
   }
 
@@ -348,6 +440,7 @@ function finishRewire(target: TerminalRef) {
   selectedWireId.value = wire.id;
   rewiring.value = null;
   selectedTerminal.value = null;
+  endpointDrag.value = null;
   board.setTool("select");
 }
 
@@ -397,13 +490,20 @@ function isTerminalSelected(part: CircuitPart, terminal: TerminalKey) {
     selectedTerminal.value.terminal === terminal;
 
   if (!rewiring.value) {
-    return isPendingNewWire;
+    const isDropTarget =
+      endpointDrag.value?.over?.partId === part.id &&
+      endpointDrag.value.over.terminal === terminal;
+
+    return isPendingNewWire || isDropTarget;
   }
 
   const wire = wires.value.find((item) => item.id === rewiring.value?.wireId);
   const isRewireEnd = wire ? sameTerminal(wire[rewiring.value.end], terminalRef) : false;
+  const isDropTarget =
+    endpointDrag.value?.over?.partId === part.id &&
+    endpointDrag.value.over.terminal === terminal;
 
-  return isPendingNewWire || isRewireEnd;
+  return isPendingNewWire || isRewireEnd || isDropTarget;
 }
 
 function addPart(type: PartType) {
@@ -428,6 +528,7 @@ function addPart(type: PartType) {
   parts.value.push(nextPart);
   selectedWireId.value = null;
   rewiring.value = null;
+  endpointDrag.value = null;
   selectedPartId.value = nextPart.id;
   board.setTool("select");
 }
@@ -446,6 +547,7 @@ function removeSelectedPart() {
   selectedTerminal.value = null;
   selectedWireId.value = null;
   rewiring.value = null;
+  endpointDrag.value = null;
 }
 
 function removeWire(wireId: string) {
@@ -457,6 +559,10 @@ function removeWire(wireId: string) {
   if (rewiring.value?.wireId === wireId) {
     rewiring.value = null;
   }
+
+  if (endpointDrag.value?.wireId === wireId) {
+    endpointDrag.value = null;
+  }
 }
 
 function clearWires() {
@@ -464,6 +570,7 @@ function clearWires() {
   selectedTerminal.value = null;
   selectedWireId.value = null;
   rewiring.value = null;
+  endpointDrag.value = null;
 }
 
 function resetDemo() {
@@ -499,6 +606,7 @@ function resetDemo() {
   selectedTerminal.value = null;
   selectedWireId.value = null;
   rewiring.value = null;
+  endpointDrag.value = null;
   board.setZoom(86);
   board.setTool("select");
 }
@@ -719,7 +827,13 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
         <div class="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel">
           <CircuitBoard class="h-4 w-4 text-cyan-700" />
           <span class="text-sm font-medium">Workbench</span>
-          <span v-if="rewiring && selectedWire" class="text-xs text-muted-foreground">
+          <span v-if="endpointDrag?.over" class="text-xs text-muted-foreground">
+            松开连接到 {{ terminalLabel(endpointDrag.over) }}
+          </span>
+          <span v-else-if="endpointDrag" class="text-xs text-muted-foreground">
+            拖到新的端子上松开
+          </span>
+          <span v-else-if="rewiring && selectedWire" class="text-xs text-muted-foreground">
             重接{{ rewiring.end === "from" ? "左端" : "右端" }}：点击新的端子
           </span>
           <span v-if="selectedTerminal" class="text-xs text-muted-foreground">
@@ -767,18 +881,28 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
             <circle
               v-for="wire in wires"
               :key="`${wire.id}-from`"
-              :cx="getTerminalPosition(wire.from).x"
-              :cy="getTerminalPosition(wire.from).y"
-              r="5"
+              class="pointer-events-auto cursor-grab active:cursor-grabbing"
+              :cx="wireEndpointPosition(wire, 'from').x"
+              :cy="wireEndpointPosition(wire, 'from').y"
+              :r="selectedWireId === wire.id ? 8 : 5"
               :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
+              stroke="#fff"
+              :stroke-width="selectedWireId === wire.id ? 3 : 0"
+              @click.stop="selectWire(wire.id)"
+              @pointerdown.stop="startEndpointDrag($event, wire, 'from')"
             />
             <circle
               v-for="wire in wires"
               :key="`${wire.id}-to`"
-              :cx="getTerminalPosition(wire.to).x"
-              :cy="getTerminalPosition(wire.to).y"
-              r="5"
+              class="pointer-events-auto cursor-grab active:cursor-grabbing"
+              :cx="wireEndpointPosition(wire, 'to').x"
+              :cy="wireEndpointPosition(wire, 'to').y"
+              :r="selectedWireId === wire.id ? 8 : 5"
               :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
+              stroke="#fff"
+              :stroke-width="selectedWireId === wire.id ? 3 : 0"
+              @click.stop="selectWire(wire.id)"
+              @pointerdown.stop="startEndpointDrag($event, wire, 'to')"
             />
           </svg>
 
@@ -1031,6 +1155,9 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
               </div>
               <div v-if="rewiring" class="text-xs text-amber-800">
                 正在重接{{ rewiring.end === "from" ? "左端" : "右端" }}，请点击新的端子。
+              </div>
+              <div v-else class="text-xs text-amber-800">
+                也可以直接拖动画布上这条线两端的圆点来重接。
               </div>
             </div>
           </section>

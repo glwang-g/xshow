@@ -73,6 +73,10 @@ pnpm preview
 
 当前项目方向见 [docs/ROADMAP.zh-CN.md](docs/ROADMAP.zh-CN.md)。
 
+## 贡献说明
+
+见 [CONTRIBUTING.md](CONTRIBUTING.md)。更新文档时，请同步维护英文和中文版本。
+
 近期优先级：
 
 - 更好的导线吸附和走线

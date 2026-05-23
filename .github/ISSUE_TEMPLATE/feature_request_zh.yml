@@ -1,0 +1,39 @@
+name: 功能建议
+description: 建议一个元器件、交互、课程或仿真能力
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题或目标
+      description: 这个功能想解决什么用户问题或学习目标？
+      placeholder: 现在看不出来电流是往哪个方向流动的...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 方案
+      description: 你希望应用怎么做？
+    validations:
+      required: true
+  - type: textarea
+    id: interaction
+    attributes:
+      label: 交互细节
+      description: 描述预期的界面和操作行为。
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 做完后需要满足哪些条件？
+      placeholder: |
+        - 只有电路闭合时才显示电流动画
+        - 开关断开后动画立即停止
+  - type: textarea
+    id: notes
+    attributes:
+      label: 备注
+      description: 技术说明、约束或参考资料。

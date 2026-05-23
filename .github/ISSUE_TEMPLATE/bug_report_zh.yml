@@ -1,0 +1,44 @@
+name: Bug 反馈
+description: 反馈不符合预期的行为
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题摘要
+      description: 出了什么问题？
+      placeholder: 选中某条导线后，拖动端点时实际拖到了另一条导线...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请列出可以复现问题的最小操作步骤。
+      placeholder: |
+        1. 选中一条导线
+        2. 拖动其中一个端点
+        3. 将它释放到另一个端子附近
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+      description: 你原本期待发生什么？
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 实际发生了什么？
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: 其他信息
+      description: 截图、浏览器信息或其他补充说明。

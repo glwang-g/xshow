@@ -1,5 +1,7 @@
 # xshow circuits
 
+[中文文档](README.zh-CN.md)
+
 An interactive electronic brick circuit playground built with Vue 3, Vite, TypeScript, and Tailwind CSS.
 
 `xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the bulb respond immediately.
@@ -71,6 +73,8 @@ pnpm preview
 ## Roadmap
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the current project direction.
+
+Chinese version: [docs/ROADMAP.zh-CN.md](docs/ROADMAP.zh-CN.md).
 
 Near-term priorities:
 

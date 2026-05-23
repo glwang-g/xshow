@@ -76,6 +76,10 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the current project direction.
 
 Chinese version: [docs/ROADMAP.zh-CN.md](docs/ROADMAP.zh-CN.md).
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep English and Chinese versions in sync.
+
 Near-term priorities:
 
 - Better wire snapping and routing

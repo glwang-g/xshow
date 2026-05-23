@@ -1,48 +1,43 @@
 {
   "name": "xshow",
   "version": "0.1.0",
+  "description": "Interactive electronic brick circuit playground built with Vue 3, Vite, TypeScript, and Tailwind CSS.",
   "private": true,
+  "type": "module",
+  "keywords": [
+    "vue",
+    "vite",
+    "typescript",
+    "tailwindcss",
+    "circuit",
+    "electronics",
+    "education",
+    "simulation"
+  ],
   "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "test:unit": "vue-cli-service test:unit",
-    "test:e2e": "vue-cli-service test:e2e",
-    "lint": "vue-cli-service lint"
+    "dev": "vite --host 127.0.0.1",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "core-js": "^3.6.5",
-    "register-service-worker": "^1.7.1",
-    "vue": "^3.0.0",
-    "vue-class-component": "^8.0.0-0",
-    "vue-router": "^4.0.0-0",
-    "vuex": "^4.0.0-0"
+    "@lucide/vue": "^1.16.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "pinia": "^2.3.0",
+    "reka-ui": "^2.0.0",
+    "tailwind-merge": "^2.6.0",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
   },
   "devDependencies": {
-    "@types/jest": "^24.0.19",
-    "@typescript-eslint/eslint-plugin": "^4.18.0",
-    "@typescript-eslint/parser": "^4.18.0",
-    "@vue/cli-plugin-babel": "~4.5.0",
-    "@vue/cli-plugin-e2e-cypress": "~4.5.0",
-    "@vue/cli-plugin-eslint": "~4.5.0",
-    "@vue/cli-plugin-pwa": "~4.5.0",
-    "@vue/cli-plugin-router": "~4.5.0",
-    "@vue/cli-plugin-typescript": "~4.5.0",
-    "@vue/cli-plugin-unit-jest": "~4.5.0",
-    "@vue/cli-plugin-vuex": "~4.5.0",
-    "@vue/cli-service": "~4.5.0",
-    "@vue/compiler-sfc": "^3.0.0",
-    "@vue/eslint-config-prettier": "^6.0.0",
-    "@vue/eslint-config-typescript": "^7.0.0",
-    "@vue/test-utils": "^2.0.0-0",
-    "babel-plugin-import": "^1.13.3",
-    "element-plus": "^1.0.2-beta.35",
-    "eslint": "^6.7.2",
-    "eslint-plugin-prettier": "^3.3.1",
-    "eslint-plugin-vue": "^7.0.0",
-    "prettier": "^2.2.1",
-    "stylus": "^0.54.7",
-    "stylus-loader": "^3.0.2",
-    "typescript": "~4.1.5",
-    "vue-jest": "^5.0.0-0"
-  }
+    "@types/node": "^22.10.0",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "vue-tsc": "^2.2.0"
+  },
+  "packageManager": "pnpm@8.15.9+sha512.499434c9d8fdd1a2794ebf4552b3b25c0a633abcee5bb15e7b5de90f32f47b513aca98cd5cfd001c31f0db454bc3804edccd578501e4ca293a6816166bbd9f81"
 }

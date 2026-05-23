@@ -1,10 +1,7 @@
 import { createApp } from "vue";
-import ElementPlus from "element-plus";
-import "element-plus/lib/theme-chalk/index.css";
+import { createPinia } from "pinia";
 import App from "./App.vue";
-
-import "./registerServiceWorker";
 import router from "./router";
-import store from "./store";
+import "./styles.css";
 
-createApp(App).use(ElementPlus).use(store).use(router).mount("#app");
+createApp(App).use(createPinia()).use(router).mount("#app");

@@ -3,3 +3,6 @@ contact_links:
   - name: Roadmap
     url: https://github.com/glwang-g/xshow/blob/main/docs/ROADMAP.md
     about: Check the current project direction before opening a larger feature request.
+  - name: 中文路线图
+    url: https://github.com/glwang-g/xshow/blob/main/docs/ROADMAP.zh-CN.md
+    about: 提交较大的功能建议前，可以先看看当前项目方向。

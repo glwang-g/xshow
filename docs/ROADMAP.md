@@ -1,5 +1,7 @@
 # Roadmap
 
+[中文版本](ROADMAP.zh-CN.md)
+
 `xshow circuits` is moving toward a friendly electronic brick playground for teaching simple circuits.
 
 The project should stay visual, approachable, and immediate: users should be able to build a circuit, see what happens, and learn from the result without needing a full engineering simulator.

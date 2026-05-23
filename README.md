@@ -83,9 +83,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep Englis
 
 Near-term priorities:
 
-- Better wire snapping and routing
-- Current direction animation
-- Guided lesson mode
+- Current focus: better wire snapping and routing
+- Done for v0.1: current direction animation
+- Next major area: guided lesson mode
 
 ## License
 

@@ -70,14 +70,13 @@ pnpm preview
 
 ## Roadmap
 
-- Freeform wire drawing and better wire routing
-- More components: LED, motor, buzzer, diode, capacitor, ammeter, voltmeter
-- Series and parallel circuit lessons
+See [docs/ROADMAP.md](docs/ROADMAP.md) for the current project direction.
+
+Near-term priorities:
+
+- Better wire snapping and routing
 - Current direction animation
-- Component snapping and Lego-like connection affordances
-- Save and load circuits
-- Export circuits as images
-- Lesson mode for guided experiments
+- Guided lesson mode
 
 ## License
 

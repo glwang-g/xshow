@@ -1,35 +1,84 @@
-# xshow
-Vue3+TypeScript+Canvas
+# xshow circuits
 
-## Project setup
-```
-yarn install
+An interactive electronic brick circuit playground built with Vue 3, Vite, TypeScript, and Tailwind CSS.
+
+`xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the bulb respond immediately.
+
+![xshow circuits screenshot](docs/screenshot.png)
+
+## Features
+
+- Drag electronic components around the workbench
+- Connect terminals with wires
+- Toggle a switch to open or close the circuit
+- Adjust a variable resistor with a slider
+- Simulate bulb brightness from circuit state and resistance
+- Display circuit status, current, equivalent resistance, and brightness
+- Reset to a ready-made demo circuit
+
+## Demo Scope
+
+This project is currently a teaching-oriented interactive prototype, not a full SPICE-level circuit simulator.
+
+The current model focuses on simple closed-loop behavior:
+
+- A battery provides a fixed 9V source
+- A switch can break or complete the circuit
+- A variable resistor changes equivalent resistance
+- A bulb brightness value is derived from the simulated current path
+
+## Tech Stack
+
+- Vue 3
+- Vite
+- TypeScript
+- Tailwind CSS
+- Pinia
+- Vue Router
+- lucide-vue icons
+- shadcn-vue inspired local components
+
+## Getting Started
+
+```bash
+pnpm install
+pnpm dev
 ```
 
-### Compiles and hot-reloads for development
-```
-yarn serve
+Then open the local Vite URL, usually:
+
+```text
+http://localhost:5173
 ```
 
-### Compiles and minifies for production
-```
-yarn build
+## Scripts
+
+```bash
+pnpm dev
+pnpm build
+pnpm preview
 ```
 
-### Run your unit tests
-```
-yarn test:unit
-```
+## How To Use
 
-### Run your end-to-end tests
-```
-yarn test:e2e
-```
+1. Use **Select** to drag parts around the workbench.
+2. Use **Wire**, then click two terminals to connect them.
+3. Click the switch to open or close the circuit.
+4. Drag the variable resistor slider to change the bulb brightness.
+5. Use **Clear Wires** to remove connections.
+6. Use **Reset** to restore the default demo circuit.
 
-### Lints and fixes files
-```
-yarn lint
-```
+## Roadmap
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+- Freeform wire drawing and better wire routing
+- More components: LED, motor, buzzer, diode, capacitor, ammeter, voltmeter
+- Series and parallel circuit lessons
+- Current direction animation
+- Component snapping and Lego-like connection affordances
+- Save and load circuits
+- Export circuits as images
+- Lesson mode for guided experiments
+
+## License
+
+Apache-2.0

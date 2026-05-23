@@ -15,9 +15,9 @@ The project should stay visual, approachable, and immediate: users should be abl
 - Improve wire routing so connections remain readable
 - Add clearer hover, drag, and drop states for wire endpoints
 
-### Current direction animation
+### Refine current direction animation
 
-- Animate current flow when the circuit is closed
+- Improve the initial current flow animation on closed circuits
 - Reverse animation direction when polarity changes
 - Pause current animation when the circuit is open
 - Make brightness and current feedback feel visually connected

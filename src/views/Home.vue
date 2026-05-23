@@ -50,6 +50,7 @@ type Edge = {
   from: string;
   to: string;
   partId?: string;
+  wireId?: string;
 };
 
 const board = useBoardStore();
@@ -179,6 +180,14 @@ const mainBulb = computed(() => parts.value.find((part) => part.type === "bulb")
 const mainBulbBrightness = computed(() =>
   mainBulb.value ? simulation.value.bulbs[mainBulb.value.id]?.brightness ?? 0 : 0,
 );
+const currentAnimationDuration = computed(() => {
+  if (!simulation.value.closed || simulation.value.currentMilliAmps <= 0) {
+    return "1.6s";
+  }
+
+  const duration = Math.max(0.45, Math.min(1.8, 1.8 - simulation.value.currentMilliAmps / 160));
+  return `${duration.toFixed(2)}s`;
+});
 
 function getSpec(part: CircuitPart | PartType) {
   return partSpecs[typeof part === "string" ? part : part.type];
@@ -633,6 +642,7 @@ function buildEdges(sourceParts: CircuitPart[], sourceWires: Wire[], excludedPar
   const edges: Edge[] = sourceWires.map((wire) => ({
     from: terminalId(wire.from),
     to: terminalId(wire.to),
+    wireId: wire.id,
   }));
 
   for (const part of sourceParts) {
@@ -695,11 +705,30 @@ function partBridgesBattery(part: CircuitPart, battery: CircuitPart, edges: Edge
   );
 }
 
+function wireDirectionThroughBattery(wire: Wire, battery: CircuitPart, edges: Edge[]) {
+  const positive = `${battery.id}:b`;
+  const negative = `${battery.id}:a`;
+  const from = terminalId(wire.from);
+  const to = terminalId(wire.to);
+  const edgesWithoutWire = edges.filter((edge) => edge.wireId !== wire.id);
+
+  if (hasPath(positive, from, edgesWithoutWire) && hasPath(to, negative, edgesWithoutWire)) {
+    return "forward";
+  }
+
+  if (hasPath(positive, to, edgesWithoutWire) && hasPath(from, negative, edgesWithoutWire)) {
+    return "reverse";
+  }
+
+  return null;
+}
+
 function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   const battery = sourceParts.find((part) => part.type === "battery");
   const bulbs = sourceParts.filter((part) => part.type === "bulb");
   const edges = buildEdges(sourceParts, sourceWires);
   const bulbStates: Record<string, { brightness: number; brightnessPercent: number }> = {};
+  const wireStates: Record<string, { active: boolean; reverse: boolean }> = {};
 
   if (!battery) {
     return {
@@ -707,6 +736,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
       currentMilliAmps: 0,
       equivalentResistance: 0,
       bulbs: bulbStates,
+      wires: wireStates,
     };
   }
 
@@ -721,6 +751,14 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   const equivalentResistance = closed ? bulbOhms + resistorOhms : 0;
   const current = equivalentResistance > 0 ? 9 / equivalentResistance : 0;
   const currentMilliAmps = Math.round(current * 1000);
+
+  for (const wire of sourceWires) {
+    const direction = closed ? wireDirectionThroughBattery(wire, battery, edges) : null;
+    wireStates[wire.id] = {
+      active: Boolean(direction),
+      reverse: direction === "reverse",
+    };
+  }
 
   for (const bulb of bulbs) {
     const conducting = closed && partBridgesBattery(bulb, battery, edges);
@@ -738,6 +776,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
     currentMilliAmps,
     equivalentResistance,
     bulbs: bulbStates,
+    wires: wireStates,
   };
 }
 </script>
@@ -886,6 +925,17 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 :stroke="selectedWireId === wire.id ? '#f59e0b' : simulation.closed ? '#0891b2' : '#64748b'"
                 stroke-linecap="round"
                 :stroke-width="selectedWireId === wire.id ? 7 : 5"
+              />
+              <path
+                v-if="simulation.wires[wire.id]?.active"
+                class="wire-current"
+                :class="simulation.wires[wire.id]?.reverse ? 'wire-current-reverse' : ''"
+                :d="wirePath(wire)"
+                fill="none"
+                stroke="#fef3c7"
+                stroke-linecap="round"
+                stroke-width="4"
+                :style="{ '--wire-current-duration': currentAnimationDuration }"
               />
               <circle
                 class="pointer-events-auto cursor-grab active:cursor-grabbing"

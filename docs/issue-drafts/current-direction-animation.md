@@ -1,12 +1,12 @@
-# Add current direction animation
+# Refine current direction animation
 
 ## Problem
 
-The app shows whether the circuit is closed and displays a current value, but users cannot yet see current moving through the wires.
+The app has an initial current flow animation for closed circuits, but the animation can become more expressive and physically intuitive.
 
 ## Proposal
 
-Add animated current flow along connected wires when the circuit is closed.
+Refine the current flow animation so it communicates direction, strength, and circuit state more clearly.
 
 ## Acceptance Criteria
 

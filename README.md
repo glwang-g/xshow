@@ -15,6 +15,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Toggle a switch to open or close the circuit
 - Adjust a variable resistor with a slider
 - Simulate bulb brightness from circuit state and resistance
+- Animate current flow on energized wires
 - Display circuit status, current, equivalent resistance, and brightness
 - Reset to a ready-made demo circuit
 

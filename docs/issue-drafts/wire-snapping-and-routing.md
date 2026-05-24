@@ -10,11 +10,11 @@ Improve wire endpoint snapping and routing so circuit connections feel more phys
 
 ## Acceptance Criteria
 
-- Wire endpoints visually snap to nearby terminals while dragging
-- The active drop target is highlighted clearly
-- Dropping on empty space cancels the reconnect and keeps the previous connection
-- Selected wires remain above overlapping wires and endpoints
-- Routed wires avoid covering component labels when practical
+- [x] Wire endpoints visually snap to nearby terminals while dragging
+- [x] The active drop target is highlighted clearly
+- [x] Dropping on empty space cancels the reconnect and keeps the previous connection
+- [x] Selected wires remain above overlapping wires and endpoints
+- [ ] Routed wires avoid covering component labels when practical
 
 ## Notes
 

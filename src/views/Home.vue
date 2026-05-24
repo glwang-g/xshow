@@ -1175,7 +1175,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
               :key="wire.id"
             >
               <path
-                class="pointer-events-auto cursor-pointer"
+                :class="board.activeTool === 'select' ? 'pointer-events-auto cursor-pointer' : 'pointer-events-none'"
                 :d="wirePath(wire)"
                 fill="none"
                 pointer-events="stroke"
@@ -1214,7 +1214,11 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 r="18"
               />
               <circle
-                class="pointer-events-auto cursor-grab active:cursor-grabbing"
+                :class="
+                  board.activeTool === 'select'
+                    ? 'pointer-events-auto cursor-grab active:cursor-grabbing'
+                    : 'pointer-events-none'
+                "
                 :cx="wireEndpointPosition(wire, 'from').x"
                 :cy="wireEndpointPosition(wire, 'from').y"
                 :r="endpointRadius(wire, 'from')"
@@ -1227,7 +1231,11 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 @pointerleave="clearEndpointHover(wire.id, 'from')"
               />
               <circle
-                class="pointer-events-auto cursor-grab active:cursor-grabbing"
+                :class="
+                  board.activeTool === 'select'
+                    ? 'pointer-events-auto cursor-grab active:cursor-grabbing'
+                    : 'pointer-events-none'
+                "
                 :cx="wireEndpointPosition(wire, 'to').x"
                 :cy="wireEndpointPosition(wire, 'to').y"
                 :r="endpointRadius(wire, 'to')"

@@ -83,7 +83,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep Englis
 
 Near-term priorities:
 
-- Current focus: wire routing readability
+- Current focus: guided lesson mode
 - Done for v0.1: current direction animation
 - Next major area: guided lesson mode
 

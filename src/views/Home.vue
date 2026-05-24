@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import { lessonCatalog, type LessonCheckId } from "@/data/lessons";
 import {
   BatteryCharging,
   Cable,
+  Check,
   CircuitBoard,
   Lightbulb,
   MousePointer2,
@@ -203,6 +205,31 @@ const currentAnimationDuration = computed(() => {
 
   const duration = Math.max(0.45, Math.min(1.8, 1.8 - simulation.value.currentMilliAmps / 160));
   return `${duration.toFixed(2)}s`;
+});
+
+const lessonCheckers: Record<LessonCheckId, () => boolean> = {
+  hasAdjustedResistor: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) !== 48),
+  hasClosedCircuit: () => simulation.value.closed,
+  hasClosedSwitch: () => parts.value.some((part) => part.type === "switch" && part.closed),
+  hasLitBulb: () => mainBulbBrightness.value > 0,
+  hasStarterParts: () =>
+    ["battery", "switch", "bulb", "resistor"].every((type) => parts.value.some((part) => part.type === type)),
+};
+const activeLesson = computed(() => lessonCatalog[0]);
+const lessonStepStates = computed(() =>
+  activeLesson.value.steps.map((step) => ({
+    ...step,
+    complete: lessonCheckers[step.checkId](),
+  })),
+);
+const lessonProgress = computed(() => {
+  const completed = lessonStepStates.value.filter((step) => step.complete).length;
+  const total = lessonStepStates.value.length;
+  return {
+    completed,
+    percent: total === 0 ? 0 : Math.round((completed / total) * 100),
+    total,
+  };
 });
 
 function getSpec(part: CircuitPart | PartType) {
@@ -1335,6 +1362,43 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
         </div>
 
         <div class="space-y-5 overflow-y-auto p-4">
+          <section class="rounded-md border bg-background p-3">
+            <div class="mb-3 flex items-start justify-between gap-3">
+              <div>
+                <div class="text-xs text-muted-foreground">Lesson</div>
+                <div class="text-sm font-semibold">{{ activeLesson.title }}</div>
+              </div>
+              <div class="rounded-md bg-cyan-100 px-2 py-1 text-xs font-medium text-cyan-900">
+                {{ lessonProgress.completed }}/{{ lessonProgress.total }}
+              </div>
+            </div>
+            <p class="mb-3 text-xs leading-5 text-muted-foreground">
+              {{ activeLesson.objective }}
+            </p>
+            <div class="mb-3 h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                class="h-full rounded-full bg-cyan-600 transition-all"
+                :style="{ width: `${lessonProgress.percent}%` }"
+              />
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="step in lessonStepStates"
+                :key="step.id"
+                class="flex items-start gap-2 rounded-md border px-3 py-2 text-sm"
+                :class="step.complete ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'bg-card'"
+              >
+                <span
+                  class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
+                  :class="step.complete ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted-foreground/40'"
+                >
+                  <Check v-if="step.complete" class="h-3.5 w-3.5" />
+                </span>
+                <span class="leading-5">{{ step.description }}</span>
+              </div>
+            </div>
+          </section>
+
           <section class="grid grid-cols-2 gap-3">
             <div class="rounded-md border bg-background p-3">
               <div class="flex items-center gap-2 text-xs text-muted-foreground">

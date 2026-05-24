@@ -1085,13 +1085,13 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
     </header>
 
     <section class="grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)_320px]">
-      <aside class="min-h-0 border-r bg-card">
+      <aside class="flex min-h-0 flex-col border-r bg-card">
         <div class="border-b px-4 py-3">
           <div class="text-sm font-semibold">元器件</div>
           <div class="text-xs text-muted-foreground">点击添加到桌面</div>
         </div>
 
-        <div class="space-y-5 overflow-y-auto p-4">
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
           <section>
             <div class="mb-2 text-xs font-medium uppercase text-muted-foreground">Tool</div>
             <div class="grid grid-cols-2 gap-2">
@@ -1355,13 +1355,13 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
         </div>
       </section>
 
-      <aside class="min-h-0 border-l bg-card">
+      <aside class="flex min-h-0 flex-col border-l bg-card">
         <div class="border-b px-4 py-3">
           <div class="text-sm font-semibold">状态</div>
           <div class="text-xs text-muted-foreground">{{ selectedWire ? "导线" : selectedPart?.name ?? "未选择" }}</div>
         </div>
 
-        <div class="space-y-5 overflow-y-auto p-4">
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
           <section class="rounded-md border bg-background p-3">
             <div class="mb-3 flex items-start justify-between gap-3">
               <div>

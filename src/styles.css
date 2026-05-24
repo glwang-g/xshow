@@ -69,6 +69,16 @@
   .wire-current-reverse {
     animation-name: wire-current-flow-reverse;
   }
+
+  .wire-snap-halo {
+    animation: wire-snap-pulse 0.9s ease-out infinite;
+    fill: rgba(245, 158, 11, 0.16);
+    pointer-events: none;
+    stroke: rgba(245, 158, 11, 0.8);
+    stroke-width: 2;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
 }
 
 @keyframes wire-current-flow {
@@ -80,5 +90,17 @@
 @keyframes wire-current-flow-reverse {
   to {
     stroke-dashoffset: 22;
+  }
+}
+
+@keyframes wire-snap-pulse {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.82);
+  }
+
+  100% {
+    opacity: 0.25;
+    transform: scale(1.18);
   }
 }

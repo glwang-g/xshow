@@ -28,6 +28,15 @@ type TerminalRef = {
   terminal: TerminalKey;
 };
 
+type TerminalHit = {
+  distance: number;
+  position: {
+    x: number;
+    y: number;
+  };
+  ref: TerminalRef;
+};
+
 type CircuitPart = {
   id: string;
   name: string;
@@ -297,7 +306,7 @@ function allTerminals() {
 }
 
 function closestTerminal(point: { x: number; y: number }, excluded?: TerminalRef) {
-  let best: { ref: TerminalRef; distance: number } | null = null;
+  let best: TerminalHit | null = null;
 
   for (const terminal of allTerminals()) {
     if (excluded && sameTerminal(terminal.ref, excluded)) {
@@ -305,15 +314,16 @@ function closestTerminal(point: { x: number; y: number }, excluded?: TerminalRef
     }
 
     const distance = Math.hypot(terminal.position.x - point.x, terminal.position.y - point.y);
-    if (distance <= 28 && (!best || distance < best.distance)) {
+    if (distance <= 42 && (!best || distance < best.distance)) {
       best = {
         ref: terminal.ref,
+        position: terminal.position,
         distance,
       };
     }
   }
 
-  return best?.ref ?? null;
+  return best;
 }
 
 function handlePartPointerDown(event: PointerEvent, part: CircuitPart) {
@@ -338,9 +348,11 @@ function handleWorkbenchPointerMove(event: PointerEvent) {
     const point = boardPoint(event);
     const wire = wires.value.find((item) => item.id === endpointDrag.value?.wireId);
     const otherEnd = wire ? (endpointDrag.value.end === "from" ? wire.to : wire.from) : undefined;
-    endpointDrag.value.x = Math.min(workbench.width, Math.max(0, point.x));
-    endpointDrag.value.y = Math.min(workbench.height, Math.max(0, point.y));
-    endpointDrag.value.over = closestTerminal(point, otherEnd);
+    const hit = closestTerminal(point, otherEnd);
+    const nextPoint = hit?.position ?? point;
+    endpointDrag.value.x = Math.min(workbench.width, Math.max(0, nextPoint.x));
+    endpointDrag.value.y = Math.min(workbench.height, Math.max(0, nextPoint.y));
+    endpointDrag.value.over = hit?.ref ?? null;
     return;
   }
 
@@ -523,6 +535,13 @@ function isTerminalSelected(part: CircuitPart, terminal: TerminalKey) {
     endpointDrag.value.over.terminal === terminal;
 
   return isPendingNewWire || isRewireEnd || isDropTarget;
+}
+
+function isTerminalDropTarget(part: CircuitPart, terminal: TerminalKey) {
+  return (
+    endpointDrag.value?.over?.partId === part.id &&
+    endpointDrag.value.over.terminal === terminal
+  );
 }
 
 function addPart(type: PartType) {
@@ -938,6 +957,13 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 :style="{ '--wire-current-duration': currentAnimationDuration }"
               />
               <circle
+                v-if="endpointDrag?.over && endpointDrag.wireId === wire.id"
+                class="wire-snap-halo"
+                :cx="getTerminalPosition(endpointDrag.over).x"
+                :cy="getTerminalPosition(endpointDrag.over).y"
+                r="18"
+              />
+              <circle
                 class="pointer-events-auto cursor-grab active:cursor-grabbing"
                 :cx="wireEndpointPosition(wire, 'from').x"
                 :cy="wireEndpointPosition(wire, 'from').y"
@@ -980,7 +1006,10 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
               v-for="terminal in (['a', 'b'] as TerminalKey[])"
               :key="terminal"
               class="absolute z-40 flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm transition-transform hover:scale-110"
-              :class="isTerminalSelected(part, terminal) ? 'ring-4 ring-amber-300' : ''"
+              :class="[
+                isTerminalSelected(part, terminal) ? 'ring-4 ring-amber-300' : '',
+                isTerminalDropTarget(part, terminal) ? 'scale-125 bg-amber-500 text-amber-950' : '',
+              ]"
               :style="terminalStyle(part, terminal)"
               :title="getSpec(part).terminals[terminal].label"
               @pointerdown.stop

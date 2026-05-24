@@ -228,6 +228,7 @@ const lessonStepStates = computed(() =>
     complete: lessonCheckers[step.checkId](),
   })),
 );
+const nextLessonStep = computed(() => lessonStepStates.value.find((step) => !step.complete));
 const lessonProgress = computed(() => {
   const completed = lessonStepStates.value.filter((step) => step.complete).length;
   const total = lessonStepStates.value.length;
@@ -1391,16 +1392,38 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 :style="{ width: `${lessonProgress.percent}%` }"
               />
             </div>
+            <div
+              v-if="nextLessonStep"
+              class="mb-3 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-950"
+            >
+              <div class="mb-1 font-medium">下一步提示</div>
+              <div class="leading-5">{{ nextLessonStep.hint }}</div>
+            </div>
+            <div
+              v-else
+              class="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950"
+            >
+              <div class="font-medium">实验完成，可以切换到下一个实验。</div>
+            </div>
             <div class="space-y-2">
               <div
                 v-for="step in lessonStepStates"
                 :key="step.id"
                 class="flex items-start gap-2 rounded-md border px-3 py-2 text-sm"
-                :class="step.complete ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'bg-card'"
+                :class="[
+                  step.complete ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'bg-card',
+                  nextLessonStep?.id === step.id ? 'border-cyan-300 ring-2 ring-cyan-100' : '',
+                ]"
               >
                 <span
                   class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
-                  :class="step.complete ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-muted-foreground/40'"
+                  :class="
+                    step.complete
+                      ? 'border-emerald-500 bg-emerald-500 text-white'
+                      : nextLessonStep?.id === step.id
+                        ? 'border-cyan-500 bg-cyan-500 text-white'
+                        : 'border-muted-foreground/40'
+                  "
                 >
                   <Check v-if="step.complete" class="h-3.5 w-3.5" />
                 </span>

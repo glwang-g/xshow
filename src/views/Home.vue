@@ -37,6 +37,11 @@ type TerminalHit = {
   ref: TerminalRef;
 };
 
+type Point = {
+  x: number;
+  y: number;
+};
+
 type CircuitPart = {
   id: string;
   name: string;
@@ -262,14 +267,106 @@ function wireEndpointPosition(wire: Wire, end: WireEnd) {
   return getTerminalPosition(wire[end]);
 }
 
-function wirePath(wire: Wire) {
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function terminalSide(ref: TerminalRef) {
+  const part = getPart(ref.partId);
+  if (!part) {
+    return ref.terminal === "a" ? -1 : 1;
+  }
+
+  const spec = getSpec(part);
+  const offset = spec.terminals[ref.terminal];
+  return offset.x <= spec.width / 2 ? -1 : 1;
+}
+
+function compactRoutePoints(points: Point[]) {
+  return points.filter((point, index) => {
+    const previous = points[index - 1];
+    return !previous || previous.x !== point.x || previous.y !== point.y;
+  });
+}
+
+function wireRoutePoints(wire: Wire) {
   const start = wireEndpointPosition(wire, "from");
   const end = wireEndpointPosition(wire, "to");
-  const direction = end.x >= start.x ? 1 : -1;
-  const bend = Math.max(70, Math.abs(end.x - start.x) * 0.45);
-  return `M ${start.x} ${start.y} C ${start.x + bend * direction} ${start.y}, ${
-    end.x - bend * direction
-  } ${end.y}, ${end.x} ${end.y}`;
+  const startSide = terminalSide(wire.from);
+  const endSide = terminalSide(wire.to);
+  const lead = 44;
+  const margin = 28;
+  const startLead = {
+    x: clamp(start.x + startSide * lead, margin, workbench.width - margin),
+    y: start.y,
+  };
+  const endLead = {
+    x: clamp(end.x + endSide * lead, margin, workbench.width - margin),
+    y: end.y,
+  };
+  const route: Point[] = [start, startLead];
+
+  if (startSide === endSide) {
+    const outsideX =
+      startSide > 0
+        ? clamp(Math.max(startLead.x, endLead.x) + 72, margin, workbench.width - margin)
+        : clamp(Math.min(startLead.x, endLead.x) - 72, margin, workbench.width - margin);
+
+    route.push({ x: outsideX, y: startLead.y }, { x: outsideX, y: endLead.y });
+  } else {
+    const middleX = Math.round((startLead.x + endLead.x) / 2);
+    route.push({ x: middleX, y: startLead.y }, { x: middleX, y: endLead.y });
+  }
+
+  route.push(endLead, end);
+  return compactRoutePoints(route);
+}
+
+function roundedOrthogonalPath(points: Point[], radius = 16) {
+  if (points.length === 0) {
+    return "";
+  }
+
+  if (points.length === 1) {
+    return `M ${points[0].x} ${points[0].y}`;
+  }
+
+  const commands = [`M ${points[0].x} ${points[0].y}`];
+
+  for (let index = 1; index < points.length - 1; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    const next = points[index + 1];
+    const previousDistance = Math.hypot(current.x - previous.x, current.y - previous.y);
+    const nextDistance = Math.hypot(next.x - current.x, next.y - current.y);
+
+    if (previousDistance === 0 || nextDistance === 0) {
+      continue;
+    }
+
+    const turnRadius = Math.min(radius, previousDistance / 2, nextDistance / 2);
+    const before = {
+      x: current.x + ((previous.x - current.x) / previousDistance) * turnRadius,
+      y: current.y + ((previous.y - current.y) / previousDistance) * turnRadius,
+    };
+    const after = {
+      x: current.x + ((next.x - current.x) / nextDistance) * turnRadius,
+      y: current.y + ((next.y - current.y) / nextDistance) * turnRadius,
+    };
+
+    commands.push(
+      `L ${Math.round(before.x)} ${Math.round(before.y)}`,
+      `Q ${current.x} ${current.y} ${Math.round(after.x)} ${Math.round(after.y)}`,
+    );
+  }
+
+  const last = points[points.length - 1];
+  commands.push(`L ${last.x} ${last.y}`);
+  return commands.join(" ");
+}
+
+function wirePath(wire: Wire) {
+  return roundedOrthogonalPath(wireRoutePoints(wire));
 }
 
 function isWireHighlighted(wire: Wire) {

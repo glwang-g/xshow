@@ -70,6 +70,12 @@
     filter: drop-shadow(0 0 4px rgba(14, 116, 144, 0.45));
   }
 
+  .wire-draft {
+    filter: drop-shadow(0 0 5px rgba(14, 116, 144, 0.45));
+    stroke: #0e7490;
+    stroke-dasharray: 10 8;
+  }
+
   .wire-current-reverse {
     animation-name: wire-current-flow-reverse;
   }

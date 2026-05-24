@@ -229,6 +229,7 @@ const lessonStepStates = computed(() =>
   })),
 );
 const nextLessonStep = computed(() => lessonStepStates.value.find((step) => !step.complete));
+const activeLessonGuide = computed(() => nextLessonStep.value?.guide ?? null);
 const lessonProgress = computed(() => {
   const completed = lessonStepStates.value.filter((step) => step.complete).length;
   const total = lessonStepStates.value.length;
@@ -786,6 +787,21 @@ function isTerminalDropTarget(part: CircuitPart, terminal: TerminalKey) {
   );
 }
 
+function isLessonTerminalTarget(part: CircuitPart, terminal: TerminalKey) {
+  return Boolean(
+    activeLessonGuide.value?.terminalRefs?.some(
+      (ref) => ref.partId === part.id && ref.terminal === terminal,
+    ),
+  );
+}
+
+function isLessonPartTarget(part: CircuitPart) {
+  return Boolean(
+    activeLessonGuide.value?.partIds?.includes(part.id) ||
+      activeLessonGuide.value?.terminalRefs?.some((ref) => ref.partId === part.id),
+  );
+}
+
 function addPart(type: PartType) {
   const index = parts.value.filter((part) => part.type === type).length + 1;
   const spec = getSpec(type);
@@ -1232,6 +1248,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
             class="absolute z-10 cursor-grab select-none rounded-md border bg-card shadow-sm transition-shadow active:cursor-grabbing"
             :class="[
               selectedPartId === part.id ? 'border-primary shadow-panel' : 'border-border',
+              isLessonPartTarget(part) ? 'lesson-workbench-target z-20' : '',
               part.type === 'battery' ? 'bg-slate-950 text-white' : '',
               part.type === 'switch' ? 'bg-white' : '',
               part.type === 'bulb' ? 'bg-amber-50' : '',
@@ -1247,6 +1264,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
               :class="[
                 isTerminalSelected(part, terminal) ? 'ring-4 ring-amber-300' : '',
                 isTerminalDropTarget(part, terminal) ? 'scale-125 bg-amber-500 text-amber-950' : '',
+                isLessonTerminalTarget(part, terminal) ? 'lesson-terminal-target' : '',
               ]"
               :style="terminalStyle(part, terminal)"
               :title="getSpec(part).terminals[terminal].label"

@@ -43,9 +43,18 @@ export type LessonWorkspace = {
   zoom: number;
 };
 
+export type LessonGuide = {
+  partIds?: string[];
+  terminalRefs?: Array<{
+    partId: string;
+    terminal: LessonTerminalKey;
+  }>;
+};
+
 export type LessonStep = {
   checkId: LessonCheckId;
   description: string;
+  guide?: LessonGuide;
   hint: string;
   id: string;
 };
@@ -81,6 +90,19 @@ const connectedLoopWires: LessonWorkspaceWire[] = [
   },
 ];
 
+const starterPartIds = ["battery-1", "switch-1", "bulb-1", "resistor-1"];
+
+const starterTerminalRefs: LessonGuide["terminalRefs"] = [
+  { partId: "battery-1", terminal: "a" },
+  { partId: "battery-1", terminal: "b" },
+  { partId: "switch-1", terminal: "a" },
+  { partId: "switch-1", terminal: "b" },
+  { partId: "bulb-1", terminal: "a" },
+  { partId: "bulb-1", terminal: "b" },
+  { partId: "resistor-1", terminal: "a" },
+  { partId: "resistor-1", terminal: "b" },
+];
+
 function starterParts({ resistance = 48, switchClosed = true } = {}): LessonWorkspacePart[] {
   return [
     { id: "battery-1", name: "9V 电池", type: "battery", x: 74, y: 280 },
@@ -105,30 +127,35 @@ export const lessonCatalog: Lesson[] = [
       {
         id: "parts",
         description: "工作台上有电池、开关、灯泡和可变电阻。",
+        guide: { partIds: starterPartIds },
         hint: "如果缺少元器件，可以从左侧元器件列表点击添加。",
         checkId: "hasStarterParts",
       },
       {
         id: "wires",
         description: "用导线把所有元器件连接成一个完整回路。",
+        guide: { terminalRefs: starterTerminalRefs },
         hint: "选择连线工具，依次点击两个端子；从电池正极出发，经过开关、灯泡、可变电阻，再回到电池负极。",
         checkId: "hasClosedCircuit",
       },
       {
         id: "switch",
         description: "闭合开关，让电流可以通过灯泡。",
+        guide: { partIds: ["switch-1"] },
         hint: "点击工作台上的开关，把状态切到闭合。",
         checkId: "hasClosedSwitch",
       },
       {
         id: "bulb",
         description: "确认灯泡被点亮。",
+        guide: { partIds: ["bulb-1"] },
         hint: "如果灯泡没有亮，检查导线是否形成闭合回路，并确认开关已经闭合。",
         checkId: "hasLitBulb",
       },
       {
         id: "resistor",
         description: "调节可变电阻，观察灯泡亮度变化。",
+        guide: { partIds: ["resistor-1"] },
         hint: "拖动可变电阻上的滑杆，或者选中它后在右侧属性面板调节阻值。",
         checkId: "hasAdjustedResistor",
       },
@@ -148,24 +175,28 @@ export const lessonCatalog: Lesson[] = [
       {
         id: "parts",
         description: "工作台上有电池、开关、灯泡和可变电阻。",
+        guide: { partIds: starterPartIds },
         hint: "点击“加载实验初始状态”可以直接获得完整回路。",
         checkId: "hasStarterParts",
       },
       {
         id: "open-switch",
         description: "断开开关。",
+        guide: { partIds: ["switch-1"] },
         hint: "点击工作台上的开关，把状态切到断开。",
         checkId: "hasOpenSwitch",
       },
       {
         id: "open-circuit",
         description: "确认回路状态变为断开。",
+        guide: { partIds: ["switch-1"] },
         hint: "断开开关后，顶部状态和右侧回路状态都会显示断开。",
         checkId: "hasOpenCircuit",
       },
       {
         id: "dark-bulb",
         description: "确认灯泡熄灭。",
+        guide: { partIds: ["bulb-1"] },
         hint: "如果灯泡仍然亮着，检查是否还有其他导线绕过了开关。",
         checkId: "hasDarkBulb",
       },
@@ -185,24 +216,28 @@ export const lessonCatalog: Lesson[] = [
       {
         id: "closed-switch",
         description: "闭合开关，让回路保持通电。",
+        guide: { partIds: ["switch-1"] },
         hint: "点击工作台上的开关，让它显示闭合状态。",
         checkId: "hasClosedSwitch",
       },
       {
         id: "closed-circuit",
         description: "确认回路处于闭合状态。",
+        guide: { terminalRefs: starterTerminalRefs },
         hint: "如果回路没有闭合，先点击“加载实验初始状态”，再确认导线没有被删除。",
         checkId: "hasClosedCircuit",
       },
       {
         id: "low-resistance",
         description: "把可变电阻调到较低阻值。",
+        guide: { partIds: ["resistor-1"] },
         hint: "把可变电阻滑杆向左拖动，目标是 24 Ω 或更低。",
         checkId: "hasLowResistance",
       },
       {
         id: "bright-bulb",
         description: "观察灯泡明显变亮。",
+        guide: { partIds: ["bulb-1", "resistor-1"] },
         hint: "阻值降低后，电流会变大；观察灯泡亮度数值和光晕变化。",
         checkId: "hasBrightBulb",
       },

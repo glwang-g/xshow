@@ -19,6 +19,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Switch between guided lesson experiments with automatic step checks
 - Load a lesson starter workspace with one click
 - Show contextual hints for the next unfinished lesson step
+- Highlight the relevant workbench parts and terminals for the active lesson step
 - Display circuit status, current, equivalent resistance, and brightness
 - Reset to a ready-made demo circuit
 
@@ -92,6 +93,7 @@ Near-term priorities:
 - Done for v0.1: multiple guided lesson experiments
 - Done for v0.1: one-click lesson starter workspaces
 - Done for v0.1: contextual hints for incomplete lesson steps
+- Done for v0.1: workbench highlights for active lesson steps
 - Next major area: series and parallel circuit examples
 
 ## License

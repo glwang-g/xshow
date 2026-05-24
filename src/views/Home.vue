@@ -71,6 +71,7 @@ type Edge = {
 
 const board = useBoardStore();
 const workbenchRef = ref<HTMLElement | null>(null);
+const activeLessonId = ref(lessonCatalog[0].id);
 const hoveredWireId = ref<string | null>(null);
 const hoveredEndpoint = ref<{ wireId: string; end: WireEnd } | null>(null);
 const selectedTerminal = ref<TerminalRef | null>(null);
@@ -209,13 +210,18 @@ const currentAnimationDuration = computed(() => {
 
 const lessonCheckers: Record<LessonCheckId, () => boolean> = {
   hasAdjustedResistor: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) !== 48),
+  hasBrightBulb: () => mainBulbBrightness.value >= 0.4,
   hasClosedCircuit: () => simulation.value.closed,
   hasClosedSwitch: () => parts.value.some((part) => part.type === "switch" && part.closed),
+  hasDarkBulb: () => mainBulbBrightness.value === 0,
   hasLitBulb: () => mainBulbBrightness.value > 0,
+  hasLowResistance: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) <= 24),
+  hasOpenCircuit: () => !simulation.value.closed,
+  hasOpenSwitch: () => parts.value.some((part) => part.type === "switch" && !part.closed),
   hasStarterParts: () =>
     ["battery", "switch", "bulb", "resistor"].every((type) => parts.value.some((part) => part.type === type)),
 };
-const activeLesson = computed(() => lessonCatalog[0]);
+const activeLesson = computed(() => lessonCatalog.find((lesson) => lesson.id === activeLessonId.value) ?? lessonCatalog[0]);
 const lessonStepStates = computed(() =>
   activeLesson.value.steps.map((step) => ({
     ...step,
@@ -1375,6 +1381,21 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
             <p class="mb-3 text-xs leading-5 text-muted-foreground">
               {{ activeLesson.objective }}
             </p>
+            <div class="mb-3 grid grid-cols-1 gap-2">
+              <button
+                v-for="lesson in lessonCatalog"
+                :key="lesson.id"
+                class="rounded-md border px-3 py-2 text-left text-xs transition-colors"
+                :class="
+                  activeLessonId === lesson.id
+                    ? 'border-cyan-500 bg-cyan-50 text-cyan-950'
+                    : 'bg-card text-muted-foreground hover:bg-muted'
+                "
+                @click="activeLessonId = lesson.id"
+              >
+                <span class="block truncate font-medium">{{ lesson.title }}</span>
+              </button>
+            </div>
             <div class="mb-3 h-2 overflow-hidden rounded-full bg-muted">
               <div
                 class="h-full rounded-full bg-cyan-600 transition-all"

@@ -12,10 +12,11 @@ Add a lesson mode that presents step-by-step tasks and checks whether the circui
 
 - [x] A lesson panel can show a title, objective, and steps
 - [x] At least one starter lesson exists for battery + switch + bulb + variable resistor
+- [x] Multiple guided experiments can be selected from the lesson panel
 - [x] The app can detect simple success states, such as the bulb being on
 - [x] Lesson content is stored in editable data rather than hardcoded UI text
 - [x] Free play remains available without entering lesson mode
 
 ## Notes
 
-Keep lessons short and visual. The goal is to guide discovery, not build a textbook inside the app.
+Keep lessons short and visual. The goal is to guide discovery, not build a textbook inside the app. Next polish: let each lesson load a matching starter workspace.

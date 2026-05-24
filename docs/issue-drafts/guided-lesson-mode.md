@@ -17,8 +17,9 @@ Add a lesson mode that presents step-by-step tasks and checks whether the circui
 - [x] Lesson content is stored in editable data rather than hardcoded UI text
 - [x] Each lesson can load a matching starter workspace
 - [x] The lesson panel shows a contextual hint for the next incomplete step
+- [x] The workbench highlights parts or terminals related to the active step
 - [x] Free play remains available without entering lesson mode
 
 ## Notes
 
-Keep lessons short and visual. The goal is to guide discovery, not build a textbook inside the app. Next polish: add visual guidance on the workbench for the active step.
+Keep lessons short and visual. The goal is to guide discovery, not build a textbook inside the app. Next polish: add richer completion feedback when a lesson finishes.

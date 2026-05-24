@@ -15,7 +15,7 @@ Current focus: **expanding circuit examples and guided lesson guidance**.
 | Interactive circuit playground | Done | Battery, switch, bulb, resistor, wires, brightness, and circuit state are working. |
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
-| Guided lesson mode | Expanding | Lesson content, hints, and starter workspaces live in editable data; multiple lesson experiments are available, and the panel checks simple circuit goals automatically. |
+| Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; multiple lesson experiments are available, and the panel checks simple circuit goals automatically. |
 
 ## Near Term
 
@@ -52,7 +52,8 @@ Status: **Expanding**
 - [x] Keep lesson content editable in plain data files
 - [x] Add one-click starter workspaces for each lesson
 - [x] Add lesson-level hints for the next incomplete step
-- [ ] Add more visual guidance on the workbench for the active step
+- [x] Add more visual guidance on the workbench for the active step
+- [ ] Add richer step completion feedback when a lesson finishes
 
 ### More circuit examples
 

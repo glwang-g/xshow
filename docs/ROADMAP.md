@@ -8,14 +8,14 @@ The project should stay visual, approachable, and immediate: users should be abl
 
 ## Progress
 
-Current focus: **guided lesson mode**.
+Current focus: **expanding guided lessons and circuit examples**.
 
 | Area | Status | Notes |
 | --- | --- | --- |
 | Interactive circuit playground | Done | Battery, switch, bulb, resistor, wires, brightness, and circuit state are working. |
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
-| Guided lesson mode | Not started | Needs lesson data model, lesson panel, and simple success checks. |
+| Guided lesson mode | First version done | Lesson content lives in editable data, and the first lesson panel checks simple circuit goals automatically. |
 
 ## Near Term
 
@@ -43,12 +43,12 @@ Status: **Done for v0.1, polish later**
 
 ### Guided lesson mode
 
-Status: **Not started**
+Status: **First version done, expand later**
 
-- [ ] Add a lesson panel with step-by-step tasks
-- [ ] Start with battery, switch, bulb, and resistor exercises
-- [ ] Provide simple success checks, such as "the bulb is on"
-- [ ] Keep lesson content editable in plain data files
+- [x] Add a lesson panel with step-by-step tasks
+- [x] Start with battery, switch, bulb, and resistor exercises
+- [x] Provide simple success checks, such as "the bulb is on"
+- [x] Keep lesson content editable in plain data files
 
 ## Later
 

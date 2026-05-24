@@ -83,7 +83,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep Englis
 
 Near-term priorities:
 
-- Current focus: better wire snapping and routing
+- Current focus: wire routing and drag state polish
 - Done for v0.1: current direction animation
 - Next major area: guided lesson mode
 

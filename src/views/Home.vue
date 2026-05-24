@@ -401,7 +401,6 @@ function startRewire(wireId: string, end: WireEnd) {
 function startEndpointDrag(event: PointerEvent, wire: Wire, end: WireEnd) {
   if (selectedWireId.value !== wire.id) {
     selectWire(wire.id);
-    return;
   }
 
   const point = boardPoint(event);

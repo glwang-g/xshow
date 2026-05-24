@@ -25,6 +25,7 @@ Status: **In progress**
 
 - [x] Select wires directly on the workbench
 - [x] Drag wire endpoints to reconnect to other terminals
+- [x] Drag an unselected wire endpoint directly without a separate select step
 - [x] Keep selected wires above overlapping endpoints
 - [x] Snap wire endpoints more clearly to nearby terminals
 - [ ] Improve wire routing so connections remain readable

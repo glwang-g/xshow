@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { lessonCatalog, type LessonCheckId } from "@/data/lessons";
+import { lessonCatalog, type LessonCheckId, type LessonWorkspace } from "@/data/lessons";
 import {
   BatteryCharging,
   Cable,
@@ -237,6 +237,16 @@ const lessonProgress = computed(() => {
     total,
   };
 });
+
+function clearInteractionState() {
+  selectedTerminal.value = null;
+  selectedWireId.value = null;
+  hoveredWireId.value = null;
+  hoveredEndpoint.value = null;
+  rewiring.value = null;
+  endpointDrag.value = null;
+  dragging.value = null;
+}
 
 function getSpec(part: CircuitPart | PartType) {
   return partSpecs[typeof part === "string" ? part : part.type];
@@ -795,11 +805,7 @@ function addPart(type: PartType) {
   }
 
   parts.value.push(nextPart);
-  selectedWireId.value = null;
-  hoveredWireId.value = null;
-  hoveredEndpoint.value = null;
-  rewiring.value = null;
-  endpointDrag.value = null;
+  clearInteractionState();
   selectedPartId.value = nextPart.id;
   board.setTool("select");
 }
@@ -815,10 +821,7 @@ function removeSelectedPart() {
     (wire) => wire.from.partId !== selected.id && wire.to.partId !== selected.id,
   );
   selectedPartId.value = parts.value[0]?.id ?? "";
-  selectedTerminal.value = null;
-  selectedWireId.value = null;
-  rewiring.value = null;
-  endpointDrag.value = null;
+  clearInteractionState();
 }
 
 function removeWire(wireId: string) {
@@ -846,52 +849,34 @@ function removeWire(wireId: string) {
 
 function clearWires() {
   wires.value = [];
-  selectedTerminal.value = null;
-  selectedWireId.value = null;
-  hoveredWireId.value = null;
-  hoveredEndpoint.value = null;
-  rewiring.value = null;
-  endpointDrag.value = null;
+  clearInteractionState();
+}
+
+function loadWorkspace(workspace: LessonWorkspace) {
+  parts.value = workspace.parts.map((part) => ({ ...part }));
+  wires.value = workspace.wires.map((wire) => ({
+    ...wire,
+    from: { ...wire.from },
+    to: { ...wire.to },
+  }));
+  selectedPartId.value = workspace.selectedPartId;
+  clearInteractionState();
+  board.setZoom(workspace.zoom);
+  board.setTool("select");
+}
+
+function loadLessonWorkspace(lessonId = activeLesson.value.id) {
+  const lesson = lessonCatalog.find((item) => item.id === lessonId) ?? activeLesson.value;
+  activeLessonId.value = lesson.id;
+  loadWorkspace(lesson.starterWorkspace);
 }
 
 function resetDemo() {
-  parts.value = [
-    { id: "battery-1", name: "9V 电池", type: "battery", x: 74, y: 280 },
-    { id: "switch-1", name: "单刀开关", type: "switch", x: 326, y: 126, closed: true },
-    { id: "bulb-1", name: "小灯泡", type: "bulb", x: 658, y: 240 },
-    { id: "resistor-1", name: "可变电阻器", type: "resistor", x: 330, y: 472, resistance: 48 },
-  ];
-  wires.value = [
-    {
-      id: "wire-1",
-      from: { partId: "battery-1", terminal: "b" },
-      to: { partId: "switch-1", terminal: "a" },
-    },
-    {
-      id: "wire-2",
-      from: { partId: "switch-1", terminal: "b" },
-      to: { partId: "bulb-1", terminal: "a" },
-    },
-    {
-      id: "wire-3",
-      from: { partId: "bulb-1", terminal: "b" },
-      to: { partId: "resistor-1", terminal: "b" },
-    },
-    {
-      id: "wire-4",
-      from: { partId: "resistor-1", terminal: "a" },
-      to: { partId: "battery-1", terminal: "a" },
-    },
-  ];
-  selectedPartId.value = "bulb-1";
-  selectedTerminal.value = null;
-  selectedWireId.value = null;
-  hoveredWireId.value = null;
-  hoveredEndpoint.value = null;
-  rewiring.value = null;
-  endpointDrag.value = null;
-  board.setZoom(86);
-  board.setTool("select");
+  const demoLesson = lessonCatalog.find((lesson) => lesson.id === "open-the-circuit") ?? lessonCatalog[0];
+  loadWorkspace({
+    ...demoLesson.starterWorkspace,
+    selectedPartId: "bulb-1",
+  });
 }
 
 function toggleSwitch(part: CircuitPart) {
@@ -1396,6 +1381,10 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 <span class="block truncate font-medium">{{ lesson.title }}</span>
               </button>
             </div>
+            <Button class="mb-3 w-full" variant="outline" size="sm" @click="loadLessonWorkspace()">
+              <RotateCcw class="h-4 w-4" />
+              加载实验初始状态
+            </Button>
             <div class="mb-3 h-2 overflow-hidden rounded-full bg-muted">
               <div
                 class="h-full rounded-full bg-cyan-600 transition-all"

@@ -17,6 +17,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Simulate bulb brightness from circuit state and resistance
 - Animate current flow on energized wires
 - Switch between guided lesson experiments with automatic step checks
+- Load a lesson starter workspace with one click
 - Display circuit status, current, equivalent resistance, and brightness
 - Reset to a ready-made demo circuit
 
@@ -84,11 +85,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep Englis
 
 Near-term priorities:
 
-- Current focus: expand guided lessons, circuit examples, and lesson starters
+- Current focus: expand circuit examples and guided lesson starters
 - Done for v0.1: current direction animation
 - Done for v0.1: guided lesson mode first slice
 - Done for v0.1: multiple guided lesson experiments
-- Next major area: lesson starter workspaces and more components
+- Done for v0.1: one-click lesson starter workspaces
+- Next major area: series and parallel circuit examples
 
 ## License
 

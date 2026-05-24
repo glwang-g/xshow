@@ -66,6 +66,10 @@
     stroke-dashoffset: 0;
   }
 
+  .wire-hover-glow {
+    filter: drop-shadow(0 0 4px rgba(14, 116, 144, 0.45));
+  }
+
   .wire-current-reverse {
     animation-name: wire-current-flow-reverse;
   }

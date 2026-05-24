@@ -64,6 +64,8 @@ type Edge = {
 
 const board = useBoardStore();
 const workbenchRef = ref<HTMLElement | null>(null);
+const hoveredWireId = ref<string | null>(null);
+const hoveredEndpoint = ref<{ wireId: string; end: WireEnd } | null>(null);
 const selectedTerminal = ref<TerminalRef | null>(null);
 const selectedWireId = ref<string | null>(null);
 const selectedPartId = ref("bulb-1");
@@ -270,6 +272,99 @@ function wirePath(wire: Wire) {
   } ${end.y}, ${end.x} ${end.y}`;
 }
 
+function isWireHighlighted(wire: Wire) {
+  return (
+    selectedWireId.value === wire.id ||
+    hoveredWireId.value === wire.id ||
+    endpointDrag.value?.wireId === wire.id
+  );
+}
+
+function wireStroke(wire: Wire) {
+  if (selectedWireId.value === wire.id || endpointDrag.value?.wireId === wire.id) {
+    return "#f59e0b";
+  }
+
+  if (hoveredWireId.value === wire.id) {
+    return "#0e7490";
+  }
+
+  return simulation.value.closed ? "#0891b2" : "#64748b";
+}
+
+function wireStrokeWidth(wire: Wire) {
+  if (selectedWireId.value === wire.id || endpointDrag.value?.wireId === wire.id) {
+    return 7;
+  }
+
+  return hoveredWireId.value === wire.id ? 6 : 5;
+}
+
+function isEndpointHovered(wire: Wire, end: WireEnd) {
+  return hoveredEndpoint.value?.wireId === wire.id && hoveredEndpoint.value.end === end;
+}
+
+function endpointRadius(wire: Wire, end: WireEnd) {
+  if (endpointDrag.value?.wireId === wire.id && endpointDrag.value.end === end) {
+    return 10;
+  }
+
+  if (selectedWireId.value === wire.id) {
+    return 8;
+  }
+
+  if (isEndpointHovered(wire, end)) {
+    return 8;
+  }
+
+  return hoveredWireId.value === wire.id ? 7 : 5;
+}
+
+function endpointFill(wire: Wire, end: WireEnd) {
+  if (
+    selectedWireId.value === wire.id ||
+    isEndpointHovered(wire, end) ||
+    endpointDrag.value?.wireId === wire.id
+  ) {
+    return "#f59e0b";
+  }
+
+  return "#0f172a";
+}
+
+function endpointStrokeWidth(wire: Wire, end: WireEnd) {
+  return selectedWireId.value === wire.id ||
+    isEndpointHovered(wire, end) ||
+    endpointDrag.value?.wireId === wire.id
+    ? 3
+    : 0;
+}
+
+function setWireHover(wireId: string) {
+  hoveredWireId.value = wireId;
+}
+
+function clearWireHover(wireId: string) {
+  if (hoveredWireId.value === wireId) {
+    hoveredWireId.value = null;
+  }
+}
+
+function setEndpointHover(wireId: string, end: WireEnd) {
+  hoveredWireId.value = wireId;
+  hoveredEndpoint.value = { wireId, end };
+}
+
+function clearEndpointHover(wireId: string, end: WireEnd) {
+  if (hoveredEndpoint.value?.wireId === wireId && hoveredEndpoint.value.end === end) {
+    hoveredEndpoint.value = null;
+  }
+
+  if (hoveredWireId.value === wireId && !endpointDrag.value) {
+    hoveredWireId.value = null;
+  }
+}
+
 function terminalLabel(ref: TerminalRef) {
   const part = getPart(ref.partId);
   if (!part) {
@@ -377,6 +472,8 @@ function endDrag() {
 }
 
 function clearCanvasSelection() {
+  hoveredEndpoint.value = null;
+  hoveredWireId.value = null;
   selectedTerminal.value = null;
   selectedWireId.value = null;
   rewiring.value = null;
@@ -384,6 +481,7 @@ function clearCanvasSelection() {
 }
 
 function selectWire(wireId: string) {
+  hoveredWireId.value = wireId;
   selectedWireId.value = wireId;
   selectedTerminal.value = null;
   rewiring.value = null;
@@ -406,6 +504,8 @@ function startEndpointDrag(event: PointerEvent, wire: Wire, end: WireEnd) {
   const point = boardPoint(event);
   selectedTerminal.value = null;
   selectedWireId.value = wire.id;
+  hoveredWireId.value = wire.id;
+  hoveredEndpoint.value = { wireId: wire.id, end };
   rewiring.value = { wireId: wire.id, end };
   endpointDrag.value = {
     wireId: wire.id,
@@ -467,6 +567,8 @@ function finishRewire(target: TerminalRef) {
     wire[current.end] = target;
   }
 
+  hoveredEndpoint.value = null;
+  hoveredWireId.value = wire.id;
   selectedWireId.value = wire.id;
   rewiring.value = null;
   selectedTerminal.value = null;
@@ -564,6 +666,8 @@ function addPart(type: PartType) {
 
   parts.value.push(nextPart);
   selectedWireId.value = null;
+  hoveredWireId.value = null;
+  hoveredEndpoint.value = null;
   rewiring.value = null;
   endpointDrag.value = null;
   selectedPartId.value = nextPart.id;
@@ -593,6 +697,14 @@ function removeWire(wireId: string) {
     selectedWireId.value = null;
   }
 
+  if (hoveredWireId.value === wireId) {
+    hoveredWireId.value = null;
+  }
+
+  if (hoveredEndpoint.value?.wireId === wireId) {
+    hoveredEndpoint.value = null;
+  }
+
   if (rewiring.value?.wireId === wireId) {
     rewiring.value = null;
   }
@@ -606,6 +718,8 @@ function clearWires() {
   wires.value = [];
   selectedTerminal.value = null;
   selectedWireId.value = null;
+  hoveredWireId.value = null;
+  hoveredEndpoint.value = null;
   rewiring.value = null;
   endpointDrag.value = null;
 }
@@ -642,6 +756,8 @@ function resetDemo() {
   selectedPartId.value = "bulb-1";
   selectedTerminal.value = null;
   selectedWireId.value = null;
+  hoveredWireId.value = null;
+  hoveredEndpoint.value = null;
   rewiring.value = null;
   endpointDrag.value = null;
   board.setZoom(86);
@@ -936,13 +1052,16 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 stroke-width="18"
                 @click.stop="selectWire(wire.id)"
                 @pointerdown.stop
+                @pointerenter="setWireHover(wire.id)"
+                @pointerleave="clearWireHover(wire.id)"
               />
               <path
+                :class="isWireHighlighted(wire) ? 'wire-hover-glow' : ''"
                 :d="wirePath(wire)"
                 fill="none"
-                :stroke="selectedWireId === wire.id ? '#f59e0b' : simulation.closed ? '#0891b2' : '#64748b'"
+                :stroke="wireStroke(wire)"
                 stroke-linecap="round"
-                :stroke-width="selectedWireId === wire.id ? 7 : 5"
+                :stroke-width="wireStrokeWidth(wire)"
               />
               <path
                 v-if="simulation.wires[wire.id]?.active"
@@ -966,23 +1085,27 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 class="pointer-events-auto cursor-grab active:cursor-grabbing"
                 :cx="wireEndpointPosition(wire, 'from').x"
                 :cy="wireEndpointPosition(wire, 'from').y"
-                :r="selectedWireId === wire.id ? 8 : 5"
-                :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
+                :r="endpointRadius(wire, 'from')"
+                :fill="endpointFill(wire, 'from')"
                 stroke="#fff"
-                :stroke-width="selectedWireId === wire.id ? 3 : 0"
+                :stroke-width="endpointStrokeWidth(wire, 'from')"
                 @click.stop="selectWire(wire.id)"
                 @pointerdown.stop="startEndpointDrag($event, wire, 'from')"
+                @pointerenter="setEndpointHover(wire.id, 'from')"
+                @pointerleave="clearEndpointHover(wire.id, 'from')"
               />
               <circle
                 class="pointer-events-auto cursor-grab active:cursor-grabbing"
                 :cx="wireEndpointPosition(wire, 'to').x"
                 :cy="wireEndpointPosition(wire, 'to').y"
-                :r="selectedWireId === wire.id ? 8 : 5"
-                :fill="selectedWireId === wire.id ? '#f59e0b' : '#0f172a'"
+                :r="endpointRadius(wire, 'to')"
+                :fill="endpointFill(wire, 'to')"
                 stroke="#fff"
-                :stroke-width="selectedWireId === wire.id ? 3 : 0"
+                :stroke-width="endpointStrokeWidth(wire, 'to')"
                 @click.stop="selectWire(wire.id)"
                 @pointerdown.stop="startEndpointDrag($event, wire, 'to')"
+                @pointerenter="setEndpointHover(wire.id, 'to')"
+                @pointerleave="clearEndpointHover(wire.id, 'to')"
               />
             </g>
           </svg>

@@ -8,12 +8,12 @@ The project should stay visual, approachable, and immediate: users should be abl
 
 ## Progress
 
-Current focus: **wire routing and drag state polish**.
+Current focus: **wire routing readability**.
 
 | Area | Status | Notes |
 | --- | --- | --- |
 | Interactive circuit playground | Done | Battery, switch, bulb, resistor, wires, brightness, and circuit state are working. |
-| Wire selection and reconnecting | In progress | Wires can be selected, deleted, reconnected, and snapped to nearby terminals. Routing and drag states still need polish. |
+| Wire selection and reconnecting | In progress | Wires can be selected, deleted, reconnected, snapped to nearby terminals, and show clearer hover/drag/drop feedback. Routing still needs polish. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Not started | Needs lesson data model, lesson panel, and simple success checks. |
 
@@ -29,7 +29,7 @@ Status: **In progress**
 - [x] Keep selected wires above overlapping endpoints
 - [x] Snap wire endpoints more clearly to nearby terminals
 - [ ] Improve wire routing so connections remain readable
-- [ ] Add clearer hover, drag, and drop states for wire endpoints
+- [x] Add clearer hover, drag, and drop states for wire endpoints
 
 ### Refine current direction animation
 

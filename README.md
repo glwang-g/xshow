@@ -4,6 +4,8 @@
 
 An interactive electronic brick circuit playground built with Vue 3, Vite, TypeScript, and Tailwind CSS.
 
+**Live Demo:** https://labs.freexlib.com
+
 `xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the bulb respond immediately.
 
 ![xshow circuits screenshot](docs/screenshot.png)
@@ -22,6 +24,8 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Load a lesson starter workspace with one click
 - Show contextual hints for the next unfinished lesson step
 - Highlight the relevant workbench parts and terminals for the active lesson step
+- Automatically restore the last workspace in the same browser
+- Save named local workspace records for intermediate experiment states
 - Display circuit status, current, equivalent resistance, and brightness
 - Reset to a ready-made demo circuit
 
@@ -76,8 +80,9 @@ pnpm preview
 4. Hold Alt while dragging an existing endpoint to create a new branch wire.
 5. Click the switch to open or close the circuit.
 6. Drag the variable resistor slider to change the bulb brightness.
-7. Use **Clear Wires** to remove connections.
-8. Use **Reset** to restore the default demo circuit.
+7. Use **Records** to save and reload named local workspace snapshots.
+8. Use **Clear Wires** to remove connections.
+9. Use **Reset** to restore the default demo circuit.
 
 ## Deployment
 
@@ -103,6 +108,7 @@ Near-term priorities:
 - Done for v0.1: contextual hints for incomplete lesson steps
 - Done for v0.1: workbench highlights for active lesson steps
 - Done for v0.1: direct wire manipulation without separate select/wire modes
+- Done for v0.1: local autosave and named workspace records
 - Next major area: series and parallel circuit examples
 
 ## License

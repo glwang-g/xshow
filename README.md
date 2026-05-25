@@ -11,7 +11,9 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 ## Features
 
 - Drag electronic components around the workbench
-- Connect terminals with wires
+- Drag from a terminal to another terminal to create a wire
+- Drag an existing wire endpoint to reconnect it
+- Hold Alt while dragging an existing endpoint to branch a new wire from that terminal
 - Toggle a switch to open or close the circuit
 - Adjust a variable resistor with a slider
 - Simulate bulb brightness from circuit state and resistance
@@ -68,12 +70,18 @@ pnpm preview
 
 ## How To Use
 
-1. Use **Select** to drag parts around the workbench.
-2. Use **Wire**, then click two terminals to connect them.
-3. Click the switch to open or close the circuit.
-4. Drag the variable resistor slider to change the bulb brightness.
-5. Use **Clear Wires** to remove connections.
-6. Use **Reset** to restore the default demo circuit.
+1. Drag a component body to move it around the workbench.
+2. Drag from one terminal to another terminal to create a wire.
+3. Drag an existing wire endpoint to reconnect it to another terminal.
+4. Hold Alt while dragging an existing endpoint to create a new branch wire.
+5. Click the switch to open or close the circuit.
+6. Drag the variable resistor slider to change the bulb brightness.
+7. Use **Clear Wires** to remove connections.
+8. Use **Reset** to restore the default demo circuit.
+
+## Deployment
+
+Pushes to `main` can automatically build and deploy the static app to a cloud server over SSH. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Roadmap
 
@@ -94,6 +102,7 @@ Near-term priorities:
 - Done for v0.1: one-click lesson starter workspaces
 - Done for v0.1: contextual hints for incomplete lesson steps
 - Done for v0.1: workbench highlights for active lesson steps
+- Done for v0.1: direct wire manipulation without separate select/wire modes
 - Next major area: series and parallel circuit examples
 
 ## License

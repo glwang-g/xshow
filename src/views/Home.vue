@@ -7,7 +7,6 @@ import {
   Check,
   CircuitBoard,
   Lightbulb,
-  MousePointer2,
   Plus,
   RotateCcw,
   SlidersHorizontal,
@@ -20,7 +19,7 @@ import {
   ZoomOut,
 } from "@lucide/vue";
 import Button from "@/components/ui/Button.vue";
-import { useBoardStore, type Tool } from "@/stores/board";
+import { useBoardStore } from "@/stores/board";
 
 type PartType = "battery" | "bulb" | "switch" | "resistor";
 type TerminalKey = "a" | "b";
@@ -143,11 +142,6 @@ const partSpecs: Record<
     },
   },
 };
-
-const tools: Array<{ icon: unknown; key: Tool; title: string }> = [
-  { icon: MousePointer2, key: "select", title: "选择" },
-  { icon: Cable, key: "wire", title: "连线" },
-];
 
 const palette: Array<{ type: PartType; description: string }> = [
   { type: "battery", description: "9V 电源" },
@@ -444,15 +438,6 @@ function isWireHighlighted(wire: Wire) {
   );
 }
 
-function canDragWireEndpoint(wire: Wire) {
-  return (
-    board.activeTool === "select" ||
-    selectedWireId.value === wire.id ||
-    rewiring.value?.wireId === wire.id ||
-    endpointDrag.value?.wireId === wire.id
-  );
-}
-
 function wireStroke(wire: Wire) {
   if (selectedWireId.value === wire.id || endpointDrag.value?.wireId === wire.id) {
     return "#f59e0b";
@@ -595,12 +580,10 @@ function closestTerminal(point: { x: number; y: number }, excluded?: TerminalRef
 }
 
 function handlePartPointerDown(event: PointerEvent, part: CircuitPart) {
-  if (board.activeTool !== "select") {
-    return;
-  }
-
   selectedWireId.value = null;
   rewiring.value = null;
+  endpointDrag.value = null;
+  newWireDrag.value = null;
   selectedPartId.value = part.id;
   const point = boardPoint(event);
   dragging.value = {
@@ -658,6 +641,7 @@ function clearCanvasSelection() {
   rewiring.value = null;
   endpointDrag.value = null;
   newWireDrag.value = null;
+  suppressNextTerminalClick.value = false;
 }
 
 function selectWire(wireId: string) {
@@ -665,36 +649,59 @@ function selectWire(wireId: string) {
   selectedWireId.value = wireId;
   selectedTerminal.value = null;
   rewiring.value = null;
-  board.setTool("select");
 }
 
 function startRewire(wireId: string, end: WireEnd) {
   selectedWireId.value = wireId;
   selectedTerminal.value = null;
   endpointDrag.value = null;
+  newWireDrag.value = null;
   rewiring.value = { wireId, end };
-  board.setTool("wire");
 }
 
 function startEndpointDrag(event: PointerEvent, wire: Wire, end: WireEnd) {
+  if (event.altKey) {
+    startBranchWireDrag(event, wire, end);
+    return;
+  }
+
   if (selectedWireId.value !== wire.id) {
     selectWire(wire.id);
   }
 
-  const point = boardPoint(event);
+  const start = getTerminalPosition(wire[end]);
   selectedTerminal.value = null;
   selectedWireId.value = wire.id;
   hoveredWireId.value = wire.id;
   hoveredEndpoint.value = { wireId: wire.id, end };
   rewiring.value = { wireId: wire.id, end };
+  newWireDrag.value = null;
   endpointDrag.value = {
     wireId: wire.id,
     end,
-    x: point.x,
-    y: point.y,
+    x: start.x,
+    y: start.y,
     over: null,
   };
-  board.setTool("wire");
+  (event.currentTarget as SVGCircleElement).setPointerCapture(event.pointerId);
+}
+
+function startBranchWireDrag(event: PointerEvent, wire: Wire, end: WireEnd) {
+  const from = { ...wire[end] };
+  const start = getTerminalPosition(from);
+  selectedTerminal.value = null;
+  selectedWireId.value = null;
+  hoveredWireId.value = wire.id;
+  hoveredEndpoint.value = { wireId: wire.id, end };
+  rewiring.value = null;
+  endpointDrag.value = null;
+  newWireDrag.value = {
+    from,
+    moved: false,
+    over: null,
+    x: start.x,
+    y: start.y,
+  };
   (event.currentTarget as SVGCircleElement).setPointerCapture(event.pointerId);
 }
 
@@ -753,7 +760,6 @@ function finishRewire(target: TerminalRef) {
   rewiring.value = null;
   selectedTerminal.value = null;
   endpointDrag.value = null;
-  board.setTool("select");
 }
 
 function addWireBetween(from: TerminalRef, to: TerminalRef) {
@@ -783,7 +789,7 @@ function addWireBetween(from: TerminalRef, to: TerminalRef) {
 }
 
 function startNewWireDrag(event: PointerEvent, part: CircuitPart, terminal: TerminalKey) {
-  if (board.activeTool !== "wire" || rewiring.value) {
+  if (rewiring.value) {
     return;
   }
 
@@ -791,6 +797,8 @@ function startNewWireDrag(event: PointerEvent, part: CircuitPart, terminal: Term
   const start = getTerminalPosition(from);
   selectedPartId.value = part.id;
   selectedWireId.value = null;
+  hoveredWireId.value = null;
+  endpointDrag.value = null;
   newWireDrag.value = {
     from,
     moved: false,
@@ -844,7 +852,6 @@ function handleTerminalClick(part: CircuitPart, terminal: TerminalKey) {
   }
 
   selectedPartId.value = part.id;
-  board.setTool("wire");
   const target = { partId: part.id, terminal };
 
   if (rewiring.value) {
@@ -900,6 +907,9 @@ function isTerminalDropTarget(part: CircuitPart, terminal: TerminalKey) {
   return (
     endpointDrag.value?.over?.partId === part.id &&
     endpointDrag.value.over.terminal === terminal
+  ) || (
+    newWireDrag.value?.over?.partId === part.id &&
+    newWireDrag.value.over.terminal === terminal
   );
 }
 
@@ -940,7 +950,6 @@ function addPart(type: PartType) {
   parts.value.push(nextPart);
   clearInteractionState();
   selectedPartId.value = nextPart.id;
-  board.setTool("select");
 }
 
 function removeSelectedPart() {
@@ -995,7 +1004,6 @@ function loadWorkspace(workspace: LessonWorkspace) {
   selectedPartId.value = workspace.selectedPartId;
   clearInteractionState();
   board.setZoom(workspace.zoom);
-  board.setTool("select");
 }
 
 function loadLessonWorkspace(lessonId = activeLesson.value.id) {
@@ -1216,22 +1224,6 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
         </div>
 
         <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
-          <section>
-            <div class="mb-2 text-xs font-medium uppercase text-muted-foreground">Tool</div>
-            <div class="grid grid-cols-2 gap-2">
-              <Button
-                v-for="tool in tools"
-                :key="tool.key"
-                :variant="board.activeTool === tool.key ? 'default' : 'outline'"
-                size="sm"
-                @click="board.setTool(tool.key)"
-              >
-                <component :is="tool.icon" class="h-4 w-4" />
-                {{ tool.title }}
-              </Button>
-            </div>
-          </section>
-
           <section class="space-y-2">
             <button
               v-for="item in palette"
@@ -1263,6 +1255,12 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
           </span>
           <span v-else-if="endpointDrag" class="text-xs text-muted-foreground">
             拖到新的端子上松开
+          </span>
+          <span v-else-if="newWireDrag?.over" class="text-xs text-muted-foreground">
+            松开连接到 {{ terminalLabel(newWireDrag.over) }}
+          </span>
+          <span v-else-if="newWireDrag" class="text-xs text-muted-foreground">
+            拖到另一个端子上松开
           </span>
           <span v-else-if="rewiring && selectedWire" class="text-xs text-muted-foreground">
             重接{{ rewiring.end === "from" ? "左端" : "右端" }}：点击新的端子
@@ -1306,7 +1304,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
               :key="wire.id"
             >
               <path
-                :class="board.activeTool === 'select' ? 'pointer-events-auto cursor-pointer' : 'pointer-events-none'"
+                class="pointer-events-auto cursor-pointer"
                 :d="wirePath(wire)"
                 fill="none"
                 pointer-events="stroke"
@@ -1345,11 +1343,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 r="18"
               />
               <circle
-                :class="
-                  canDragWireEndpoint(wire)
-                    ? 'pointer-events-auto cursor-grab active:cursor-grabbing'
-                    : 'pointer-events-none'
-                "
+                class="pointer-events-auto cursor-grab active:cursor-grabbing"
                 :cx="wireEndpointPosition(wire, 'from').x"
                 :cy="wireEndpointPosition(wire, 'from').y"
                 :r="endpointRadius(wire, 'from')"
@@ -1362,11 +1356,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 @pointerleave="clearEndpointHover(wire.id, 'from')"
               />
               <circle
-                :class="
-                  canDragWireEndpoint(wire)
-                    ? 'pointer-events-auto cursor-grab active:cursor-grabbing'
-                    : 'pointer-events-none'
-                "
+                class="pointer-events-auto cursor-grab active:cursor-grabbing"
                 :cx="wireEndpointPosition(wire, 'to').x"
                 :cy="wireEndpointPosition(wire, 'to').y"
                 :r="endpointRadius(wire, 'to')"
@@ -1718,7 +1708,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 正在重接{{ rewiring.end === "from" ? "左端" : "右端" }}，请点击新的端子。
               </div>
               <div v-else class="text-xs text-amber-800">
-                也可以直接拖动画布上这条线两端的圆点来重接。
+                拖动画布上这条线两端的圆点可重接；按住 Alt 拖动端点可从同一端子新建导线。
               </div>
             </div>
           </section>

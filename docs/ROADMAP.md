@@ -8,7 +8,7 @@ The project should stay visual, approachable, and immediate: users should be abl
 
 ## Progress
 
-Current focus: **expanding circuit examples and guided lesson guidance**.
+Current focus: **mobile and touch-friendly responsive experience**.
 
 | Area | Status | Notes |
 | --- | --- | --- |
@@ -17,6 +17,7 @@ Current focus: **expanding circuit examples and guided lesson guidance**.
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; multiple lesson experiments are available, and the panel checks simple circuit goals automatically. |
 | Workspace records | First slice | The browser automatically restores the last workspace and can save named local records for intermediate experiment states. |
+| Mobile responsive experience | Next | The app needs a touch-friendly layout and interaction model so the workbench, lesson panel, and records remain usable on phones and tablets. |
 | Deployment automation | First slice | Pushes to `main` can build the app and deploy `dist/` to a cloud server over SSH when repository secrets are configured. |
 
 ## Near Term
@@ -61,12 +62,22 @@ Status: **Expanding**
 
 ### More circuit examples
 
-Status: **Next**
+Status: **After mobile polish**
 
 - [ ] Add a series circuit example
 - [ ] Add a parallel circuit example
 - [ ] Add lesson checks for comparing brightness across examples
 - [ ] Keep example circuits editable from data
+
+### Mobile responsive experience
+
+Status: **Next**
+
+- [ ] Rework the layout for narrow screens so the component palette, workbench, and right panel do not compete for the same space
+- [ ] Make lesson progress, status, and workspace records usable from a compact bottom sheet or drawer
+- [ ] Tune touch interactions for moving components, drawing wires, and reconnecting wire endpoints
+- [ ] Keep board zoom, pan, and terminal hit targets comfortable on phones and tablets
+- [ ] Add mobile screenshots or manual QA notes before tagging the next release
 
 ### Workspace records
 
@@ -84,7 +95,7 @@ Status: **First slice done**
 - [x] Build on pushes to `main`
 - [x] Deploy static `dist/` output to a cloud server over SSH when secrets are configured
 - [x] Document server and repository secret setup
-- [ ] Add a public demo URL after the first production server is configured
+- [x] Add a public demo URL after the first production server is configured
 
 ## Later
 

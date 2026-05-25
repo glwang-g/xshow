@@ -100,7 +100,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep Englis
 
 Near-term priorities:
 
-- Current focus: expand circuit examples and guided lesson guidance
+- Current focus: mobile and touch-friendly responsive experience
 - Done for v0.1: current direction animation
 - Done for v0.1: guided lesson mode first slice
 - Done for v0.1: multiple guided lesson experiments
@@ -109,7 +109,8 @@ Near-term priorities:
 - Done for v0.1: workbench highlights for active lesson steps
 - Done for v0.1: direct wire manipulation without separate select/wire modes
 - Done for v0.1: local autosave and named workspace records
-- Next major area: series and parallel circuit examples
+- Next major area: mobile responsive layout and touch interactions
+- Then: series and parallel circuit examples
 
 ## License
 

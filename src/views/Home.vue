@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { lessonCatalog, type LessonCheckId, type LessonWorkspace } from "@/data/lessons";
 import {
   BatteryCharging,
   Cable,
   Check,
   CircuitBoard,
+  FolderOpen,
   Lightbulb,
   Plus,
   RotateCcw,
+  Save,
   SlidersHorizontal,
   Sparkles,
   ToggleLeft,
@@ -68,9 +70,25 @@ type Edge = {
   wireId?: string;
 };
 
+type PersistedWorkspace = LessonWorkspace & {
+  activeLessonId: string;
+  savedAt: string;
+  version: 1;
+};
+
+type SavedWorkspaceRecord = PersistedWorkspace & {
+  id: string;
+  title: string;
+};
+
+const savedWorkspaceKey = "xshow.workspace.v1";
+const savedRecordsKey = "xshow.workspace.records.v1";
 const board = useBoardStore();
 const workbenchRef = ref<HTMLElement | null>(null);
 const activeLessonId = ref(lessonCatalog[0].id);
+const lastSavedAt = ref<string | null>(null);
+const recordTitle = ref("");
+const savedRecords = ref<SavedWorkspaceRecord[]>([]);
 const hoveredWireId = ref<string | null>(null);
 const hoveredEndpoint = ref<{ wireId: string; end: WireEnd } | null>(null);
 const selectedTerminal = ref<TerminalRef | null>(null);
@@ -237,6 +255,18 @@ const lessonProgress = computed(() => {
     total,
   };
 });
+const savedWorkspaceLabel = computed(() => {
+  if (!lastSavedAt.value) {
+    return "自动保存已开启";
+  }
+
+  return `已保存 ${new Intl.DateTimeFormat("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(lastSavedAt.value))}`;
+});
+
+let autosaveTimer: number | null = null;
 
 function clearInteractionState() {
   selectedTerminal.value = null;
@@ -1006,6 +1036,161 @@ function loadWorkspace(workspace: LessonWorkspace) {
   board.setZoom(workspace.zoom);
 }
 
+function workspaceSnapshot(savedAt = new Date().toISOString()): PersistedWorkspace {
+  return {
+    activeLessonId: activeLessonId.value,
+    parts: parts.value.map((part) => ({ ...part })),
+    savedAt,
+    selectedPartId: selectedPartId.value,
+    version: 1,
+    wires: wires.value.map((wire) => ({
+      ...wire,
+      from: { ...wire.from },
+      to: { ...wire.to },
+    })),
+    zoom: board.zoom,
+  };
+}
+
+function isPersistedWorkspace(value: unknown): value is PersistedWorkspace {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Partial<PersistedWorkspace>;
+  return (
+    candidate.version === 1 &&
+    typeof candidate.activeLessonId === "string" &&
+    typeof candidate.selectedPartId === "string" &&
+    typeof candidate.savedAt === "string" &&
+    typeof candidate.zoom === "number" &&
+    Array.isArray(candidate.parts) &&
+    Array.isArray(candidate.wires)
+  );
+}
+
+function isSavedWorkspaceRecord(value: unknown): value is SavedWorkspaceRecord {
+  if (!isPersistedWorkspace(value)) {
+    return false;
+  }
+
+  const candidate = value as Partial<SavedWorkspaceRecord>;
+  return typeof candidate.id === "string" && typeof candidate.title === "string";
+}
+
+function formatSavedTime(savedAt: string) {
+  return new Intl.DateTimeFormat("zh-CN", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "2-digit",
+  }).format(new Date(savedAt));
+}
+
+function loadWorkspaceSnapshot(workspace: PersistedWorkspace) {
+  activeLessonId.value = lessonCatalog.some((lesson) => lesson.id === workspace.activeLessonId)
+    ? workspace.activeLessonId
+    : lessonCatalog[0].id;
+  loadWorkspace(workspace);
+  lastSavedAt.value = workspace.savedAt;
+}
+
+function restoreAutoSavedWorkspace() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const rawWorkspace = window.localStorage.getItem(savedWorkspaceKey);
+  if (!rawWorkspace) {
+    return;
+  }
+
+  try {
+    const workspace = JSON.parse(rawWorkspace) as unknown;
+    if (isPersistedWorkspace(workspace)) {
+      loadWorkspaceSnapshot(workspace);
+    }
+  } catch {
+    window.localStorage.removeItem(savedWorkspaceKey);
+  }
+}
+
+function saveWorkspaceToStorage() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const workspace = workspaceSnapshot();
+  window.localStorage.setItem(savedWorkspaceKey, JSON.stringify(workspace));
+  lastSavedAt.value = workspace.savedAt;
+}
+
+function scheduleWorkspaceSave() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (autosaveTimer) {
+    window.clearTimeout(autosaveTimer);
+  }
+
+  autosaveTimer = window.setTimeout(saveWorkspaceToStorage, 220);
+}
+
+function loadSavedRecords() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const rawRecords = window.localStorage.getItem(savedRecordsKey);
+  if (!rawRecords) {
+    return;
+  }
+
+  try {
+    const records = JSON.parse(rawRecords) as unknown;
+    savedRecords.value = Array.isArray(records)
+      ? records.filter(isSavedWorkspaceRecord).slice(0, 12)
+      : [];
+  } catch {
+    window.localStorage.removeItem(savedRecordsKey);
+  }
+}
+
+function persistSavedRecords() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(savedRecordsKey, JSON.stringify(savedRecords.value));
+}
+
+function saveWorkspaceRecord() {
+  const snapshot = workspaceSnapshot();
+  const title = recordTitle.value.trim() || `记录 ${formatSavedTime(snapshot.savedAt)}`;
+  savedRecords.value = [
+    {
+      ...snapshot,
+      id: `record-${Date.now()}`,
+      title,
+    },
+    ...savedRecords.value,
+  ].slice(0, 12);
+  recordTitle.value = "";
+  persistSavedRecords();
+  saveWorkspaceToStorage();
+}
+
+function loadSavedRecord(record: SavedWorkspaceRecord) {
+  loadWorkspaceSnapshot(record);
+  saveWorkspaceToStorage();
+}
+
+function removeSavedRecord(recordId: string) {
+  savedRecords.value = savedRecords.value.filter((record) => record.id !== recordId);
+  persistSavedRecords();
+}
+
 function loadLessonWorkspace(lessonId = activeLesson.value.id) {
   const lesson = lessonCatalog.find((item) => item.id === lessonId) ?? activeLesson.value;
   activeLessonId.value = lesson.id;
@@ -1169,6 +1354,12 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
     wires: wireStates,
   };
 }
+
+loadSavedRecords();
+restoreAutoSavedWorkspace();
+watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], scheduleWorkspaceSave, {
+  deep: true,
+});
 </script>
 
 <template>
@@ -1192,6 +1383,10 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
           />
           <span class="font-medium">{{ simulation.closed ? "回路闭合" : "回路断开" }}</span>
           <span class="text-muted-foreground">{{ simulation.currentMilliAmps }} mA</span>
+        </div>
+        <div class="flex items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground">
+          <Save class="h-4 w-4" />
+          <span>{{ savedWorkspaceLabel }}</span>
         </div>
         <div class="flex items-center gap-1 rounded-md border bg-muted/60 p-1">
           <Button variant="ghost" size="icon" title="缩小" @click="board.setZoom(board.zoom - 5)">
@@ -1579,6 +1774,47 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
                 </span>
                 <span class="leading-5">{{ step.description }}</span>
               </div>
+            </div>
+          </section>
+
+          <section class="rounded-md border bg-background p-3">
+            <div class="mb-3 flex items-center justify-between">
+              <span class="text-sm font-medium">记录</span>
+              <span class="text-xs text-muted-foreground">{{ savedRecords.length }}/12</span>
+            </div>
+            <div class="mb-3 flex gap-2">
+              <input
+                v-model="recordTitle"
+                class="h-9 min-w-0 flex-1 rounded-md border bg-card px-3 text-sm"
+                placeholder="记录名称"
+                @keydown.enter="saveWorkspaceRecord"
+              />
+              <Button variant="outline" size="icon" title="暂存当前记录" @click="saveWorkspaceRecord">
+                <Save class="h-4 w-4" />
+              </Button>
+            </div>
+            <div v-if="savedRecords.length" class="space-y-2">
+              <div
+                v-for="record in savedRecords"
+                :key="record.id"
+                class="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-sm"
+              >
+                <div class="min-w-0">
+                  <div class="truncate font-medium">{{ record.title }}</div>
+                  <div class="text-xs text-muted-foreground">{{ formatSavedTime(record.savedAt) }}</div>
+                </div>
+                <div class="flex shrink-0 items-center gap-1">
+                  <Button variant="ghost" size="icon" title="加载记录" @click="loadSavedRecord(record)">
+                    <FolderOpen class="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" title="删除记录" @click="removeSavedRecord(record.id)">
+                    <Trash2 class="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div v-else class="rounded-md border border-dashed px-3 py-3 text-xs text-muted-foreground">
+              暂无暂存记录
             </div>
           </section>
 

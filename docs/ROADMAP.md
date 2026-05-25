@@ -16,6 +16,7 @@ Current focus: **expanding circuit examples and guided lesson guidance**.
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; multiple lesson experiments are available, and the panel checks simple circuit goals automatically. |
+| Workspace records | First slice | The browser automatically restores the last workspace and can save named local records for intermediate experiment states. |
 | Deployment automation | First slice | Pushes to `main` can build the app and deploy `dist/` to a cloud server over SSH when repository secrets are configured. |
 
 ## Near Term
@@ -66,6 +67,15 @@ Status: **Next**
 - [ ] Add a parallel circuit example
 - [ ] Add lesson checks for comparing brightness across examples
 - [ ] Keep example circuits editable from data
+
+### Workspace records
+
+Status: **First slice done**
+
+- [x] Automatically save and restore the current workspace in the same browser
+- [x] Save named local records for intermediate experiment states
+- [x] Load or delete saved local records from the status panel
+- [ ] Add cloud-backed records after user accounts or a backend are introduced
 
 ### Deployment automation
 

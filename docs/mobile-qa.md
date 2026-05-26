@@ -26,6 +26,10 @@ This document tracks manual checks for the `xshow circuits` mobile and touch exp
 - [ ] The status panel can switch lessons, load starter workspaces, and view records.
 - [ ] Clear Wires removes all wires without deleting components.
 - [ ] Export Image downloads a PNG of the current workbench.
+- [ ] Export JSON downloads the current workbench archive.
+- [ ] Import JSON restores the workbench from a valid archive.
+- [ ] After adding to the home screen, the app opens in a standalone app window.
+- [ ] After one online launch, a later offline visit shows the app shell or offline fallback.
 
 ## Lesson Checks
 

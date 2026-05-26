@@ -19,6 +19,7 @@ Current focus: **mobile and touch-friendly responsive experience**.
 | Workspace records | First slice | The browser automatically restores the last workspace and can save named local records for intermediate experiment states. |
 | Mobile responsive experience | In progress for v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
+| PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |
 | Deployment automation | First slice | Pushes to `main` can build the app and deploy `dist/` to a cloud server over SSH when repository secrets are configured. |
 
 ## Near Term
@@ -60,7 +61,7 @@ Status: **Expanding**
 - [x] Add one-click starter workspaces for each lesson
 - [x] Add lesson-level hints for the next incomplete step
 - [x] Add more visual guidance on the workbench for the active step
-- [ ] Add richer step completion feedback when a lesson finishes
+- [x] Add richer step completion feedback when a lesson finishes
 
 ### More circuit examples
 
@@ -84,12 +85,25 @@ Status: **In progress for v0.2**
 
 ### Workspace records
 
-Status: **First slice done**
+Status: **In progress for v0.2**
 
 - [x] Automatically save and restore the current workspace in the same browser
 - [x] Save named local records for intermediate experiment states
 - [x] Load or delete saved local records from the status panel
+- [x] Export the current workbench as a JSON archive
+- [x] Import the current workbench from a JSON archive
 - [ ] Add cloud-backed records after user accounts or a backend are introduced
+
+### PWA and offline experience
+
+Status: **First slice**
+
+- [x] Add a Web App Manifest
+- [x] Add iOS home screen meta tags and apple touch icon
+- [x] Register a production service worker
+- [x] Cache the app shell, manifest, and core icons
+- [x] Add an offline fallback page
+- [ ] Add a refresh prompt when a new version is available
 
 ### Deployment automation
 
@@ -103,7 +117,7 @@ Status: **First slice done**
 ## Later
 
 - [ ] More components: LED, motor, buzzer, diode, capacitor, ammeter, voltmeter
-- [ ] Save and load circuit workspaces
+- [x] Save and load circuit workspaces
 - [x] Export circuits as images
 - [ ] Circuit state sharing by URL
 - [ ] More realistic simulation rules without turning the app into a full SPICE clone

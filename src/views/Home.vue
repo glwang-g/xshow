@@ -7,6 +7,8 @@ import {
   Check,
   CircuitBoard,
   Download,
+  FileDown,
+  FileUp,
   Gauge,
   FolderOpen,
   GitFork,
@@ -21,6 +23,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Trash2,
+  Trophy,
   Unplug,
   X,
   Zap,
@@ -93,6 +96,7 @@ const savedRecordsKey = "xshow.workspace.records.v1";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
 const board = useBoardStore();
 const canvasViewportRef = ref<HTMLElement | null>(null);
+const workspaceImportRef = ref<HTMLInputElement | null>(null);
 const workbenchRef = ref<HTMLElement | null>(null);
 const activeLessonId = ref(lessonCatalog[0].id);
 const lastSavedAt = ref<string | null>(null);
@@ -100,6 +104,8 @@ const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
+const lessonCompletePanelOpen = ref(false);
+const dismissedLessonCompletionId = ref<string | null>(null);
 const hoveredWireId = ref<string | null>(null);
 const hoveredEndpoint = ref<{ wireId: string; end: WireEnd } | null>(null);
 const selectedTerminal = ref<TerminalRef | null>(null);
@@ -359,6 +365,7 @@ const lessonProgress = computed(() => {
     total,
   };
 });
+const lessonComplete = computed(() => lessonProgress.value.total > 0 && lessonProgress.value.percent === 100);
 const savedWorkspaceLabel = computed(() => {
   if (!lastSavedAt.value) {
     return "自动保存已开启";
@@ -1543,6 +1550,53 @@ function saveWorkspaceRecord() {
   saveWorkspaceToStorage();
 }
 
+function downloadTextFile(filename: string, content: string, type: string) {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const blob = new Blob([content], { type });
+  const link = document.createElement("a");
+  link.download = filename;
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+function exportWorkspaceJson() {
+  const snapshot = workspaceSnapshot();
+  const filename = `xshow-workspace-${new Date(snapshot.savedAt).toISOString().slice(0, 10)}.json`;
+  downloadTextFile(filename, JSON.stringify(snapshot, null, 2), "application/json");
+}
+
+function openWorkspaceImport() {
+  workspaceImportRef.value?.click();
+}
+
+async function importWorkspaceJson(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = "";
+
+  if (!file) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(await file.text()) as unknown;
+    if (!isPersistedWorkspace(parsed)) {
+      window.alert("这个 JSON 文件不是有效的 xshow 工作台存档。");
+      return;
+    }
+
+    loadWorkspaceSnapshot(parsed);
+    saveWorkspaceToStorage();
+    statusPanelOpen.value = false;
+  } catch {
+    window.alert("读取 JSON 存档失败，请检查文件内容。");
+  }
+}
+
 function loadSavedRecord(record: SavedWorkspaceRecord) {
   loadWorkspaceSnapshot(record);
   saveWorkspaceToStorage();
@@ -1557,6 +1611,19 @@ function loadLessonWorkspace(lessonId = activeLesson.value.id) {
   const lesson = lessonCatalog.find((item) => item.id === lessonId) ?? activeLesson.value;
   activeLessonId.value = lesson.id;
   loadWorkspace(lesson.starterWorkspace);
+}
+
+function closeLessonCompletePanel() {
+  dismissedLessonCompletionId.value = activeLessonId.value;
+  lessonCompletePanelOpen.value = false;
+}
+
+function loadNextLesson() {
+  const currentIndex = lessonCatalog.findIndex((lesson) => lesson.id === activeLessonId.value);
+  const nextLesson = lessonCatalog[(currentIndex + 1) % lessonCatalog.length] ?? lessonCatalog[0];
+  dismissedLessonCompletionId.value = null;
+  lessonCompletePanelOpen.value = false;
+  loadLessonWorkspace(nextLesson.id);
 }
 
 function resetDemo() {
@@ -1722,6 +1789,22 @@ restoreAutoSavedWorkspace();
 watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], scheduleWorkspaceSave, {
   deep: true,
 });
+watch(
+  [lessonComplete, activeLessonId],
+  ([complete]) => {
+    if (complete && dismissedLessonCompletionId.value !== activeLessonId.value) {
+      lessonCompletePanelOpen.value = true;
+      return;
+    }
+
+    if (!complete && dismissedLessonCompletionId.value === activeLessonId.value) {
+      dismissedLessonCompletionId.value = null;
+    }
+
+    lessonCompletePanelOpen.value = false;
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -1903,6 +1986,37 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
             {{ nextLessonStep?.hint ?? "实验完成，可以切换到下一个实验。" }}
           </div>
         </button>
+
+        <section
+          v-if="lessonCompletePanelOpen"
+          class="fixed bottom-24 left-3 right-3 z-30 rounded-md border border-emerald-200 bg-card/95 p-4 shadow-panel sm:left-auto sm:w-[22rem] xl:bottom-5 xl:right-[340px]"
+        >
+          <div class="mb-3 flex items-start gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-800">
+              <Trophy class="h-5 w-5" />
+            </span>
+            <div class="min-w-0">
+              <div class="text-sm font-semibold">实验完成</div>
+              <div class="mt-1 text-xs leading-5 text-muted-foreground">
+                {{ activeLesson.title }} 的 {{ lessonProgress.total }} 个步骤已经全部完成。
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" title="关闭完成提示" @click="closeLessonCompletePanel">
+              <X class="h-4 w-4" />
+            </Button>
+          </div>
+          <div class="mb-3 h-2 overflow-hidden rounded-full bg-muted">
+            <div class="h-full rounded-full bg-emerald-500" style="width: 100%" />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" @click="closeLessonCompletePanel">
+              继续探索
+            </Button>
+            <Button size="sm" @click="loadNextLesson">
+              下一个实验
+            </Button>
+          </div>
+        </section>
 
         <div class="sticky left-3 top-3 z-20 mb-3 ml-3 mt-3 flex w-max max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel xl:absolute xl:left-4 xl:top-4 xl:m-0">
           <CircuitBoard class="h-4 w-4 text-cyan-700" />
@@ -2258,6 +2372,13 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
               <span class="text-sm font-medium">记录</span>
               <span class="text-xs text-muted-foreground">{{ savedRecords.length }}/12</span>
             </div>
+            <input
+              ref="workspaceImportRef"
+              accept="application/json,.json"
+              class="hidden"
+              type="file"
+              @change="importWorkspaceJson"
+            />
             <div class="mb-3 flex gap-2">
               <input
                 v-model="recordTitle"
@@ -2267,6 +2388,16 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
               />
               <Button variant="outline" size="icon" title="暂存当前记录" @click="saveWorkspaceRecord">
                 <Save class="h-4 w-4" />
+              </Button>
+            </div>
+            <div class="mb-3 grid grid-cols-2 gap-2">
+              <Button variant="outline" size="sm" @click="openWorkspaceImport">
+                <FileUp class="h-4 w-4" />
+                导入 JSON
+              </Button>
+              <Button variant="outline" size="sm" @click="exportWorkspaceJson">
+                <FileDown class="h-4 w-4" />
+                导出 JSON
               </Button>
             </div>
             <div v-if="savedRecords.length" class="space-y-2">

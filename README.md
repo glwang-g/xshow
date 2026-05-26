@@ -27,8 +27,10 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Highlight the relevant workbench parts and terminals for the active lesson step
 - Use a canvas-first mobile HUD with a component drawer and floating status panel
 - Pan and zoom the workbench on touch devices with larger terminal and wire hit targets
+- Add the app to the home screen as a PWA and cache core static assets for offline relaunch
 - Automatically restore the last workspace in the same browser
 - Save named local workspace records for intermediate experiment states
+- Import or export the current workbench as a JSON archive for cross-device migration
 - Display circuit status, current, equivalent resistance, and brightness
 - Export the current workbench as a PNG image
 - Reset to a ready-made demo circuit
@@ -87,8 +89,9 @@ pnpm preview
 7. On phones and tablets, use the bottom HUD to open the component drawer, status panel, image export, view recentering, and zoom controls.
 8. Use **Export** to save the current workbench as a PNG image.
 9. Use **Records** to save and reload named local workspace snapshots.
-10. Use **Clear Wires** to remove connections.
-11. Use **Reset** to restore the default demo circuit.
+10. Use **Import JSON / Export JSON** to move the current workbench between devices.
+11. Use **Clear Wires** to remove connections.
+12. Use **Reset** to restore the default demo circuit.
 
 ## Deployment
 
@@ -118,6 +121,7 @@ Near-term priorities:
 - In progress for v0.2: mobile HUD, touch pan/zoom, and larger hit targets
 - In progress for v0.2: series and parallel circuit examples
 - In progress for v0.2: export the current workbench as an image
+- In progress for v0.2: PWA installability, offline relaunch, and JSON workspace archives
 
 ## License
 

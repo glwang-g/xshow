@@ -6,7 +6,7 @@ export const useBoardStore = defineStore("board", {
   }),
   actions: {
     setZoom(value: number) {
-      this.zoom = Math.min(160, Math.max(25, value));
+      this.zoom = Math.min(160, Math.max(25, Math.round(value)));
     },
   },
 });

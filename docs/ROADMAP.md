@@ -15,9 +15,10 @@ Current focus: **mobile and touch-friendly responsive experience**.
 | Interactive circuit playground | Done | Battery, switch, bulb, resistor, wires, brightness, and circuit state are working. |
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
-| Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; multiple lesson experiments are available, and the panel checks simple circuit goals automatically. |
+| Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, and parallel experiments are available. |
 | Workspace records | First slice | The browser automatically restores the last workspace and can save named local records for intermediate experiment states. |
-| Mobile responsive experience | Next | The app needs a touch-friendly layout and interaction model so the workbench, lesson panel, and records remain usable on phones and tablets. |
+| Mobile responsive experience | In progress for v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
+| Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | Deployment automation | First slice | Pushes to `main` can build the app and deploy `dist/` to a cloud server over SSH when repository secrets are configured. |
 
 ## Near Term
@@ -54,6 +55,7 @@ Status: **Expanding**
 - [x] Start with battery, switch, bulb, and resistor exercises
 - [x] Allow switching between multiple guided experiments
 - [x] Provide simple success checks, such as "the bulb is on"
+- [x] Add guided series and parallel two-bulb experiments
 - [x] Keep lesson content editable in plain data files
 - [x] Add one-click starter workspaces for each lesson
 - [x] Add lesson-level hints for the next incomplete step
@@ -62,22 +64,23 @@ Status: **Expanding**
 
 ### More circuit examples
 
-Status: **After mobile polish**
+Status: **In progress for v0.2**
 
-- [ ] Add a series circuit example
-- [ ] Add a parallel circuit example
+- [x] Add a series circuit example
+- [x] Add a parallel circuit example
 - [ ] Add lesson checks for comparing brightness across examples
 - [ ] Keep example circuits editable from data
 
 ### Mobile responsive experience
 
-Status: **Next**
+Status: **In progress for v0.2**
 
-- [ ] Rework the layout for narrow screens so the component palette, workbench, and right panel do not compete for the same space
-- [ ] Make lesson progress, status, and workspace records usable from a compact bottom sheet or drawer
-- [ ] Tune touch interactions for moving components, drawing wires, and reconnecting wire endpoints
-- [ ] Keep board zoom, pan, and terminal hit targets comfortable on phones and tablets
-- [ ] Add mobile screenshots or manual QA notes before tagging the next release
+- [x] Rework the layout for narrow screens so the component palette, workbench, and right panel do not compete for the same space
+- [x] Make lesson progress, status, and workspace records usable from a compact bottom sheet or drawer
+- [x] Tune touch interactions for moving components, drawing wires, and reconnecting wire endpoints
+- [x] Keep board zoom, pan, and terminal hit targets comfortable on phones and tablets
+- [x] Add mobile screenshots or manual QA notes before tagging the next release
+- [ ] Retest on iPad landscape, phone portrait, and phone landscape
 
 ### Workspace records
 
@@ -101,7 +104,7 @@ Status: **First slice done**
 
 - [ ] More components: LED, motor, buzzer, diode, capacitor, ammeter, voltmeter
 - [ ] Save and load circuit workspaces
-- [ ] Export circuits as images
+- [x] Export circuits as images
 - [ ] Circuit state sharing by URL
 - [ ] More realistic simulation rules without turning the app into a full SPICE clone
 

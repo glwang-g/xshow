@@ -21,12 +21,16 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Simulate bulb brightness from circuit state and resistance
 - Animate current flow on energized wires
 - Switch between guided lesson experiments with automatic step checks
+- Include basic, open-circuit, brightness, series, and parallel guided lessons
 - Load a lesson starter workspace with one click
 - Show contextual hints for the next unfinished lesson step
 - Highlight the relevant workbench parts and terminals for the active lesson step
+- Use a canvas-first mobile HUD with a component drawer and floating status panel
+- Pan and zoom the workbench on touch devices with larger terminal and wire hit targets
 - Automatically restore the last workspace in the same browser
 - Save named local workspace records for intermediate experiment states
 - Display circuit status, current, equivalent resistance, and brightness
+- Export the current workbench as a PNG image
 - Reset to a ready-made demo circuit
 
 ## Demo Scope
@@ -80,9 +84,11 @@ pnpm preview
 4. Hold Alt while dragging an existing endpoint to create a new branch wire.
 5. Click the switch to open or close the circuit.
 6. Drag the variable resistor slider to change the bulb brightness.
-7. Use **Records** to save and reload named local workspace snapshots.
-8. Use **Clear Wires** to remove connections.
-9. Use **Reset** to restore the default demo circuit.
+7. On phones and tablets, use the bottom HUD to open the component drawer, status panel, image export, view recentering, and zoom controls.
+8. Use **Export** to save the current workbench as a PNG image.
+9. Use **Records** to save and reload named local workspace snapshots.
+10. Use **Clear Wires** to remove connections.
+11. Use **Reset** to restore the default demo circuit.
 
 ## Deployment
 
@@ -109,8 +115,9 @@ Near-term priorities:
 - Done for v0.1: workbench highlights for active lesson steps
 - Done for v0.1: direct wire manipulation without separate select/wire modes
 - Done for v0.1: local autosave and named workspace records
-- Next major area: mobile responsive layout and touch interactions
-- Then: series and parallel circuit examples
+- In progress for v0.2: mobile HUD, touch pan/zoom, and larger hit targets
+- In progress for v0.2: series and parallel circuit examples
+- In progress for v0.2: export the current workbench as an image
 
 ## License
 

@@ -1,12 +1,15 @@
-const CACHE_NAME = "xshow-circuits-v1";
+const CACHE_NAME = "xshow-circuits-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/offline.html",
   "/manifest.webmanifest",
   "/favicon.ico",
+  "/img/icons/app-icon.svg",
   "/img/icons/android-chrome-192x192.png",
   "/img/icons/android-chrome-512x512.png",
+  "/img/icons/android-chrome-maskable-192x192.png",
+  "/img/icons/android-chrome-maskable-512x512.png",
   "/img/icons/apple-touch-icon.png"
 ];
 

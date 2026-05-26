@@ -84,7 +84,7 @@ type SavedWorkspaceRecord = PersistedWorkspace & {
 
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
-const githubRepositoryUrl = "https://github.com/xshow-labs/xshow";
+const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
 const board = useBoardStore();
 const workbenchRef = ref<HTMLElement | null>(null);
 const activeLessonId = ref(lessonCatalog[0].id);
@@ -1407,11 +1407,11 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
           target="_blank"
           rel="noreferrer"
           class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"
-          title="xshow-labs GitHub 仓库"
-          aria-label="打开 xshow-labs GitHub 仓库"
+          title="GitHub 仓库"
+          aria-label="打开 GitHub 仓库"
         >
           <GitFork class="h-4 w-4" />
-          xshow-labs
+          GitHub
         </a>
         <Button variant="outline" size="sm" @click="clearWires">
           <Trash2 class="h-4 w-4" />

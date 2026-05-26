@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { lessonCatalog, type LessonCheckId, type LessonWorkspace } from "@/data/lessons";
 import {
   BatteryCharging,
@@ -461,9 +461,95 @@ function isDesktopViewport() {
   return typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches;
 }
 
+function mobileContentBounds() {
+  const margin = 56;
+  let minX = workbench.width;
+  let minY = workbench.height;
+  let maxX = 0;
+  let maxY = 0;
+
+  for (const part of parts.value) {
+    const spec = getSpec(part);
+    minX = Math.min(minX, part.x - margin);
+    minY = Math.min(minY, part.y - margin);
+    maxX = Math.max(maxX, part.x + spec.width + margin);
+    maxY = Math.max(maxY, part.y + spec.height + margin);
+  }
+
+  for (const wire of wires.value) {
+    for (const point of wireRoutePoints(wire)) {
+      minX = Math.min(minX, point.x - margin);
+      minY = Math.min(minY, point.y - margin);
+      maxX = Math.max(maxX, point.x + margin);
+      maxY = Math.max(maxY, point.y + margin);
+    }
+  }
+
+  if (minX >= maxX || minY >= maxY) {
+    return { height: workbench.height, minX: 0, minY: 0, width: workbench.width };
+  }
+
+  minX = clamp(minX, 0, workbench.width);
+  minY = clamp(minY, 0, workbench.height);
+  maxX = clamp(maxX, 0, workbench.width);
+  maxY = clamp(maxY, 0, workbench.height);
+
+  return {
+    height: Math.max(1, maxY - minY),
+    minX,
+    minY,
+    width: Math.max(1, maxX - minX),
+  };
+}
+
+function mobileFitZoom() {
+  const viewport = canvasViewportRef.value;
+  if (!viewport) {
+    return 72;
+  }
+
+  const bounds = mobileContentBounds();
+  const horizontalPadding = 24;
+  const bottomControlsSpace = 112;
+  const availableWidth = Math.max(280, viewport.clientWidth - horizontalPadding);
+  const availableHeight = Math.max(260, viewport.clientHeight - bottomControlsSpace);
+  return Math.floor(Math.min(availableWidth / bounds.width, availableHeight / bounds.height) * 100);
+}
+
+function fitMobileWorkbench(behavior: ScrollBehavior = "auto") {
+  if (typeof window === "undefined" || isDesktopViewport() || !canvasViewportRef.value) {
+    return;
+  }
+
+  const bounds = mobileContentBounds();
+  board.setZoom(mobileFitZoom());
+  window.requestAnimationFrame(() => {
+    const scale = board.zoom / 100;
+    canvasViewportRef.value?.scrollTo({
+      behavior,
+      left: Math.max(0, bounds.minX * scale - 12),
+      top: Math.max(0, bounds.minY * scale - 12),
+    });
+  });
+}
+
+function fitMobileWorkbenchAfterRender(behavior: ScrollBehavior = "auto") {
+  if (typeof window === "undefined" || isDesktopViewport()) {
+    return;
+  }
+
+  nextTick(() => {
+    window.requestAnimationFrame(() => fitMobileWorkbench(behavior));
+  });
+}
+
 function resetMobileView() {
-  board.setZoom(isDesktopViewport() ? 86 : 72);
-  canvasViewportRef.value?.scrollTo({ left: 140, top: 72, behavior: "smooth" });
+  if (isDesktopViewport()) {
+    board.setZoom(86);
+    return;
+  }
+
+  fitMobileWorkbench("smooth");
 }
 
 function roundedRectPath(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius = 8) {
@@ -1403,6 +1489,7 @@ function loadWorkspace(workspace: LessonWorkspace) {
   selectedPartId.value = workspace.selectedPartId;
   clearInteractionState();
   board.setZoom(workspace.zoom);
+  fitMobileWorkbenchAfterRender();
 }
 
 function workspaceSnapshot(savedAt = new Date().toISOString()): PersistedWorkspace {
@@ -1805,11 +1892,28 @@ watch(
   },
   { immediate: true },
 );
+
+function handleMobileViewportChange() {
+  fitMobileWorkbenchAfterRender();
+}
+
+onMounted(() => {
+  fitMobileWorkbenchAfterRender();
+  window.addEventListener("resize", handleMobileViewportChange);
+  window.visualViewport?.addEventListener("resize", handleMobileViewportChange);
+  window.screen.orientation?.addEventListener("change", handleMobileViewportChange);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", handleMobileViewportChange);
+  window.visualViewport?.removeEventListener("resize", handleMobileViewportChange);
+  window.screen.orientation?.removeEventListener("change", handleMobileViewportChange);
+});
 </script>
 
 <template>
-  <main class="flex min-h-[100dvh] flex-col bg-background xl:h-screen xl:min-h-[720px] xl:overflow-hidden">
-    <header class="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b bg-card px-3 py-2 xl:h-14 xl:flex-nowrap xl:py-0">
+  <main class="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-background xl:h-screen xl:min-h-[720px]">
+    <header class="hidden h-14 items-center justify-between gap-2 border-b bg-card px-3 xl:flex">
       <div class="flex items-center gap-3">
         <div class="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <Sparkles class="h-4 w-4" />
@@ -1820,7 +1924,7 @@ watch(
         </div>
       </div>
 
-      <div class="order-3 flex w-full items-center gap-2 overflow-x-auto sm:order-none sm:w-auto">
+      <div class="flex items-center gap-2">
         <div class="flex items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm">
           <span
             class="h-2.5 w-2.5 rounded-full"
@@ -1926,7 +2030,7 @@ watch(
         @pointercancel="endCanvasGesture"
         @pointerleave="endCanvasGesture"
       >
-        <div class="fixed bottom-4 left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-md border bg-card/95 p-1 shadow-panel xl:hidden">
+        <div class="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-md border bg-card/95 p-1 shadow-panel xl:hidden">
           <Button
             :class="palettePanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''"
             :aria-pressed="palettePanelOpen"
@@ -1965,28 +2069,6 @@ watch(
           </Button>
         </div>
 
-        <button
-          class="fixed right-3 top-[calc(4.25rem+env(safe-area-inset-top))] z-20 max-w-[min(22rem,calc(100vw-1.5rem))] rounded-md border bg-card/95 px-3 py-2 text-left shadow-panel xl:hidden"
-          type="button"
-          @click="statusPanelOpen = true; palettePanelOpen = false"
-        >
-          <div class="mb-1 flex items-center justify-between gap-3">
-            <span class="text-xs font-medium text-cyan-800">任务 {{ lessonProgress.completed }}/{{ lessonProgress.total }}</span>
-            <span
-              class="h-2 w-16 overflow-hidden rounded-full bg-muted"
-              aria-hidden="true"
-            >
-              <span
-                class="block h-full rounded-full bg-cyan-600"
-                :style="{ width: `${lessonProgress.percent}%` }"
-              />
-            </span>
-          </div>
-          <div class="line-clamp-2 text-xs leading-5 text-muted-foreground">
-            {{ nextLessonStep?.hint ?? "实验完成，可以切换到下一个实验。" }}
-          </div>
-        </button>
-
         <section
           v-if="lessonCompletePanelOpen"
           class="fixed bottom-24 left-3 right-3 z-30 rounded-md border border-emerald-200 bg-card/95 p-4 shadow-panel sm:left-auto sm:w-[22rem] xl:bottom-5 xl:right-[340px]"
@@ -2018,7 +2100,7 @@ watch(
           </div>
         </section>
 
-        <div class="sticky left-3 top-3 z-20 mb-3 ml-3 mt-3 flex w-max max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel xl:absolute xl:left-4 xl:top-4 xl:m-0">
+        <div class="hidden w-max max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel xl:absolute xl:left-4 xl:top-4 xl:z-20 xl:flex">
           <CircuitBoard class="h-4 w-4 text-cyan-700" />
           <span class="text-sm font-medium">Workbench</span>
           <span v-if="endpointDrag?.over" class="text-xs text-muted-foreground">
@@ -2043,7 +2125,7 @@ watch(
 
         <div
           ref="workbenchRef"
-          class="relative mx-3 mb-12 mt-6 origin-top-left overflow-hidden rounded-md border bg-[#f8faf7] shadow-panel xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:origin-center xl:-translate-x-1/2 xl:-translate-y-1/2"
+          class="relative mx-3 mb-24 mt-3 origin-top-left overflow-hidden rounded-md border bg-[#f8faf7] shadow-panel xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:origin-center xl:-translate-x-1/2 xl:-translate-y-1/2"
           data-circuit-surface="true"
           :style="{
             width: `${workbench.width}px`,

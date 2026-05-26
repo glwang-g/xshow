@@ -6,9 +6,12 @@ import {
   Cable,
   Check,
   CircuitBoard,
+  Gauge,
   FolderOpen,
   GitFork,
   Lightbulb,
+  LocateFixed,
+  PackagePlus,
   Plus,
   RotateCcw,
   Save,
@@ -17,6 +20,8 @@ import {
   ToggleLeft,
   ToggleRight,
   Trash2,
+  Unplug,
+  X,
   Zap,
   ZoomIn,
   ZoomOut,
@@ -86,11 +91,14 @@ const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
 const board = useBoardStore();
+const canvasViewportRef = ref<HTMLElement | null>(null);
 const workbenchRef = ref<HTMLElement | null>(null);
 const activeLessonId = ref(lessonCatalog[0].id);
 const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
+const palettePanelOpen = ref(false);
+const statusPanelOpen = ref(false);
 const hoveredWireId = ref<string | null>(null);
 const hoveredEndpoint = ref<{ wireId: string; end: WireEnd } | null>(null);
 const selectedTerminal = ref<TerminalRef | null>(null);
@@ -105,6 +113,12 @@ const endpointDrag = ref<{ wireId: string; end: WireEnd; x: number; y: number; o
   null,
 );
 const dragging = ref<{ id: string; offsetX: number; offsetY: number } | null>(null);
+const viewportPointers = new Map<number, { x: number; y: number }>();
+const viewportGesture = ref<
+  | { mode: "pan"; lastX: number; lastY: number }
+  | { distance: number; mode: "pinch"; zoom: number }
+  | null
+>(null);
 
 const workbench = {
   width: 1060,
@@ -346,6 +360,100 @@ function wireEndpointPosition(wire: Wire, end: WireEnd) {
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
+}
+
+function isDesktopViewport() {
+  return typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches;
+}
+
+function resetMobileView() {
+  board.setZoom(isDesktopViewport() ? 86 : 72);
+  canvasViewportRef.value?.scrollTo({ left: 140, top: 72, behavior: "smooth" });
+}
+
+function viewportPointerDistance() {
+  const pointers = Array.from(viewportPointers.values());
+  if (pointers.length < 2) {
+    return 0;
+  }
+
+  return Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
+}
+
+function isCircuitInteractionTarget(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(target.closest("[data-circuit-interactive='true'], button, a, input, select, textarea"))
+  );
+}
+
+function handleCanvasPointerDown(event: PointerEvent) {
+  if (isDesktopViewport()) {
+    return;
+  }
+
+  if (viewportPointers.size === 0 && isCircuitInteractionTarget(event.target)) {
+    viewportGesture.value = null;
+    return;
+  }
+
+  viewportPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+
+  if (viewportPointers.size >= 2) {
+    viewportGesture.value = {
+      distance: viewportPointerDistance(),
+      mode: "pinch",
+      zoom: board.zoom,
+    };
+    event.preventDefault();
+    return;
+  }
+
+  viewportGesture.value = { mode: "pan", lastX: event.clientX, lastY: event.clientY };
+  event.preventDefault();
+}
+
+function handleCanvasPointerMove(event: PointerEvent) {
+  if (isDesktopViewport() || !viewportPointers.has(event.pointerId)) {
+    return;
+  }
+
+  viewportPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+  if (viewportPointers.size >= 2) {
+    const gesture = viewportGesture.value;
+    const distance = viewportPointerDistance();
+
+    if (gesture?.mode === "pinch" && gesture.distance > 0) {
+      board.setZoom(gesture.zoom * (distance / gesture.distance));
+      event.preventDefault();
+    }
+
+    return;
+  }
+
+  const gesture = viewportGesture.value;
+  if (gesture?.mode !== "pan" || !canvasViewportRef.value) {
+    return;
+  }
+
+  canvasViewportRef.value.scrollLeft -= event.clientX - gesture.lastX;
+  canvasViewportRef.value.scrollTop -= event.clientY - gesture.lastY;
+  viewportGesture.value = { mode: "pan", lastX: event.clientX, lastY: event.clientY };
+  event.preventDefault();
+}
+
+function endCanvasGesture(event: PointerEvent) {
+  viewportPointers.delete(event.pointerId);
+
+  if (viewportPointers.size < 2 && viewportGesture.value?.mode === "pinch") {
+    viewportGesture.value = null;
+  }
+
+  if (viewportPointers.size === 0) {
+    viewportGesture.value = null;
+  }
 }
 
 function terminalSide(ref: TerminalRef) {
@@ -982,6 +1090,7 @@ function addPart(type: PartType) {
   parts.value.push(nextPart);
   clearInteractionState();
   selectedPartId.value = nextPart.id;
+  palettePanelOpen.value = false;
 }
 
 function removeSelectedPart() {
@@ -1365,8 +1474,8 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
 </script>
 
 <template>
-  <main class="flex h-screen min-h-[720px] flex-col overflow-hidden bg-background">
-    <header class="flex h-14 items-center justify-between border-b bg-card px-3">
+  <main class="flex min-h-[100dvh] flex-col bg-background xl:h-screen xl:min-h-[720px] xl:overflow-hidden">
+    <header class="flex min-h-14 flex-wrap items-center justify-between gap-2 border-b bg-card px-3 py-2 xl:h-14 xl:flex-nowrap xl:py-0">
       <div class="flex items-center gap-3">
         <div class="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
           <Sparkles class="h-4 w-4" />
@@ -1377,7 +1486,7 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
         </div>
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="order-3 flex w-full items-center gap-2 overflow-x-auto sm:order-none sm:w-auto">
         <div class="flex items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm">
           <span
             class="h-2.5 w-2.5 rounded-full"
@@ -1386,11 +1495,11 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
           <span class="font-medium">{{ simulation.closed ? "回路闭合" : "回路断开" }}</span>
           <span class="text-muted-foreground">{{ simulation.currentMilliAmps }} mA</span>
         </div>
-        <div class="flex items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground">
+        <div class="hidden items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground md:flex">
           <Save class="h-4 w-4" />
           <span>{{ savedWorkspaceLabel }}</span>
         </div>
-        <div class="flex items-center gap-1 rounded-md border bg-muted/60 p-1">
+        <div class="hidden items-center gap-1 rounded-md border bg-muted/60 p-1 md:flex">
           <Button variant="ghost" size="icon" title="缩小" @click="board.setZoom(board.zoom - 5)">
             <ZoomOut class="h-4 w-4" />
           </Button>
@@ -1411,10 +1520,10 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
           aria-label="打开 GitHub 仓库"
         >
           <GitFork class="h-4 w-4" />
-          GitHub
+          <span class="hidden sm:inline">GitHub</span>
         </a>
         <Button variant="outline" size="sm" @click="clearWires">
-          <Trash2 class="h-4 w-4" />
+          <Unplug class="h-4 w-4" />
           清线
         </Button>
         <Button size="sm" @click="resetDemo">
@@ -1424,38 +1533,120 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
       </div>
     </header>
 
-    <section class="grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)_320px]">
-      <aside class="flex min-h-0 flex-col border-r bg-card">
-        <div class="border-b px-4 py-3">
-          <div class="text-sm font-semibold">元器件</div>
-          <div class="text-xs text-muted-foreground">点击添加到桌面</div>
+    <section class="relative grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[260px_minmax(700px,1fr)_320px]">
+      <div
+        v-if="palettePanelOpen || statusPanelOpen"
+        class="fixed inset-0 z-30 bg-slate-950/20 backdrop-blur-[1px] xl:hidden"
+        @click="palettePanelOpen = false; statusPanelOpen = false"
+      />
+
+      <aside
+        class="fixed inset-y-0 left-0 z-40 flex w-[min(86vw,320px)] min-h-0 flex-col border-r bg-card shadow-panel transition-transform duration-200 xl:static xl:z-auto xl:w-auto xl:translate-x-0 xl:shadow-none"
+        :class="palettePanelOpen ? 'translate-x-0' : '-translate-x-full'"
+      >
+        <div class="flex items-center justify-between border-b px-3 py-2 xl:px-4 xl:py-3">
+          <div>
+            <div class="text-sm font-semibold">元器件</div>
+            <div class="text-xs text-muted-foreground">点击添加到桌面，触屏可拖动和连线</div>
+          </div>
+          <Button class="xl:hidden" variant="ghost" size="icon" title="关闭器件面板" @click="palettePanelOpen = false">
+            <X class="h-4 w-4" />
+          </Button>
         </div>
 
-        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-3 xl:p-4">
           <section class="space-y-2">
-            <button
-              v-for="item in palette"
-              :key="item.type"
-              class="flex w-full items-center justify-between rounded-md border bg-background px-3 py-3 text-left transition-colors hover:bg-muted"
-              @click="addPart(item.type)"
-            >
-              <span class="flex min-w-0 items-center gap-3">
-                <span class="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-foreground">
-                  <component :is="partIcon(item.type)" class="h-4 w-4" />
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-1">
+              <button
+                v-for="item in palette"
+                :key="item.type"
+                class="flex w-full items-center justify-between rounded-md border bg-background px-3 py-3 text-left transition-colors hover:bg-muted"
+                @click="addPart(item.type)"
+              >
+                <span class="flex min-w-0 items-center gap-3">
+                  <span class="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-foreground">
+                    <component :is="partIcon(item.type)" class="h-4 w-4" />
+                  </span>
+                  <span class="min-w-0">
+                    <span class="block text-sm font-medium">{{ getSpec(item.type).label }}</span>
+                    <span class="block truncate text-xs text-muted-foreground">{{ item.description }}</span>
+                  </span>
                 </span>
-                <span class="min-w-0">
-                  <span class="block text-sm font-medium">{{ getSpec(item.type).label }}</span>
-                  <span class="block text-xs text-muted-foreground">{{ item.description }}</span>
-                </span>
-              </span>
-              <Plus class="h-4 w-4 text-muted-foreground" />
-            </button>
+                <Plus class="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            </div>
           </section>
         </div>
       </aside>
 
-      <section class="relative overflow-hidden canvas-grid">
-        <div class="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel">
+      <section
+        ref="canvasViewportRef"
+        class="relative min-h-0 touch-none overflow-auto canvas-grid xl:touch-auto xl:overflow-hidden"
+        @pointerdown="handleCanvasPointerDown"
+        @pointermove="handleCanvasPointerMove"
+        @pointerup="endCanvasGesture"
+        @pointercancel="endCanvasGesture"
+        @pointerleave="endCanvasGesture"
+      >
+        <div class="fixed bottom-4 left-1/2 z-20 flex max-w-[calc(100vw-1.5rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-md border bg-card/95 p-1 shadow-panel xl:hidden">
+          <Button
+            :class="palettePanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''"
+            :aria-pressed="palettePanelOpen"
+            variant="ghost"
+            size="icon"
+            title="打开器件面板"
+            @click="palettePanelOpen = true; statusPanelOpen = false"
+          >
+            <PackagePlus class="h-4 w-4" />
+          </Button>
+          <Button
+            :class="statusPanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''"
+            :aria-pressed="statusPanelOpen"
+            variant="ghost"
+            size="icon"
+            title="显示状态面板"
+            @click="statusPanelOpen = !statusPanelOpen; palettePanelOpen = false"
+          >
+            <Gauge class="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" title="清线" @click="clearWires">
+            <Unplug class="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" title="回正视图" @click="resetMobileView">
+            <LocateFixed class="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" title="缩小" @click="board.setZoom(board.zoom - 5)">
+            <ZoomOut class="h-4 w-4" />
+          </Button>
+          <div class="min-w-12 text-center text-xs tabular-nums">{{ board.zoom }}%</div>
+          <Button variant="ghost" size="icon" title="放大" @click="board.setZoom(board.zoom + 5)">
+            <ZoomIn class="h-4 w-4" />
+          </Button>
+        </div>
+
+        <button
+          class="fixed right-3 top-[calc(4.25rem+env(safe-area-inset-top))] z-20 max-w-[min(22rem,calc(100vw-1.5rem))] rounded-md border bg-card/95 px-3 py-2 text-left shadow-panel xl:hidden"
+          type="button"
+          @click="statusPanelOpen = true; palettePanelOpen = false"
+        >
+          <div class="mb-1 flex items-center justify-between gap-3">
+            <span class="text-xs font-medium text-cyan-800">任务 {{ lessonProgress.completed }}/{{ lessonProgress.total }}</span>
+            <span
+              class="h-2 w-16 overflow-hidden rounded-full bg-muted"
+              aria-hidden="true"
+            >
+              <span
+                class="block h-full rounded-full bg-cyan-600"
+                :style="{ width: `${lessonProgress.percent}%` }"
+              />
+            </span>
+          </div>
+          <div class="line-clamp-2 text-xs leading-5 text-muted-foreground">
+            {{ nextLessonStep?.hint ?? "实验完成，可以切换到下一个实验。" }}
+          </div>
+        </button>
+
+        <div class="sticky left-3 top-3 z-20 mb-3 ml-3 mt-3 flex w-max max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel xl:absolute xl:left-4 xl:top-4 xl:m-0">
           <CircuitBoard class="h-4 w-4 text-cyan-700" />
           <span class="text-sm font-medium">Workbench</span>
           <span v-if="endpointDrag?.over" class="text-xs text-muted-foreground">
@@ -1480,11 +1671,12 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
 
         <div
           ref="workbenchRef"
-          class="absolute left-1/2 top-1/2 overflow-hidden rounded-md border bg-[#f8faf7] shadow-panel"
+          class="relative mx-3 mb-12 mt-6 origin-top-left overflow-hidden rounded-md border bg-[#f8faf7] shadow-panel xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:origin-center xl:-translate-x-1/2 xl:-translate-y-1/2"
+          data-circuit-surface="true"
           :style="{
             width: `${workbench.width}px`,
             height: `${workbench.height}px`,
-            transform: `translate(-50%, -50%) scale(${board.zoom / 100})`,
+            scale: `${board.zoom / 100}`,
           }"
           @pointermove="handleWorkbenchPointerMove"
           @pointerup="endDrag"
@@ -1513,6 +1705,7 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
             >
               <path
                 class="pointer-events-auto cursor-pointer"
+                data-circuit-interactive="true"
                 :d="wirePath(wire)"
                 fill="none"
                 pointer-events="stroke"
@@ -1551,7 +1744,8 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
                 r="18"
               />
               <circle
-                class="pointer-events-auto cursor-grab active:cursor-grabbing"
+                class="pointer-events-auto cursor-grab touch-none active:cursor-grabbing"
+                data-circuit-interactive="true"
                 :cx="wireEndpointPosition(wire, 'from').x"
                 :cy="wireEndpointPosition(wire, 'from').y"
                 :r="endpointRadius(wire, 'from')"
@@ -1564,7 +1758,8 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
                 @pointerleave="clearEndpointHover(wire.id, 'from')"
               />
               <circle
-                class="pointer-events-auto cursor-grab active:cursor-grabbing"
+                class="pointer-events-auto cursor-grab touch-none active:cursor-grabbing"
+                data-circuit-interactive="true"
                 :cx="wireEndpointPosition(wire, 'to').x"
                 :cy="wireEndpointPosition(wire, 'to').y"
                 :r="endpointRadius(wire, 'to')"
@@ -1582,7 +1777,8 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
           <div
             v-for="part in parts"
             :key="part.id"
-            class="absolute z-10 cursor-grab select-none rounded-md border bg-card shadow-sm transition-shadow active:cursor-grabbing"
+            class="absolute z-10 cursor-grab touch-none select-none rounded-md border bg-card shadow-sm transition-shadow active:cursor-grabbing"
+            data-circuit-interactive="true"
             :class="[
               selectedPartId === part.id ? 'border-primary shadow-panel' : 'border-border',
               isLessonPartTarget(part) ? 'lesson-workbench-target z-20' : '',
@@ -1597,7 +1793,8 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
             <button
               v-for="terminal in (['a', 'b'] as TerminalKey[])"
               :key="terminal"
-              class="absolute z-40 flex h-6 w-6 items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm transition-transform hover:scale-110"
+              class="absolute z-40 flex h-6 w-6 touch-none items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm transition-transform hover:scale-110"
+              data-circuit-interactive="true"
               :class="[
                 isTerminalSelected(part, terminal) ? 'ring-4 ring-amber-300' : '',
                 isTerminalDropTarget(part, terminal) ? 'scale-125 bg-amber-500 text-amber-950' : '',
@@ -1705,13 +1902,21 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
         </div>
       </section>
 
-      <aside class="flex min-h-0 flex-col border-l bg-card">
-        <div class="border-b px-4 py-3">
-          <div class="text-sm font-semibold">状态</div>
-          <div class="text-xs text-muted-foreground">{{ selectedWire ? "导线" : selectedPart?.name ?? "未选择" }}</div>
+      <aside
+        class="fixed inset-x-3 bottom-20 z-40 flex max-h-[70dvh] min-h-0 flex-col rounded-md border bg-card shadow-panel transition-all duration-200 xl:static xl:inset-auto xl:z-auto xl:max-h-none xl:rounded-none xl:border-l xl:border-r-0 xl:border-t-0 xl:shadow-none"
+        :class="statusPanelOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0 xl:pointer-events-auto xl:translate-y-0 xl:opacity-100'"
+      >
+        <div class="flex items-center justify-between border-b px-3 py-2 xl:px-4 xl:py-3">
+          <div>
+            <div class="text-sm font-semibold">状态</div>
+            <div class="text-xs text-muted-foreground">{{ selectedWire ? "导线" : selectedPart?.name ?? "未选择" }}</div>
+          </div>
+          <Button class="xl:hidden" variant="ghost" size="icon" title="关闭状态面板" @click="statusPanelOpen = false">
+            <X class="h-4 w-4" />
+          </Button>
         </div>
 
-        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-3 xl:p-4">
           <section class="rounded-md border bg-background p-3">
             <div class="mb-3 flex items-start justify-between gap-3">
               <div>

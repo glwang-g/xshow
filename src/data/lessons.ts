@@ -8,7 +8,11 @@ export type LessonCheckId =
   | "hasDarkBulb"
   | "hasBrightBulb"
   | "hasLowResistance"
-  | "hasAdjustedResistor";
+  | "hasAdjustedResistor"
+  | "hasTwoBulbs"
+  | "hasTwoLitBulbs"
+  | "hasSeriesBulbs"
+  | "hasParallelBulbs";
 
 export type LessonPartType = "battery" | "bulb" | "switch" | "resistor";
 
@@ -91,6 +95,7 @@ const connectedLoopWires: LessonWorkspaceWire[] = [
 ];
 
 const starterPartIds = ["battery-1", "switch-1", "bulb-1", "resistor-1"];
+const twoBulbPartIds = ["battery-1", "switch-1", "bulb-1", "bulb-2", "resistor-1"];
 
 const starterTerminalRefs: LessonGuide["terminalRefs"] = [
   { partId: "battery-1", terminal: "a" },
@@ -111,6 +116,77 @@ function starterParts({ resistance = 48, switchClosed = true } = {}): LessonWork
     { id: "resistor-1", name: "可变电阻器", type: "resistor", x: 330, y: 472, resistance },
   ];
 }
+
+function twoBulbParts({ resistance = 36, switchClosed = true } = {}): LessonWorkspacePart[] {
+  return [
+    { id: "battery-1", name: "9V 电池", type: "battery", x: 72, y: 280 },
+    { id: "switch-1", name: "单刀开关", type: "switch", x: 300, y: 118, closed: switchClosed },
+    { id: "bulb-1", name: "灯泡 A", type: "bulb", x: 572, y: 130 },
+    { id: "bulb-2", name: "灯泡 B", type: "bulb", x: 572, y: 386 },
+    { id: "resistor-1", name: "可变电阻器", type: "resistor", x: 296, y: 474, resistance },
+  ];
+}
+
+const seriesWires: LessonWorkspaceWire[] = [
+  {
+    id: "wire-series-1",
+    from: { partId: "battery-1", terminal: "b" },
+    to: { partId: "switch-1", terminal: "a" },
+  },
+  {
+    id: "wire-series-2",
+    from: { partId: "switch-1", terminal: "b" },
+    to: { partId: "bulb-1", terminal: "a" },
+  },
+  {
+    id: "wire-series-3",
+    from: { partId: "bulb-1", terminal: "b" },
+    to: { partId: "bulb-2", terminal: "a" },
+  },
+  {
+    id: "wire-series-4",
+    from: { partId: "bulb-2", terminal: "b" },
+    to: { partId: "resistor-1", terminal: "b" },
+  },
+  {
+    id: "wire-series-5",
+    from: { partId: "resistor-1", terminal: "a" },
+    to: { partId: "battery-1", terminal: "a" },
+  },
+];
+
+const parallelWires: LessonWorkspaceWire[] = [
+  {
+    id: "wire-parallel-1",
+    from: { partId: "battery-1", terminal: "b" },
+    to: { partId: "switch-1", terminal: "a" },
+  },
+  {
+    id: "wire-parallel-2",
+    from: { partId: "switch-1", terminal: "b" },
+    to: { partId: "bulb-1", terminal: "a" },
+  },
+  {
+    id: "wire-parallel-3",
+    from: { partId: "switch-1", terminal: "b" },
+    to: { partId: "bulb-2", terminal: "a" },
+  },
+  {
+    id: "wire-parallel-4",
+    from: { partId: "bulb-1", terminal: "b" },
+    to: { partId: "resistor-1", terminal: "b" },
+  },
+  {
+    id: "wire-parallel-5",
+    from: { partId: "bulb-2", terminal: "b" },
+    to: { partId: "resistor-1", terminal: "b" },
+  },
+  {
+    id: "wire-parallel-6",
+    from: { partId: "resistor-1", terminal: "a" },
+    to: { partId: "battery-1", terminal: "a" },
+  },
+];
 
 export const lessonCatalog: Lesson[] = [
   {
@@ -240,6 +316,88 @@ export const lessonCatalog: Lesson[] = [
         guide: { partIds: ["bulb-1", "resistor-1"] },
         hint: "阻值降低后，电流会变大；观察灯泡亮度数值和光晕变化。",
         checkId: "hasBrightBulb",
+      },
+    ],
+  },
+  {
+    id: "series-bulbs",
+    title: "实验 4：串联两个灯泡",
+    objective: "观察两个灯泡串在同一条电流路径上时，任意一处断开都会让整条回路停止工作。",
+    starterWorkspace: {
+      parts: twoBulbParts({ resistance: 36 }),
+      selectedPartId: "bulb-1",
+      wires: seriesWires,
+      zoom: 78,
+    },
+    steps: [
+      {
+        id: "two-bulbs",
+        description: "工作台上有两个灯泡。",
+        guide: { partIds: ["bulb-1", "bulb-2"] },
+        hint: "点击“加载实验初始状态”可以直接获得两个灯泡的串联实验台。",
+        checkId: "hasTwoBulbs",
+      },
+      {
+        id: "series-route",
+        description: "两个灯泡串在同一条回路路径上。",
+        guide: { partIds: twoBulbPartIds },
+        hint: "串联时，电流会依次经过灯泡 A 和灯泡 B，再回到电池负极。",
+        checkId: "hasSeriesBulbs",
+      },
+      {
+        id: "both-lit",
+        description: "闭合开关后，两个灯泡都被点亮。",
+        guide: { partIds: ["switch-1", "bulb-1", "bulb-2"] },
+        hint: "如果其中一个灯泡不亮，检查它是否真的接在同一条闭合回路上。",
+        checkId: "hasTwoLitBulbs",
+      },
+      {
+        id: "series-switch",
+        description: "断开开关，观察两个灯泡同时熄灭。",
+        guide: { partIds: ["switch-1", "bulb-1", "bulb-2"] },
+        hint: "串联电路只有一条路，开关断开后两个灯泡都会失去电流。",
+        checkId: "hasOpenSwitch",
+      },
+    ],
+  },
+  {
+    id: "parallel-bulbs",
+    title: "实验 5：并联两个灯泡",
+    objective: "观察两个灯泡分成两条支路时，每个灯泡都可以接在电池两端形成自己的通路。",
+    starterWorkspace: {
+      parts: twoBulbParts({ resistance: 28 }),
+      selectedPartId: "bulb-2",
+      wires: parallelWires,
+      zoom: 78,
+    },
+    steps: [
+      {
+        id: "two-bulbs",
+        description: "工作台上有两个灯泡。",
+        guide: { partIds: ["bulb-1", "bulb-2"] },
+        hint: "点击“加载实验初始状态”可以直接获得两个灯泡的并联实验台。",
+        checkId: "hasTwoBulbs",
+      },
+      {
+        id: "parallel-route",
+        description: "两个灯泡分别处在不同支路上。",
+        guide: { partIds: twoBulbPartIds },
+        hint: "并联时，两个灯泡的左端接到同一侧，右端也接到同一侧，形成两条支路。",
+        checkId: "hasParallelBulbs",
+      },
+      {
+        id: "both-lit",
+        description: "闭合开关后，两个灯泡都被点亮。",
+        guide: { partIds: ["switch-1", "bulb-1", "bulb-2"] },
+        hint: "如果一个灯泡不亮，检查它的两端是否分别接到了回路两侧。",
+        checkId: "hasTwoLitBulbs",
+      },
+      {
+        id: "open-switch",
+        description: "断开总开关，观察两条支路同时停止工作。",
+        guide: { partIds: ["switch-1"] },
+        hint: "总开关断开后，两个并联支路都无法从电池获得电流。",
+        checkId: "hasOpenSwitch",
       },
     ],
   },

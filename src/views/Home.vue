@@ -6,6 +6,7 @@ import {
   Cable,
   Check,
   CircuitBoard,
+  Download,
   Gauge,
   FolderOpen,
   GitFork,
@@ -240,6 +241,89 @@ const currentAnimationDuration = computed(() => {
   return `${duration.toFixed(2)}s`;
 });
 
+function bulbParts() {
+  return parts.value.filter((part) => part.type === "bulb");
+}
+
+function litBulbParts() {
+  return bulbParts().filter((part) => (simulation.value.bulbs[part.id]?.brightness ?? 0) > 0);
+}
+
+function hasWireBetween(left: TerminalRef, right: TerminalRef) {
+  return wires.value.some(
+    (wire) =>
+      (sameTerminal(wire.from, left) && sameTerminal(wire.to, right)) ||
+      (sameTerminal(wire.from, right) && sameTerminal(wire.to, left)),
+  );
+}
+
+function hasWirePathBetween(left: TerminalRef, right: TerminalRef) {
+  const graph = new Map<string, string[]>();
+
+  for (const wire of wires.value) {
+    const from = terminalId(wire.from);
+    const to = terminalId(wire.to);
+    graph.set(from, [...(graph.get(from) ?? []), to]);
+    graph.set(to, [...(graph.get(to) ?? []), from]);
+  }
+
+  return hasPath(terminalId(left), terminalId(right), Array.from(graph.entries()).flatMap(([from, targets]) =>
+    targets.map((to) => ({ from, to })),
+  ));
+}
+
+function hasSeriesBulbRoute() {
+  const bulbs = bulbParts();
+  if (bulbs.length < 2) {
+    return false;
+  }
+
+  return bulbs.some((left) =>
+    bulbs.some(
+      (right) =>
+        left.id !== right.id &&
+        (hasWireBetween(
+          { partId: left.id, terminal: "b" },
+          { partId: right.id, terminal: "a" },
+        ) ||
+          hasWireBetween(
+            { partId: left.id, terminal: "a" },
+            { partId: right.id, terminal: "b" },
+          )),
+    ),
+  );
+}
+
+function hasParallelBulbRoute() {
+  const bulbs = bulbParts();
+  if (bulbs.length < 2) {
+    return false;
+  }
+
+  return bulbs.some((left) =>
+    bulbs.some(
+      (right) =>
+        left.id !== right.id &&
+        ((hasWirePathBetween(
+          { partId: left.id, terminal: "a" },
+          { partId: right.id, terminal: "a" },
+        ) &&
+          hasWirePathBetween(
+            { partId: left.id, terminal: "b" },
+            { partId: right.id, terminal: "b" },
+          )) ||
+          (hasWirePathBetween(
+            { partId: left.id, terminal: "a" },
+            { partId: right.id, terminal: "b" },
+          ) &&
+            hasWirePathBetween(
+              { partId: left.id, terminal: "b" },
+              { partId: right.id, terminal: "a" },
+            ))),
+    ),
+  );
+}
+
 const lessonCheckers: Record<LessonCheckId, () => boolean> = {
   hasAdjustedResistor: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) !== 48),
   hasBrightBulb: () => mainBulbBrightness.value >= 0.4,
@@ -250,8 +334,12 @@ const lessonCheckers: Record<LessonCheckId, () => boolean> = {
   hasLowResistance: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) <= 24),
   hasOpenCircuit: () => !simulation.value.closed,
   hasOpenSwitch: () => parts.value.some((part) => part.type === "switch" && !part.closed),
+  hasParallelBulbs: () => simulation.value.closed && hasParallelBulbRoute(),
+  hasSeriesBulbs: () => simulation.value.closed && hasSeriesBulbRoute(),
   hasStarterParts: () =>
     ["battery", "switch", "bulb", "resistor"].every((type) => parts.value.some((part) => part.type === type)),
+  hasTwoBulbs: () => bulbParts().length >= 2,
+  hasTwoLitBulbs: () => litBulbParts().length >= 2,
 };
 const activeLesson = computed(() => lessonCatalog.find((lesson) => lesson.id === activeLessonId.value) ?? lessonCatalog[0]);
 const lessonStepStates = computed(() =>
@@ -332,8 +420,8 @@ function getTerminalPosition(ref: TerminalRef) {
 function terminalStyle(part: CircuitPart, terminal: TerminalKey) {
   const offset = getSpec(part).terminals[terminal];
   return {
-    left: `${offset.x - 12}px`,
-    top: `${offset.y - 12}px`,
+    left: `${offset.x - 16}px`,
+    top: `${offset.y - 16}px`,
   };
 }
 
@@ -369,6 +457,169 @@ function isDesktopViewport() {
 function resetMobileView() {
   board.setZoom(isDesktopViewport() ? 86 : 72);
   canvasViewportRef.value?.scrollTo({ left: 140, top: 72, behavior: "smooth" });
+}
+
+function roundedRectPath(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius = 8) {
+  const corner = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + corner, y);
+  context.lineTo(x + width - corner, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + corner);
+  context.lineTo(x + width, y + height - corner);
+  context.quadraticCurveTo(x + width, y + height, x + width - corner, y + height);
+  context.lineTo(x + corner, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - corner);
+  context.lineTo(x, y + corner);
+  context.quadraticCurveTo(x, y, x + corner, y);
+  context.closePath();
+}
+
+function partExportColors(part: CircuitPart) {
+  if (part.type === "battery") {
+    return { background: "#0f172a", foreground: "#ffffff", muted: "#67e8f9" };
+  }
+
+  if (part.type === "bulb") {
+    return { background: "#fffbeb", foreground: "#78350f", muted: "#f59e0b" };
+  }
+
+  if (part.type === "resistor") {
+    return { background: "#ecfeff", foreground: "#164e63", muted: "#0e7490" };
+  }
+
+  return { background: "#ffffff", foreground: "#0f172a", muted: part.closed ? "#10b981" : "#f43f5e" };
+}
+
+function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart) {
+  const spec = getSpec(part);
+  const colors = partExportColors(part);
+
+  context.save();
+  roundedRectPath(context, part.x, part.y, spec.width, spec.height, 8);
+  context.fillStyle = colors.background;
+  context.fill();
+  context.lineWidth = selectedPartId.value === part.id ? 4 : 2;
+  context.strokeStyle = selectedPartId.value === part.id ? "#0f172a" : "#cbd5e1";
+  context.stroke();
+
+  context.fillStyle = colors.foreground;
+  context.font = "600 18px Inter, sans-serif";
+  context.fillText(part.name, part.x + 18, part.y + 30);
+
+  context.font = "12px Inter, sans-serif";
+  context.fillStyle = colors.muted;
+
+  if (part.type === "battery") {
+    context.fillText("9V power", part.x + 18, part.y + 52);
+    context.fillRect(part.x + 18, part.y + 70, 26, 12);
+    context.fillRect(part.x + 50, part.y + 66, 32, 20);
+  } else if (part.type === "switch") {
+    context.fillText(part.closed ? "closed" : "open", part.x + 18, part.y + 52);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 5;
+    context.beginPath();
+    context.moveTo(part.x + 24, part.y + 72);
+    context.lineTo(part.x + (part.closed ? 136 : 92), part.y + (part.closed ? 72 : 52));
+    context.stroke();
+  } else if (part.type === "bulb") {
+    const brightness = simulation.value.bulbs[part.id]?.brightness ?? 0;
+    context.fillText(`${Math.round(brightness * 100)}% brightness`, part.x + 18, part.y + spec.height - 20);
+    context.beginPath();
+    context.arc(part.x + spec.width / 2, part.y + 78, 34, 0, Math.PI * 2);
+    context.fillStyle = `rgba(245, 158, 11, ${0.18 + brightness * 0.72})`;
+    context.fill();
+    context.strokeStyle = "#f59e0b";
+    context.stroke();
+  } else {
+    context.fillText(`${part.resistance ?? 0} ohm`, part.x + 18, part.y + 52);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 4;
+    context.beginPath();
+    context.moveTo(part.x + 20, part.y + 76);
+    context.lineTo(part.x + spec.width - 20, part.y + 76);
+    context.stroke();
+  }
+
+  for (const terminal of ["a", "b"] as TerminalKey[]) {
+    const offset = spec.terminals[terminal];
+    context.beginPath();
+    context.arc(part.x + offset.x, part.y + offset.y, 9, 0, Math.PI * 2);
+    context.fillStyle = "#0f172a";
+    context.fill();
+    context.lineWidth = 3;
+    context.strokeStyle = "#ffffff";
+    context.stroke();
+  }
+
+  context.restore();
+}
+
+function exportWorkbenchImage() {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  const scale = 2;
+  canvas.width = workbench.width * scale;
+  canvas.height = workbench.height * scale;
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return;
+  }
+
+  context.scale(scale, scale);
+  context.fillStyle = "#f8faf7";
+  context.fillRect(0, 0, workbench.width, workbench.height);
+
+  context.strokeStyle = "rgba(148, 163, 184, 0.45)";
+  context.lineWidth = 1;
+  for (let x = 0; x <= workbench.width; x += 28) {
+    context.beginPath();
+    context.moveTo(x, 0);
+    context.lineTo(x, workbench.height);
+    context.stroke();
+  }
+  for (let y = 0; y <= workbench.height; y += 28) {
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(workbench.width, y);
+    context.stroke();
+  }
+
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  for (const wire of wires.value) {
+    context.strokeStyle = wireStroke(wire);
+    context.lineWidth = wireStrokeWidth(wire);
+    context.stroke(new Path2D(wirePath(wire)));
+  }
+
+  for (const part of parts.value) {
+    drawExportPart(context, part);
+  }
+
+  context.fillStyle = "rgba(255, 255, 255, 0.92)";
+  roundedRectPath(context, 18, 18, 242, 56, 8);
+  context.fill();
+  context.strokeStyle = "#e2e8f0";
+  context.stroke();
+  context.fillStyle = "#0f172a";
+  context.font = "600 16px Inter, sans-serif";
+  context.fillText("xshow circuits", 34, 42);
+  context.font = "13px Inter, sans-serif";
+  context.fillStyle = "#475569";
+  context.fillText(
+    `${simulation.value.closed ? "回路闭合" : "回路断开"} · ${simulation.value.currentMilliAmps} mA`,
+    34,
+    62,
+  );
+
+  const link = document.createElement("a");
+  link.download = `xshow-circuit-${new Date().toISOString().slice(0, 10)}.png`;
+  link.href = canvas.toDataURL("image/png");
+  link.click();
 }
 
 function viewportPointerDistance() {
@@ -604,18 +855,18 @@ function isEndpointHovered(wire: Wire, end: WireEnd) {
 
 function endpointRadius(wire: Wire, end: WireEnd) {
   if (endpointDrag.value?.wireId === wire.id && endpointDrag.value.end === end) {
-    return 10;
+    return 12;
   }
 
   if (selectedWireId.value === wire.id) {
-    return 8;
+    return 10;
   }
 
   if (isEndpointHovered(wire, end)) {
-    return 8;
+    return 10;
   }
 
-  return hoveredWireId.value === wire.id ? 7 : 5;
+  return hoveredWireId.value === wire.id ? 9 : 7;
 }
 
 function endpointFill(wire: Wire, end: WireEnd) {
@@ -1526,6 +1777,10 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
           <Unplug class="h-4 w-4" />
           清线
         </Button>
+        <Button variant="outline" size="sm" @click="exportWorkbenchImage">
+          <Download class="h-4 w-4" />
+          导出
+        </Button>
         <Button size="sm" @click="resetDemo">
           <RotateCcw class="h-4 w-4" />
           复位
@@ -1611,6 +1866,9 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
           </Button>
           <Button variant="ghost" size="icon" title="清线" @click="clearWires">
             <Unplug class="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" title="导出图片" @click="exportWorkbenchImage">
+            <Download class="h-4 w-4" />
           </Button>
           <Button variant="ghost" size="icon" title="回正视图" @click="resetMobileView">
             <LocateFixed class="h-4 w-4" />
@@ -1711,7 +1969,7 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
                 pointer-events="stroke"
                 stroke="transparent"
                 stroke-linecap="round"
-                stroke-width="18"
+                stroke-width="22"
                 @click.stop="selectWire(wire.id)"
                 @pointerdown.stop
                 @pointerenter="setWireHover(wire.id)"
@@ -1793,7 +2051,7 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
             <button
               v-for="terminal in (['a', 'b'] as TerminalKey[])"
               :key="terminal"
-              class="absolute z-40 flex h-6 w-6 touch-none items-center justify-center rounded-full border-2 border-card bg-foreground text-[10px] font-bold text-background shadow-sm transition-transform hover:scale-110"
+              class="absolute z-40 flex h-8 w-8 touch-none items-center justify-center rounded-full border-2 border-card bg-foreground text-[11px] font-bold text-background shadow-sm transition-transform hover:scale-110"
               data-circuit-interactive="true"
               :class="[
                 isTerminalSelected(part, terminal) ? 'ring-4 ring-amber-300' : '',

@@ -12,10 +12,10 @@ Current focus: **mobile and touch-friendly responsive experience**.
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Interactive circuit playground | Done | Battery, switch, bulb, resistor, wires, brightness, and circuit state are working. |
+| Interactive circuit playground | Done | Battery, switch, bulb, resistor, LED, wires, brightness, polarity, and circuit state are working. |
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
-| Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, and parallel experiments are available. |
+| Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
 | Workspace records | First slice | The browser automatically restores the last workspace, can save named local records, and can share the current workspace by URL. |
 | Mobile responsive experience | In progress for v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
@@ -57,6 +57,7 @@ Status: **Expanding**
 - [x] Allow switching between multiple guided experiments
 - [x] Provide simple success checks, such as "the bulb is on"
 - [x] Add guided series and parallel two-bulb experiments
+- [x] Add a guided LED polarity experiment
 - [x] Keep lesson content editable in plain data files
 - [x] Add one-click starter workspaces for each lesson
 - [x] Add lesson-level hints for the next incomplete step
@@ -117,7 +118,8 @@ Status: **First slice done**
 
 ## Later
 
-- [ ] More components: LED, motor, buzzer, diode, capacitor, ammeter, voltmeter
+- [x] Add a polarity-sensitive LED component
+- [ ] More components: motor, buzzer, diode, capacitor, ammeter, voltmeter
 - [x] Save and load circuit workspaces
 - [x] Export circuits as images
 - [x] Circuit state sharing by URL

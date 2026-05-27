@@ -12,6 +12,7 @@ import {
   Gauge,
   FolderOpen,
   GitFork,
+  Link,
   Lightbulb,
   LocateFixed,
   PackagePlus,
@@ -94,6 +95,7 @@ type SavedWorkspaceRecord = PersistedWorkspace & {
 
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
+const workspaceShareParam = "workspace";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
 const board = useBoardStore();
 const canvasViewportRef = ref<HTMLElement | null>(null);
@@ -103,6 +105,7 @@ const activeLessonId = ref(lessonCatalog[0].id);
 const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
+const shareLinkCopied = ref(false);
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
@@ -380,6 +383,7 @@ const savedWorkspaceLabel = computed(() => {
 });
 
 let autosaveTimer: number | null = null;
+let shareLinkCopiedTimer: number | null = null;
 
 function clearInteractionState() {
   selectedTerminal.value = null;
@@ -1553,6 +1557,52 @@ function loadWorkspaceSnapshot(workspace: PersistedWorkspace) {
   lastSavedAt.value = workspace.savedAt;
 }
 
+function base64UrlEncode(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+
+  return window
+    .btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function base64UrlDecode(value: string) {
+  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  const binary = window.atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function restoreWorkspaceFromUrl() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const sharedWorkspace = new URL(window.location.href).searchParams.get(workspaceShareParam);
+  if (!sharedWorkspace) {
+    return false;
+  }
+
+  try {
+    const parsed = JSON.parse(base64UrlDecode(sharedWorkspace)) as unknown;
+    if (!isPersistedWorkspace(parsed)) {
+      return false;
+    }
+
+    loadWorkspaceSnapshot(parsed);
+    saveWorkspaceToStorage();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function restoreAutoSavedWorkspace() {
   if (typeof window === "undefined") {
     return;
@@ -1656,6 +1706,30 @@ function exportWorkspaceJson() {
   const snapshot = workspaceSnapshot();
   const filename = `xshow-workspace-${new Date(snapshot.savedAt).toISOString().slice(0, 10)}.json`;
   downloadTextFile(filename, JSON.stringify(snapshot, null, 2), "application/json");
+}
+
+async function copyWorkspaceShareLink() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set(workspaceShareParam, base64UrlEncode(JSON.stringify(workspaceSnapshot())));
+  const shareUrl = url.toString();
+
+  try {
+    await navigator.clipboard.writeText(shareUrl);
+    shareLinkCopied.value = true;
+    if (shareLinkCopiedTimer) {
+      window.clearTimeout(shareLinkCopiedTimer);
+    }
+    shareLinkCopiedTimer = window.setTimeout(() => {
+      shareLinkCopied.value = false;
+      shareLinkCopiedTimer = null;
+    }, 1800);
+  } catch {
+    window.prompt("复制这个分享链接", shareUrl);
+  }
 }
 
 function openWorkspaceImport() {
@@ -1874,7 +1948,9 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
 }
 
 loadSavedRecords();
-restoreAutoSavedWorkspace();
+if (!restoreWorkspaceFromUrl()) {
+  restoreAutoSavedWorkspace();
+}
 watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], scheduleWorkspaceSave, {
   deep: true,
 });
@@ -1934,6 +2010,10 @@ onBeforeUnmount(() => {
   window.removeEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
   window.visualViewport?.removeEventListener("resize", handleMobileViewportChange);
   window.screen.orientation?.removeEventListener("change", handleMobileViewportChange);
+
+  if (shareLinkCopiedTimer) {
+    window.clearTimeout(shareLinkCopiedTimer);
+  }
 });
 </script>
 
@@ -2530,6 +2610,10 @@ onBeforeUnmount(() => {
                 导出 JSON
               </Button>
             </div>
+            <Button class="mb-3 w-full" variant="outline" size="sm" @click="copyWorkspaceShareLink">
+              <Link class="h-4 w-4" />
+              {{ shareLinkCopied ? "链接已复制" : "复制分享链接" }}
+            </Button>
             <div v-if="savedRecords.length" class="space-y-2">
               <div
                 v-for="record in savedRecords"

@@ -80,7 +80,7 @@ type CloudWorkspaceRecord = {
 
 ## 后端选择
 
-第一版推荐 Supabase：
+第一版已选择 Supabase：
 
 - Auth 支持邮箱验证码和 magic link。
 - Postgres 表结构适合保存工作台 JSON。
@@ -88,3 +88,14 @@ type CloudWorkspaceRecord = {
 - 后续分享链接和课堂模板容易扩展。
 
 暂不建议一开始自建完整账号系统；它会把 v0.2 的产品节奏拖进后端工程。
+
+## 实现说明
+
+应用会从 Vite 环境变量读取 Supabase 配置：
+
+```bash
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+如果没有配置这些值，云端同步面板会显示“未配置”，本地实验、本地记录、JSON 存档和分享链接仍然照常可用。

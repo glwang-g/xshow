@@ -7,6 +7,9 @@ import {
   Check,
   CircuitBoard,
   CircleDot,
+  CloudCheck,
+  CloudOff,
+  CloudSync,
   Download,
   FileDown,
   FileUp,
@@ -15,7 +18,9 @@ import {
   GitFork,
   Link,
   Lightbulb,
+  LogOut,
   LocateFixed,
+  Mail,
   PackagePlus,
   Plus,
   RotateCcw,
@@ -34,6 +39,7 @@ import {
   ZoomOut,
 } from "@lucide/vue";
 import Button from "@/components/ui/Button.vue";
+import { cloudConfig, getCloudUser, onCloudAuthStateChange, signInWithEmail, signOutCloud } from "@/lib/cloud";
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
@@ -116,6 +122,11 @@ const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
 const shareLinkState = ref<"copied" | "idle" | "manual">("idle");
+const cloudAuthBusy = ref(false);
+const cloudAuthError = ref("");
+const cloudAuthMessage = ref("");
+const cloudEmail = ref("");
+const cloudUserEmail = ref<string | null>(null);
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
@@ -270,6 +281,27 @@ const mainBulbBrightness = computed(() =>
 const ledWarnings = computed(() =>
   Object.values(simulation.value.leds).filter((state) => state.overCurrent || state.reversed),
 );
+const cloudSyncState = computed<"configured" | "signed-in" | "unconfigured">(() => {
+  if (!cloudConfig.configured) {
+    return "unconfigured";
+  }
+
+  return cloudUserEmail.value ? "signed-in" : "configured";
+});
+const cloudSyncLabel = computed(() => {
+  if (cloudSyncState.value === "unconfigured") {
+    return "未配置";
+  }
+
+  return cloudSyncState.value === "signed-in" ? "已登录" : "未登录";
+});
+const cloudSyncDescription = computed(() => {
+  if (cloudSyncState.value === "unconfigured") {
+    return "配置 Supabase 后可开启云端记录，本地玩法不受影响。";
+  }
+
+  return cloudUserEmail.value ? cloudUserEmail.value : "输入邮箱获取 magic link。";
+});
 const currentAnimationDuration = computed(() => {
   if (!simulation.value.closed || simulation.value.currentMilliAmps <= 0) {
     return "1.6s";
@@ -455,6 +487,7 @@ const savedWorkspaceLabel = computed(() => {
 });
 
 let autosaveTimer: number | null = null;
+let cloudAuthUnsubscribe: (() => void) | null = null;
 let shareLinkFeedbackTimer: number | null = null;
 
 function clearInteractionState() {
@@ -1869,6 +1902,61 @@ function removeSavedRecord(recordId: string) {
   persistSavedRecords();
 }
 
+async function refreshCloudUser() {
+  if (!cloudConfig.configured) {
+    return;
+  }
+
+  try {
+    const user = await getCloudUser();
+    cloudUserEmail.value = user?.email ?? null;
+  } catch (error) {
+    cloudAuthError.value = error instanceof Error ? error.message : "读取登录状态失败。";
+  }
+}
+
+async function requestCloudSignIn() {
+  const email = cloudEmail.value.trim();
+  cloudAuthError.value = "";
+  cloudAuthMessage.value = "";
+
+  if (!cloudConfig.configured) {
+    cloudAuthError.value = "还没有配置 Supabase 环境变量。";
+    return;
+  }
+
+  if (!email) {
+    cloudAuthError.value = "请输入邮箱地址。";
+    return;
+  }
+
+  cloudAuthBusy.value = true;
+  try {
+    await signInWithEmail(email);
+    cloudAuthMessage.value = "登录链接已发送，请检查邮箱。";
+  } catch (error) {
+    cloudAuthError.value = error instanceof Error ? error.message : "发送登录链接失败。";
+  } finally {
+    cloudAuthBusy.value = false;
+  }
+}
+
+async function handleCloudSignOut() {
+  cloudAuthError.value = "";
+  cloudAuthMessage.value = "";
+  cloudAuthBusy.value = true;
+
+  try {
+    await signOutCloud();
+    cloudUserEmail.value = null;
+    cloudAuthMessage.value = "已退出云端同步。";
+  } catch (error) {
+    cloudAuthError.value = error instanceof Error ? error.message : "退出登录失败。";
+  } finally {
+    cloudAuthBusy.value = false;
+  }
+}
+
 function loadLessonWorkspace(lessonId = activeLesson.value.id) {
   const lesson = lessonCatalog.find((item) => item.id === lessonId) ?? activeLesson.value;
   activeLessonId.value = lesson.id;
@@ -2151,6 +2239,10 @@ function openMobileStatusPanel() {
 }
 
 onMounted(() => {
+  void refreshCloudUser();
+  cloudAuthUnsubscribe = onCloudAuthStateChange((user) => {
+    cloudUserEmail.value = user?.email ?? null;
+  });
   fitMobileWorkbenchAfterRender();
   window.addEventListener("resize", handleMobileViewportChange);
   window.addEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
@@ -2159,6 +2251,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  cloudAuthUnsubscribe?.();
+  cloudAuthUnsubscribe = null;
   window.removeEventListener("resize", handleMobileViewportChange);
   window.removeEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
   window.visualViewport?.removeEventListener("resize", handleMobileViewportChange);
@@ -2844,6 +2938,67 @@ onBeforeUnmount(() => {
             </div>
             <div v-else class="rounded-md border border-dashed px-3 py-3 text-xs text-muted-foreground">
               暂无暂存记录
+            </div>
+          </section>
+
+          <section class="rounded-md border bg-background p-3">
+            <div class="mb-3 flex items-center justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-2">
+                <CloudOff v-if="cloudSyncState === 'unconfigured'" class="h-4 w-4 shrink-0 text-muted-foreground" />
+                <CloudCheck v-else-if="cloudSyncState === 'signed-in'" class="h-4 w-4 shrink-0 text-emerald-700" />
+                <CloudSync v-else class="h-4 w-4 shrink-0 text-cyan-700" />
+                <span class="text-sm font-medium">云端同步</span>
+              </div>
+              <span
+                class="rounded-md px-2 py-1 text-xs font-medium"
+                :class="
+                  cloudSyncState === 'signed-in'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : cloudSyncState === 'configured'
+                      ? 'bg-cyan-100 text-cyan-800'
+                      : 'bg-muted text-muted-foreground'
+                "
+              >
+                {{ cloudSyncLabel }}
+              </span>
+            </div>
+            <p class="mb-3 text-xs leading-5 text-muted-foreground">
+              {{ cloudSyncDescription }}
+            </p>
+            <div
+              v-if="!cloudConfig.configured"
+              class="rounded-md border border-dashed px-3 py-3 text-xs leading-5 text-muted-foreground"
+            >
+              在 `.env.local` 中配置 `VITE_SUPABASE_URL` 和 `VITE_SUPABASE_ANON_KEY` 后，可启用登录入口。
+            </div>
+            <div v-else-if="cloudUserEmail" class="space-y-2">
+              <div class="rounded-md border bg-card px-3 py-2 text-xs">
+                <div class="text-muted-foreground">当前账号</div>
+                <div class="truncate font-medium">{{ cloudUserEmail }}</div>
+              </div>
+              <Button class="w-full" variant="outline" size="sm" :disabled="cloudAuthBusy" @click="handleCloudSignOut">
+                <LogOut class="h-4 w-4" />
+                退出云端同步
+              </Button>
+            </div>
+            <form v-else class="space-y-2" @submit.prevent="requestCloudSignIn">
+              <input
+                v-model="cloudEmail"
+                class="h-9 w-full rounded-md border bg-card px-3 text-sm"
+                inputmode="email"
+                placeholder="邮箱地址"
+                type="email"
+              />
+              <Button class="w-full" size="sm" :disabled="cloudAuthBusy" type="submit">
+                <Mail class="h-4 w-4" />
+                {{ cloudAuthBusy ? "发送中" : "发送登录链接" }}
+              </Button>
+            </form>
+            <div v-if="cloudAuthMessage" class="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950">
+              {{ cloudAuthMessage }}
+            </div>
+            <div v-if="cloudAuthError" class="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-950">
+              {{ cloudAuthError }}
             </div>
           </section>
 

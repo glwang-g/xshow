@@ -1,6 +1,6 @@
 {
   "name": "xshow",
-  "version": "0.2.0",
+  "version": "0.3.0-alpha.0",
   "description": "Interactive electronic brick circuit playground built with Vue 3, Vite, TypeScript, and Tailwind CSS.",
   "private": true,
   "type": "module",
@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@lucide/vue": "^1.16.0",
+    "@supabase/supabase-js": "^2.106.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "pinia": "^2.3.0",

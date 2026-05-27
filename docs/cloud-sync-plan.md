@@ -80,7 +80,7 @@ type CloudWorkspaceRecord = {
 
 ## Backend Choice
 
-Supabase is the best first slice:
+Supabase is selected for the first implementation slice:
 
 - Auth supports email OTP and magic links.
 - Postgres fits JSON workbench payloads.
@@ -88,3 +88,14 @@ Supabase is the best first slice:
 - Share links and classroom templates can grow from the same model.
 
 Avoid building a full custom account system at first; that would pull v0.2 into backend-heavy work too early.
+
+## Implementation Notes
+
+The app reads Supabase configuration from Vite environment variables:
+
+```bash
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+```
+
+If these values are not configured, the cloud sync panel stays visible as "not configured" and all local workflows continue to work.

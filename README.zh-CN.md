@@ -58,6 +58,7 @@
 - Vue Router
 - lucide-vue 图标
 - shadcn-vue 风格的本地组件
+- v0.3 云端记录使用 Supabase 客户端
 
 ## 本地运行
 
@@ -70,6 +71,13 @@ pnpm dev
 
 ```text
 http://localhost:5173
+```
+
+可选的云端同步配置：
+
+```bash
+cp .env.example .env.local
+# 填入 VITE_SUPABASE_URL 和 VITE_SUPABASE_ANON_KEY
 ```
 
 ## 脚本
@@ -108,7 +116,7 @@ pnpm preview
 
 云端记录和跨设备同步计划见 [docs/cloud-sync-plan.zh-CN.md](docs/cloud-sync-plan.zh-CN.md)。
 
-v0.2 发布说明草稿见 [docs/releases/v0.2.0.zh-CN.md](docs/releases/v0.2.0.zh-CN.md)，QA 记录见 [docs/v0.2-qa-report.zh-CN.md](docs/v0.2-qa-report.zh-CN.md)。
+v0.2 发布说明见 [docs/releases/v0.2.0.zh-CN.md](docs/releases/v0.2.0.zh-CN.md)，QA 记录见 [docs/v0.2-qa-report.zh-CN.md](docs/v0.2-qa-report.zh-CN.md)。
 
 ## 贡献说明
 
@@ -116,7 +124,7 @@ v0.2 发布说明草稿见 [docs/releases/v0.2.0.zh-CN.md](docs/releases/v0.2.0.
 
 近期优先级：
 
-- 当前重点：移动端和触控友好的响应式体验
+- 当前重点：v0.3 云端记录和跨设备继续
 - v0.1 已完成：电流方向动画
 - v0.1 已完成：引导式实验课程模式第一版
 - v0.1 已完成：多个引导式实验
@@ -127,11 +135,11 @@ v0.2 发布说明草稿见 [docs/releases/v0.2.0.zh-CN.md](docs/releases/v0.2.0.
 - v0.1 已完成：去掉选择/连线模式按钮，改成直接拖拽式导线交互
 - v0.1 已完成：本地自动保存和带名称的工作台记录
 - v0.2 已完成：通过 URL 分享工作台状态
-- v0.2 进行中：移动端 HUD、触控平移缩放和更大的操作热区
-- v0.2 进行中：串联和并联电路示例
-- v0.2 进行中：导出当前工作台为图片
-- v0.2 进行中：PWA 安装、离线再次打开、新版本提示和 JSON 工作台存档
-- 下一步计划：云端记录和跨设备同步
+- v0.2 已发布：移动端 HUD、触控平移缩放和更大的操作热区
+- v0.2 已发布：串联、并联和 LED 电路示例
+- v0.2 已发布：导出当前工作台为图片
+- v0.2 已发布：PWA 安装、离线再次打开、新版本提示和 JSON 工作台存档
+- v0.3 进行中：Supabase 登录入口和云同步基础设施
 
 ## 许可证
 

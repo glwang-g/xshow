@@ -10,6 +10,8 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 
 ![xshow circuits screenshot](docs/screenshot.png)
 
+![xshow circuits mobile screenshot](docs/mobile-screenshot.png)
+
 ## Features
 
 - Drag electronic components around the workbench

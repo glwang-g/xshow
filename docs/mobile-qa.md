@@ -13,7 +13,7 @@ This document tracks manual checks for the `xshow circuits` mobile and touch exp
 
 ## Core Flow
 
-- [ ] The app opens with the board, lesson hint strip, and bottom HUD visible.
+- [ ] The app opens with the board, compact lesson hint strip, and bottom HUD visible.
 - [ ] The bottom component button opens the left component drawer.
 - [ ] Tapping a component adds it to the workbench and closes the drawer.
 - [ ] Dragging empty board space pans the view.

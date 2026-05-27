@@ -102,6 +102,12 @@ pnpm preview
 
 当前项目方向见 [docs/ROADMAP.zh-CN.md](docs/ROADMAP.zh-CN.md)。
 
+版本待完成清单见 [docs/release-backlog.zh-CN.md](docs/release-backlog.zh-CN.md)。
+
+云端记录和跨设备同步计划见 [docs/cloud-sync-plan.zh-CN.md](docs/cloud-sync-plan.zh-CN.md)。
+
+v0.2 发布说明草稿见 [docs/releases/v0.2.0.zh-CN.md](docs/releases/v0.2.0.zh-CN.md)，QA 记录见 [docs/v0.2-qa-report.zh-CN.md](docs/v0.2-qa-report.zh-CN.md)。
+
 ## 贡献说明
 
 见 [CONTRIBUTING.md](CONTRIBUTING.md)。更新文档时，请同步维护英文和中文版本。
@@ -123,6 +129,7 @@ pnpm preview
 - v0.2 进行中：串联和并联电路示例
 - v0.2 进行中：导出当前工作台为图片
 - v0.2 进行中：PWA 安装、离线再次打开、新版本提示和 JSON 工作台存档
+- 下一步计划：云端记录和跨设备同步
 
 ## 许可证
 

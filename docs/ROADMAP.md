@@ -8,7 +8,7 @@ The project should stay visual, approachable, and immediate: users should be abl
 
 ## Progress
 
-Current focus: **mobile and touch-friendly responsive experience**.
+Current focus: **closing the v0.2 mobile and sharing release**.
 
 | Area | Status | Notes |
 | --- | --- | --- |
@@ -17,12 +17,14 @@ Current focus: **mobile and touch-friendly responsive experience**.
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
 | Workspace records | First slice | The browser automatically restores the last workspace, can save named local records, and can share the current workspace by URL. |
-| Mobile responsive experience | In progress for v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
+| Mobile responsive experience | v0.2 RC | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |
 | Deployment automation | First slice | Pushes to `main` can build the app and deploy `dist/` to a cloud server over SSH when repository secrets are configured. |
 
 ## Near Term
+
+See [release-backlog.md](release-backlog.md) for the versioned backlog. v0.2 now only accepts blocking bug fixes, real-device QA, screenshots, and release prep.
 
 ### Better wire interactions
 
@@ -70,8 +72,8 @@ Status: **In progress for v0.2**
 
 - [x] Add a series circuit example
 - [x] Add a parallel circuit example
-- [ ] Add lesson checks for comparing brightness across examples
-- [ ] Keep example circuits editable from data
+- [x] Add lesson checks for comparing brightness across examples
+- [x] Keep example circuits editable from data
 
 ### Mobile responsive experience
 
@@ -94,6 +96,7 @@ Status: **In progress for v0.2**
 - [x] Export the current workbench as a JSON archive
 - [x] Import the current workbench from a JSON archive
 - [x] Share the current workbench state by URL
+- [x] Add a cloud records and cross-device sync plan
 - [ ] Add cloud-backed records after user accounts or a backend are introduced
 
 ### PWA and offline experience

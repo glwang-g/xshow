@@ -21,9 +21,9 @@ The core v0.2 features are mostly in main: mobile HUD, touch pan/zoom, guided ta
 ### Nice To Have
 
 - [ ] Shorten the mobile lesson hint strip copy to reduce overlap.
-- [ ] Add clearer feedback when share-link copy or clipboard access fails.
+- [x] Add clearer feedback when share-link copy or clipboard access fails.
 - [x] Include the current lesson title in PNG exports.
-- [ ] Make the PWA update prompt copy friendlier.
+- [x] Make the PWA update prompt copy friendlier.
 
 ### Keep Out Of v0.2
 

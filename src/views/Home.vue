@@ -115,7 +115,7 @@ const activeLessonId = ref(lessonCatalog[0].id);
 const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
-const shareLinkCopied = ref(false);
+const shareLinkState = ref<"copied" | "idle" | "manual">("idle");
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
@@ -454,7 +454,7 @@ const savedWorkspaceLabel = computed(() => {
 });
 
 let autosaveTimer: number | null = null;
-let shareLinkCopiedTimer: number | null = null;
+let shareLinkFeedbackTimer: number | null = null;
 
 function clearInteractionState() {
   selectedTerminal.value = null;
@@ -1795,6 +1795,19 @@ function exportWorkspaceJson() {
   downloadTextFile(filename, JSON.stringify(snapshot, null, 2), "application/json");
 }
 
+function showShareLinkFeedback(state: "copied" | "manual") {
+  shareLinkState.value = state;
+
+  if (shareLinkFeedbackTimer) {
+    window.clearTimeout(shareLinkFeedbackTimer);
+  }
+
+  shareLinkFeedbackTimer = window.setTimeout(() => {
+    shareLinkState.value = "idle";
+    shareLinkFeedbackTimer = null;
+  }, state === "copied" ? 1800 : 3600);
+}
+
 async function copyWorkspaceShareLink() {
   if (typeof window === "undefined") {
     return;
@@ -1805,17 +1818,15 @@ async function copyWorkspaceShareLink() {
   const shareUrl = url.toString();
 
   try {
-    await navigator.clipboard.writeText(shareUrl);
-    shareLinkCopied.value = true;
-    if (shareLinkCopiedTimer) {
-      window.clearTimeout(shareLinkCopiedTimer);
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("Clipboard API unavailable");
     }
-    shareLinkCopiedTimer = window.setTimeout(() => {
-      shareLinkCopied.value = false;
-      shareLinkCopiedTimer = null;
-    }, 1800);
+
+    await navigator.clipboard.writeText(shareUrl);
+    showShareLinkFeedback("copied");
   } catch {
-    window.prompt("复制这个分享链接", shareUrl);
+    showShareLinkFeedback("manual");
+    window.prompt("浏览器没有允许自动复制，请手动复制这个分享链接：", shareUrl);
   }
 }
 
@@ -2147,8 +2158,8 @@ onBeforeUnmount(() => {
   window.visualViewport?.removeEventListener("resize", handleMobileViewportChange);
   window.screen.orientation?.removeEventListener("change", handleMobileViewportChange);
 
-  if (shareLinkCopiedTimer) {
-    window.clearTimeout(shareLinkCopiedTimer);
+  if (shareLinkFeedbackTimer) {
+    window.clearTimeout(shareLinkFeedbackTimer);
   }
 });
 </script>
@@ -2351,8 +2362,10 @@ onBeforeUnmount(() => {
               <RotateCcw class="h-4 w-4" />
             </span>
             <div class="min-w-0 flex-1">
-              <div class="text-sm font-semibold">新版本可用</div>
-              <div class="mt-1 text-xs leading-5 text-muted-foreground">刷新后会加载最新实验台。</div>
+              <div class="text-sm font-semibold">有新版本啦</div>
+              <div class="mt-1 text-xs leading-5 text-muted-foreground">
+                刷新一下就能用最新实验台，本地记录会继续保留。
+              </div>
             </div>
             <Button variant="ghost" size="icon" title="稍后" @click="dismissPwaUpdate">
               <X class="h-4 w-4" />
@@ -2360,7 +2373,7 @@ onBeforeUnmount(() => {
           </div>
           <Button class="w-full" size="sm" @click="applyPwaUpdate">
             <RotateCcw class="h-4 w-4" />
-            刷新到新版
+            立即刷新
           </Button>
         </section>
 
@@ -2774,8 +2787,20 @@ onBeforeUnmount(() => {
             </div>
             <Button class="mb-3 w-full" variant="outline" size="sm" @click="copyWorkspaceShareLink">
               <Link class="h-4 w-4" />
-              {{ shareLinkCopied ? "链接已复制" : "复制分享链接" }}
+              {{
+                shareLinkState === "copied"
+                  ? "链接已复制"
+                  : shareLinkState === "manual"
+                    ? "请手动复制"
+                    : "复制分享链接"
+              }}
             </Button>
+            <div
+              v-if="shareLinkState === 'manual'"
+              class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950"
+            >
+              浏览器没有允许自动复制，已弹出分享链接，请手动复制。
+            </div>
             <div v-if="savedRecords.length" class="space-y-2">
               <div
                 v-for="record in savedRecords"

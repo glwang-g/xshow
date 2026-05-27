@@ -61,6 +61,7 @@ The current model focuses on simple closed-loop behavior:
 - Vue Router
 - lucide-vue icons
 - shadcn-vue inspired local components
+- Supabase client for the v0.3 cloud records slice
 
 ## Getting Started
 
@@ -73,6 +74,13 @@ Then open the local Vite URL, usually:
 
 ```text
 http://localhost:5173
+```
+
+Optional cloud sync configuration:
+
+```bash
+cp .env.example .env.local
+# Fill VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
 ```
 
 ## Scripts
@@ -113,7 +121,7 @@ Release backlog: [docs/release-backlog.md](docs/release-backlog.md).
 
 Cloud records and cross-device sync planning: [docs/cloud-sync-plan.md](docs/cloud-sync-plan.md).
 
-v0.2 release notes draft: [docs/releases/v0.2.0.md](docs/releases/v0.2.0.md). QA report: [docs/v0.2-qa-report.md](docs/v0.2-qa-report.md).
+v0.2 release notes: [docs/releases/v0.2.0.md](docs/releases/v0.2.0.md). QA report: [docs/v0.2-qa-report.md](docs/v0.2-qa-report.md).
 
 ## Contributing
 
@@ -121,7 +129,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep Englis
 
 Near-term priorities:
 
-- Current focus: mobile and touch-friendly responsive experience
+- Current focus: v0.3 cloud records and cross-device continuation
 - Done for v0.1: current direction animation
 - Done for v0.1: guided lesson mode first slice
 - Done for v0.1: multiple guided lesson experiments
@@ -132,11 +140,11 @@ Near-term priorities:
 - Done for v0.1: direct wire manipulation without separate select/wire modes
 - Done for v0.1: local autosave and named workspace records
 - Done for v0.2: URL-based workspace sharing
-- In progress for v0.2: mobile HUD, touch pan/zoom, and larger hit targets
-- In progress for v0.2: series and parallel circuit examples
-- In progress for v0.2: export the current workbench as an image
-- In progress for v0.2: PWA installability, offline relaunch, update prompt, and JSON workspace archives
-- Planned next: cloud records and cross-device sync
+- Released in v0.2: mobile HUD, touch pan/zoom, and larger hit targets
+- Released in v0.2: series, parallel, and LED circuit examples
+- Released in v0.2: export the current workbench as an image
+- Released in v0.2: PWA installability, offline relaunch, update prompt, and JSON workspace archives
+- In progress for v0.3: Supabase-backed sign-in entry and cloud sync groundwork
 
 ## License
 

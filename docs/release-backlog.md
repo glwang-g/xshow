@@ -35,14 +35,14 @@ The core v0.2 features are mostly in main: mobile HUD, touch pan/zoom, guided ta
 
 ## v0.3: Cloud Records And Cross-Device Continuation
 
-Status: **starting implementation**.
+Status: **first slice in progress**.
 
 Reference: [Cloud Sync Plan](cloud-sync-plan.md).
 
 ### Must Finish
 
-- [ ] Choose a backend, with Supabase as the preferred first option.
-- [ ] Add sign-in without blocking signed-out use.
+- [x] Choose Supabase as the backend.
+- [x] Add sign-in without blocking signed-out use.
 - [ ] Add a cloud workspace record list.
 - [ ] Save the current workbench to the cloud.
 - [ ] Load cloud records into the workbench.

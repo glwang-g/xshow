@@ -5,18 +5,21 @@ import { cn } from "@/lib/utils";
 
 type Variant = "default" | "secondary" | "ghost" | "outline";
 type Size = "sm" | "md" | "icon";
+type ButtonType = "button" | "reset" | "submit";
 
 const props = withDefaults(
   defineProps<{
     class?: string;
     disabled?: boolean;
     size?: Size;
+    type?: ButtonType;
     variant?: Variant;
   }>(),
   {
     class: "",
     disabled: false,
     size: "md",
+    type: "button",
     variant: "default",
   },
 );
@@ -54,7 +57,7 @@ const classes = computed(() =>
 </script>
 
 <template>
-  <button :class="classes" :disabled="disabled">
+  <button :class="classes" :disabled="disabled" :type="type">
     <slot />
   </button>
 </template>

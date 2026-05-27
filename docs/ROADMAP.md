@@ -8,7 +8,7 @@ The project should stay visual, approachable, and immediate: users should be abl
 
 ## Progress
 
-Current focus: **closing the v0.2 mobile and sharing release**.
+Current focus: **v0.3 cloud records and cross-device continuation**.
 
 | Area | Status | Notes |
 | --- | --- | --- |
@@ -16,15 +16,15 @@ Current focus: **closing the v0.2 mobile and sharing release**.
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
-| Workspace records | First slice | The browser automatically restores the last workspace, can save named local records, and can share the current workspace by URL. |
-| Mobile responsive experience | v0.2 RC | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
+| Workspace records | v0.3 starting | The browser automatically restores local workspaces; v0.3 adds a Supabase-backed sign-in entry as the first cloud sync slice. |
+| Mobile responsive experience | Released in v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |
 | Deployment automation | First slice | Pushes to `main` can build the app and deploy `dist/` to a cloud server over SSH when repository secrets are configured. |
 
 ## Near Term
 
-See [release-backlog.md](release-backlog.md) for the versioned backlog. v0.2 now only accepts blocking bug fixes, real-device QA, screenshots, and release prep.
+See [release-backlog.md](release-backlog.md) for the versioned backlog. v0.3 is now focused on cloud records without blocking signed-out local use.
 
 ### Better wire interactions
 
@@ -68,7 +68,7 @@ Status: **Expanding**
 
 ### More circuit examples
 
-Status: **In progress for v0.2**
+Status: **v0.3 first slice in progress**
 
 - [x] Add a series circuit example
 - [x] Add a parallel circuit example
@@ -97,6 +97,7 @@ Status: **In progress for v0.2**
 - [x] Import the current workbench from a JSON archive
 - [x] Share the current workbench state by URL
 - [x] Add a cloud records and cross-device sync plan
+- [x] Choose Supabase and add a non-blocking sign-in entry
 - [ ] Add cloud-backed records after user accounts or a backend are introduced
 
 ### PWA and offline experience

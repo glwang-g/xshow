@@ -31,6 +31,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Automatically restore the last workspace in the same browser
 - Save named local workspace records for intermediate experiment states
 - Import or export the current workbench as a JSON archive for cross-device migration
+- Copy a shareable URL that restores the current workbench state
 - Display circuit status, current, equivalent resistance, and brightness
 - Export the current workbench as a PNG image
 - Reset to a ready-made demo circuit
@@ -90,8 +91,9 @@ pnpm preview
 8. Use **Export** to save the current workbench as a PNG image.
 9. Use **Records** to save and reload named local workspace snapshots.
 10. Use **Import JSON / Export JSON** to move the current workbench between devices.
-11. Use **Clear Wires** to remove connections.
-12. Use **Reset** to restore the default demo circuit.
+11. Use **Copy Share Link** to send the current workbench state as a URL.
+12. Use **Clear Wires** to remove connections.
+13. Use **Reset** to restore the default demo circuit.
 
 ## Deployment
 
@@ -118,6 +120,7 @@ Near-term priorities:
 - Done for v0.1: workbench highlights for active lesson steps
 - Done for v0.1: direct wire manipulation without separate select/wire modes
 - Done for v0.1: local autosave and named workspace records
+- Done for v0.2: URL-based workspace sharing
 - In progress for v0.2: mobile HUD, touch pan/zoom, and larger hit targets
 - In progress for v0.2: series and parallel circuit examples
 - In progress for v0.2: export the current workbench as an image

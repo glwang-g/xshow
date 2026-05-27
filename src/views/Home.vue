@@ -31,6 +31,7 @@ import {
   ZoomOut,
 } from "@lucide/vue";
 import Button from "@/components/ui/Button.vue";
+import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
 type PartType = "battery" | "bulb" | "switch" | "resistor";
@@ -102,6 +103,7 @@ const activeLessonId = ref(lessonCatalog[0].id);
 const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
+const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
 const lessonCompletePanelOpen = ref(false);
@@ -1897,15 +1899,39 @@ function handleMobileViewportChange() {
   fitMobileWorkbenchAfterRender();
 }
 
+function handlePwaUpdateAvailable(event: Event) {
+  const detail = (event as CustomEvent<{ registration?: ServiceWorkerRegistration }>).detail;
+  pwaUpdateRegistration.value = detail.registration ?? null;
+}
+
+function dismissPwaUpdate() {
+  pwaUpdateRegistration.value = null;
+}
+
+function applyPwaUpdate() {
+  const waitingWorker = pwaUpdateRegistration.value?.waiting;
+  if (!waitingWorker || !("serviceWorker" in navigator)) {
+    window.location.reload();
+    return;
+  }
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload(), {
+    once: true,
+  });
+  waitingWorker.postMessage({ type: "SKIP_WAITING" });
+}
+
 onMounted(() => {
   fitMobileWorkbenchAfterRender();
   window.addEventListener("resize", handleMobileViewportChange);
+  window.addEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
   window.visualViewport?.addEventListener("resize", handleMobileViewportChange);
   window.screen.orientation?.addEventListener("change", handleMobileViewportChange);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener("resize", handleMobileViewportChange);
+  window.removeEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
   window.visualViewport?.removeEventListener("resize", handleMobileViewportChange);
   window.screen.orientation?.removeEventListener("change", handleMobileViewportChange);
 });
@@ -2098,6 +2124,28 @@ onBeforeUnmount(() => {
               下一个实验
             </Button>
           </div>
+        </section>
+
+        <section
+          v-if="pwaUpdateRegistration"
+          class="fixed bottom-24 left-3 right-3 z-40 rounded-md border bg-card/95 p-3 shadow-panel sm:left-auto sm:w-[22rem] xl:bottom-5 xl:right-[340px]"
+        >
+          <div class="mb-3 flex items-start gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-cyan-100 text-cyan-900">
+              <RotateCcw class="h-4 w-4" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-semibold">新版本可用</div>
+              <div class="mt-1 text-xs leading-5 text-muted-foreground">刷新后会加载最新实验台。</div>
+            </div>
+            <Button variant="ghost" size="icon" title="稍后" @click="dismissPwaUpdate">
+              <X class="h-4 w-4" />
+            </Button>
+          </div>
+          <Button class="w-full" size="sm" @click="applyPwaUpdate">
+            <RotateCcw class="h-4 w-4" />
+            刷新到新版
+          </Button>
         </section>
 
         <div class="hidden w-max max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel xl:absolute xl:left-4 xl:top-4 xl:z-20 xl:flex">

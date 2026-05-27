@@ -103,7 +103,7 @@ Status: **First slice**
 - [x] Register a production service worker
 - [x] Cache the app shell, manifest, and core icons
 - [x] Add an offline fallback page
-- [ ] Add a refresh prompt when a new version is available
+- [x] Add a refresh prompt when a new version is available
 
 ### Deployment automation
 

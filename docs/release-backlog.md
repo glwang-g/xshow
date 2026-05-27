@@ -13,14 +13,14 @@ The core v0.2 features are mostly in main: mobile HUD, touch pan/zoom, guided ta
 - [ ] Run the [mobile QA checklist](mobile-qa.md) on real devices.
 - [ ] Record iPad landscape, phone portrait, and phone landscape test results.
 - [ ] Fix blocking issues found during real-device QA.
-- [ ] Update the README screenshot or add mobile screenshots.
+- [x] Update the README screenshot or add mobile screenshots.
 - [ ] Confirm deployed PWA manifest, service worker, and share links work in production.
 - [x] Write release notes.
 - [ ] Tag v0.2 after real-device and production checks are complete.
 
 ### Nice To Have
 
-- [ ] Shorten the mobile lesson hint strip copy to reduce overlap.
+- [x] Shorten the mobile lesson hint strip copy to reduce overlap.
 - [x] Add clearer feedback when share-link copy or clipboard access fails.
 - [x] Include the current lesson title in PNG exports.
 - [x] Make the PWA update prompt copy friendlier.

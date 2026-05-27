@@ -8,6 +8,8 @@
 
 ![xshow circuits 截图](docs/screenshot.png)
 
+![xshow circuits 移动端截图](docs/mobile-screenshot.png)
+
 ## 功能
 
 - 在工作台上拖动电子元器件

@@ -432,6 +432,7 @@ const lessonStepStates = computed(() =>
 );
 const nextLessonStep = computed(() => lessonStepStates.value.find((step) => !step.complete));
 const activeLessonGuide = computed(() => nextLessonStep.value?.guide ?? null);
+const mobileLessonStripText = computed(() => nextLessonStep.value?.description ?? "实验完成");
 const lessonProgress = computed(() => {
   const completed = lessonStepStates.value.filter((step) => step.complete).length;
   const total = lessonStepStates.value.length;
@@ -2144,6 +2145,11 @@ function applyPwaUpdate() {
   waitingWorker.postMessage({ type: "SKIP_WAITING" });
 }
 
+function openMobileStatusPanel() {
+  statusPanelOpen.value = true;
+  palettePanelOpen.value = false;
+}
+
 onMounted(() => {
   fitMobileWorkbenchAfterRender();
   window.addEventListener("resize", handleMobileViewportChange);
@@ -2283,6 +2289,21 @@ onBeforeUnmount(() => {
         @pointercancel="endCanvasGesture"
         @pointerleave="endCanvasGesture"
       >
+        <button
+          class="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 z-20 flex h-10 items-center gap-2 overflow-hidden rounded-md border bg-card/95 px-3 text-left text-sm shadow-panel xl:hidden"
+          :class="lessonComplete ? 'border-emerald-200 text-emerald-950' : 'border-cyan-200 text-cyan-950'"
+          @click="openMobileStatusPanel"
+        >
+          <span
+            class="flex h-6 min-w-12 shrink-0 items-center justify-center rounded-md text-xs font-medium tabular-nums"
+            :class="lessonComplete ? 'bg-emerald-100 text-emerald-800' : 'bg-cyan-100 text-cyan-800'"
+          >
+            {{ lessonProgress.completed }}/{{ lessonProgress.total }}
+          </span>
+          <span class="min-w-0 flex-1 truncate">{{ mobileLessonStripText }}</span>
+          <Gauge class="h-4 w-4 shrink-0 opacity-70" />
+        </button>
+
         <div class="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-md border bg-card/95 p-1 shadow-panel xl:hidden">
           <Button
             :class="palettePanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''"

@@ -6,6 +6,7 @@ import {
   Cable,
   Check,
   CircuitBoard,
+  CircleDot,
   Download,
   FileDown,
   FileUp,
@@ -24,6 +25,7 @@ import {
   ToggleLeft,
   ToggleRight,
   Trash2,
+  TriangleAlert,
   Trophy,
   Unplug,
   X,
@@ -35,7 +37,7 @@ import Button from "@/components/ui/Button.vue";
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
-type PartType = "battery" | "bulb" | "switch" | "resistor";
+type PartType = "battery" | "bulb" | "switch" | "resistor" | "led";
 type TerminalKey = "a" | "b";
 
 type TerminalRef = {
@@ -80,6 +82,14 @@ type Edge = {
   to: string;
   partId?: string;
   wireId?: string;
+};
+
+type LedState = {
+  brightness: number;
+  brightnessPercent: number;
+  forward: boolean;
+  overCurrent: boolean;
+  reversed: boolean;
 };
 
 type PersistedWorkspace = LessonWorkspace & {
@@ -136,6 +146,9 @@ const workbench = {
   width: 1060,
   height: 640,
 };
+const bulbOhms = 18;
+const ledOhms = 28;
+const ledSafeCurrentMilliAmps = 65;
 
 const partSpecs: Record<
   PartType,
@@ -187,6 +200,16 @@ const partSpecs: Record<
       b: { x: 216, y: 55, label: "B" },
     },
   },
+  led: {
+    icon: CircleDot,
+    label: "LED",
+    width: 156,
+    height: 128,
+    terminals: {
+      a: { x: 0, y: 64, label: "-" },
+      b: { x: 156, y: 64, label: "+" },
+    },
+  },
 };
 
 const palette: Array<{ type: PartType; description: string }> = [
@@ -194,6 +217,7 @@ const palette: Array<{ type: PartType; description: string }> = [
   { type: "switch", description: "控制通断" },
   { type: "bulb", description: "显示亮度" },
   { type: "resistor", description: "调节电流" },
+  { type: "led", description: "有正负极" },
 ];
 
 const parts = ref<CircuitPart[]>([
@@ -243,6 +267,9 @@ const mainBulb = computed(() => parts.value.find((part) => part.type === "bulb")
 const mainBulbBrightness = computed(() =>
   mainBulb.value ? simulation.value.bulbs[mainBulb.value.id]?.brightness ?? 0 : 0,
 );
+const ledWarnings = computed(() =>
+  Object.values(simulation.value.leds).filter((state) => state.overCurrent || state.reversed),
+);
 const currentAnimationDuration = computed(() => {
   if (!simulation.value.closed || simulation.value.currentMilliAmps <= 0) {
     return "1.6s";
@@ -258,6 +285,30 @@ function bulbParts() {
 
 function litBulbParts() {
   return bulbParts().filter((part) => (simulation.value.bulbs[part.id]?.brightness ?? 0) > 0);
+}
+
+function bulbBrightness(part: CircuitPart) {
+  return simulation.value.bulbs[part.id]?.brightness ?? 0;
+}
+
+function ledParts() {
+  return parts.value.filter((part) => part.type === "led");
+}
+
+function litLedParts() {
+  return ledParts().filter((part) => (simulation.value.leds[part.id]?.brightness ?? 0) > 0);
+}
+
+function ledStatus(part: CircuitPart): LedState {
+  return (
+    simulation.value.leds[part.id] ?? {
+      brightness: 0,
+      brightnessPercent: 0,
+      forward: false,
+      overCurrent: false,
+      reversed: false,
+    }
+  );
 }
 
 function hasWireBetween(left: TerminalRef, right: TerminalRef) {
@@ -341,11 +392,19 @@ const lessonCheckers: Record<LessonCheckId, () => boolean> = {
   hasClosedCircuit: () => simulation.value.closed,
   hasClosedSwitch: () => parts.value.some((part) => part.type === "switch" && part.closed),
   hasDarkBulb: () => mainBulbBrightness.value === 0,
+  hasForwardLed: () => ledParts().some((part) => ledStatus(part).forward),
+  hasLedParts: () =>
+    ["battery", "switch", "resistor", "led"].every((type) => parts.value.some((part) => part.type === type)),
+  hasLitLed: () => litLedParts().length > 0,
   hasLitBulb: () => mainBulbBrightness.value > 0,
   hasLowResistance: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) <= 24),
   hasOpenCircuit: () => !simulation.value.closed,
   hasOpenSwitch: () => parts.value.some((part) => part.type === "switch" && !part.closed),
   hasParallelBulbs: () => simulation.value.closed && hasParallelBulbRoute(),
+  hasSafeLedCurrent: () => ledParts().some((part) => {
+    const state = ledStatus(part);
+    return state.brightness > 0 && !state.overCurrent;
+  }),
   hasSeriesBulbs: () => simulation.value.closed && hasSeriesBulbRoute(),
   hasStarterParts: () =>
     ["battery", "switch", "bulb", "resistor"].every((type) => parts.value.some((part) => part.type === type)),
@@ -586,6 +645,10 @@ function partExportColors(part: CircuitPart) {
     return { background: "#ecfeff", foreground: "#164e63", muted: "#0e7490" };
   }
 
+  if (part.type === "led") {
+    return { background: "#fff1f2", foreground: "#881337", muted: "#e11d48" };
+  }
+
   return { background: "#ffffff", foreground: "#0f172a", muted: part.closed ? "#10b981" : "#f43f5e" };
 }
 
@@ -629,7 +692,7 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart) {
     context.fill();
     context.strokeStyle = "#f59e0b";
     context.stroke();
-  } else {
+  } else if (part.type === "resistor") {
     context.fillText(`${part.resistance ?? 0} ohm`, part.x + 18, part.y + 52);
     context.strokeStyle = colors.muted;
     context.lineWidth = 4;
@@ -637,6 +700,17 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart) {
     context.moveTo(part.x + 20, part.y + 76);
     context.lineTo(part.x + spec.width - 20, part.y + 76);
     context.stroke();
+  } else if (part.type === "led") {
+    const state = ledStatus(part);
+    context.fillText(`${state.brightnessPercent}% LED`, part.x + 18, part.y + spec.height - 18);
+    context.beginPath();
+    context.arc(part.x + spec.width / 2, part.y + 62, 30, 0, Math.PI * 2);
+    context.fillStyle = `rgba(244, 63, 94, ${0.14 + state.brightness * 0.78})`;
+    context.fill();
+    context.strokeStyle = state.reversed ? "#64748b" : "#e11d48";
+    context.stroke();
+    context.fillStyle = colors.foreground;
+    context.fillText(state.reversed ? "reversed" : "+ to -", part.x + 18, part.y + 52);
   }
 
   for (const terminal of ["a", "b"] as TerminalKey[]) {
@@ -1805,7 +1879,12 @@ function setResistance(part: CircuitPart, value: number) {
   part.resistance = Math.round(value);
 }
 
-function buildEdges(sourceParts: CircuitPart[], sourceWires: Wire[], excludedPartId?: string) {
+function buildEdges(
+  sourceParts: CircuitPart[],
+  sourceWires: Wire[],
+  excludedPartId?: string,
+  conductiveLedIds = new Set<string>(),
+) {
   const edges: Edge[] = sourceWires.map((wire) => ({
     from: terminalId(wire.from),
     to: terminalId(wire.to),
@@ -1818,6 +1897,10 @@ function buildEdges(sourceParts: CircuitPart[], sourceWires: Wire[], excludedPar
     }
 
     if (part.type === "switch" && !part.closed) {
+      continue;
+    }
+
+    if (part.type === "led" && !conductiveLedIds.has(part.id)) {
       continue;
     }
 
@@ -1859,17 +1942,26 @@ function hasPath(from: string, to: string, edges: Edge[]) {
   return false;
 }
 
-function partBridgesBattery(part: CircuitPart, battery: CircuitPart, edges: Edge[]) {
+function partBatteryBridgeDirection(part: CircuitPart, battery: CircuitPart, edges: Edge[]) {
   const positive = `${battery.id}:b`;
   const negative = `${battery.id}:a`;
   const a = `${part.id}:a`;
   const b = `${part.id}:b`;
   const edgesWithoutPart = edges.filter((edge) => edge.partId !== part.id);
 
-  return (
-    (hasPath(positive, a, edgesWithoutPart) && hasPath(b, negative, edgesWithoutPart)) ||
-    (hasPath(positive, b, edgesWithoutPart) && hasPath(a, negative, edgesWithoutPart))
-  );
+  if (hasPath(positive, b, edgesWithoutPart) && hasPath(a, negative, edgesWithoutPart)) {
+    return "forward";
+  }
+
+  if (hasPath(positive, a, edgesWithoutPart) && hasPath(b, negative, edgesWithoutPart)) {
+    return "reverse";
+  }
+
+  return null;
+}
+
+function partBridgesBattery(part: CircuitPart, battery: CircuitPart, edges: Edge[]) {
+  return Boolean(partBatteryBridgeDirection(part, battery, edges));
 }
 
 function wireDirectionThroughBattery(wire: Wire, battery: CircuitPart, edges: Edge[]) {
@@ -1893,8 +1985,9 @@ function wireDirectionThroughBattery(wire: Wire, battery: CircuitPart, edges: Ed
 function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   const battery = sourceParts.find((part) => part.type === "battery");
   const bulbs = sourceParts.filter((part) => part.type === "bulb");
-  const edges = buildEdges(sourceParts, sourceWires);
+  const leds = sourceParts.filter((part) => part.type === "led");
   const bulbStates: Record<string, { brightness: number; brightnessPercent: number }> = {};
+  const ledStates: Record<string, LedState> = {};
   const wireStates: Record<string, { active: boolean; reverse: boolean }> = {};
 
   if (!battery) {
@@ -1903,9 +1996,19 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
       currentMilliAmps: 0,
       equivalentResistance: 0,
       bulbs: bulbStates,
+      leds: ledStates,
       wires: wireStates,
     };
   }
+
+  const allLedIds = new Set(leds.map((part) => part.id));
+  const orientationEdges = buildEdges(sourceParts, sourceWires, undefined, allLedIds);
+  const conductiveLedIds = new Set(
+    leds
+      .filter((part) => partBatteryBridgeDirection(part, battery, orientationEdges) === "forward")
+      .map((part) => part.id),
+  );
+  const edges = buildEdges(sourceParts, sourceWires, undefined, conductiveLedIds);
 
   const positive = `${battery.id}:b`;
   const negative = `${battery.id}:a`;
@@ -1913,9 +2016,14 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   const seriesResistors = sourceParts.filter(
     (part) => part.type === "resistor" && partBridgesBattery(part, battery, edges),
   );
+  const conductingBulbs = bulbs.filter((part) => closed && partBridgesBattery(part, battery, edges));
+  const conductingLeds = leds.filter((part) => closed && conductiveLedIds.has(part.id));
   const resistorOhms = seriesResistors.reduce((total, part) => total + (part.resistance ?? 0), 0);
-  const bulbOhms = 18;
-  const equivalentResistance = closed ? bulbOhms + resistorOhms : 0;
+  const loadOhms = Math.max(
+    bulbOhms,
+    conductingBulbs.length * bulbOhms + conductingLeds.length * ledOhms,
+  );
+  const equivalentResistance = closed ? loadOhms + resistorOhms : 0;
   const current = equivalentResistance > 0 ? 9 / equivalentResistance : 0;
   const currentMilliAmps = Math.round(current * 1000);
 
@@ -1928,7 +2036,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   }
 
   for (const bulb of bulbs) {
-    const conducting = closed && partBridgesBattery(bulb, battery, edges);
+    const conducting = conductingBulbs.some((part) => part.id === bulb.id);
     const normalized = conducting && equivalentResistance > 0 ? bulbOhms / equivalentResistance : 0;
     const brightness = conducting ? Math.min(1, Math.max(0.1, normalized)) : 0;
 
@@ -1938,11 +2046,26 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
     };
   }
 
+  for (const led of leds) {
+    const direction = partBatteryBridgeDirection(led, battery, orientationEdges);
+    const conducting = closed && conductiveLedIds.has(led.id);
+    const brightness = conducting ? Math.min(1, Math.max(0.18, currentMilliAmps / ledSafeCurrentMilliAmps)) : 0;
+
+    ledStates[led.id] = {
+      brightness,
+      brightnessPercent: Math.round(brightness * 100),
+      forward: direction === "forward",
+      overCurrent: conducting && currentMilliAmps > ledSafeCurrentMilliAmps,
+      reversed: direction === "reverse",
+    };
+  }
+
   return {
     closed,
     currentMilliAmps,
     equivalentResistance,
     bulbs: bulbStates,
+    leds: ledStates,
     wires: wireStates,
   };
 }
@@ -2368,6 +2491,7 @@ onBeforeUnmount(() => {
               part.type === 'switch' ? 'bg-white' : '',
               part.type === 'bulb' ? 'bg-amber-50' : '',
               part.type === 'resistor' ? 'bg-cyan-50' : '',
+              part.type === 'led' ? 'bg-rose-50' : '',
             ]"
             :style="partStyle(part)"
             @pointerdown="handlePartPointerDown($event, part)"
@@ -2436,12 +2560,12 @@ onBeforeUnmount(() => {
             <div v-else-if="part.type === 'bulb'" class="flex h-full flex-col items-center justify-center gap-3 p-4">
               <div
                 class="flex h-20 w-20 items-center justify-center rounded-full border transition-all"
-                :class="mainBulbBrightness > 0 ? 'border-amber-400' : 'border-amber-200'"
+                :class="bulbBrightness(part) > 0 ? 'border-amber-400' : 'border-amber-200'"
                 :style="{
-                  backgroundColor: `rgba(251, 191, 36, ${0.16 + mainBulbBrightness * 0.72})`,
+                  backgroundColor: `rgba(251, 191, 36, ${0.16 + bulbBrightness(part) * 0.72})`,
                   boxShadow:
-                    mainBulbBrightness > 0
-                      ? `0 0 ${18 + mainBulbBrightness * 42}px rgba(245, 158, 11, ${0.3 + mainBulbBrightness * 0.5})`
+                    bulbBrightness(part) > 0
+                      ? `0 0 ${18 + bulbBrightness(part) * 42}px rgba(245, 158, 11, ${0.3 + bulbBrightness(part) * 0.5})`
                       : 'none',
                 }"
               >
@@ -2455,7 +2579,32 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <div v-else class="flex h-full flex-col justify-between p-4">
+            <div v-else-if="part.type === 'led'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
+              <div
+                class="relative flex h-16 w-16 items-center justify-center rounded-full border transition-all"
+                :class="[
+                  ledStatus(part).reversed ? 'border-slate-300 bg-slate-100' : 'border-rose-300',
+                  ledStatus(part).overCurrent ? 'ring-4 ring-rose-300' : '',
+                ]"
+                :style="{
+                  backgroundColor: `rgba(244, 63, 94, ${0.12 + ledStatus(part).brightness * 0.76})`,
+                  boxShadow:
+                    ledStatus(part).brightness > 0
+                      ? `0 0 ${14 + ledStatus(part).brightness * 36}px rgba(225, 29, 72, ${0.25 + ledStatus(part).brightness * 0.48})`
+                      : 'none',
+                }"
+              >
+                <CircleDot class="h-9 w-9 text-rose-900" />
+              </div>
+              <div class="text-center">
+                <div class="text-sm font-semibold text-rose-950">{{ part.name }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ ledStatus(part).reversed ? "反接" : `${ledStatus(part).brightnessPercent}%` }}
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="part.type === 'resistor'" class="flex h-full flex-col justify-between p-4">
               <div class="flex items-center justify-between">
                 <div>
                   <div class="text-xs text-cyan-800/70">Rheostat</div>
@@ -2677,6 +2826,16 @@ onBeforeUnmount(() => {
                 <div class="font-medium tabular-nums">{{ simulation.equivalentResistance }} Ω</div>
               </div>
             </div>
+            <div v-if="ledWarnings.length" class="mt-3 space-y-2">
+              <div
+                v-for="(warning, index) in ledWarnings"
+                :key="index"
+                class="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-950"
+              >
+                <TriangleAlert class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <span>{{ warning.reversed ? "有 LED 反接，当前不会导通。" : "LED 电流偏大，请调高限流电阻。" }}</span>
+              </div>
+            </div>
           </section>
 
           <section v-if="selectedPart" class="rounded-md border bg-background p-3">
@@ -2729,6 +2888,18 @@ onBeforeUnmount(() => {
                   @input="setResistance(selectedPart, Number(($event.target as HTMLInputElement).value))"
                 />
               </label>
+              <div v-if="selectedPart.type === 'led'" class="rounded-md border bg-card px-3 py-2 text-xs">
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="text-muted-foreground">方向</span>
+                  <span class="font-medium" :class="ledStatus(selectedPart).reversed ? 'text-rose-700' : 'text-emerald-700'">
+                    {{ ledStatus(selectedPart).reversed ? "反接" : ledStatus(selectedPart).forward ? "正接" : "未接入" }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-muted-foreground">亮度</span>
+                  <span class="font-medium tabular-nums">{{ ledStatus(selectedPart).brightnessPercent }}%</span>
+                </div>
+              </div>
             </div>
           </section>
 

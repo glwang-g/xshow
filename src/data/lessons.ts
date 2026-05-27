@@ -9,12 +9,16 @@ export type LessonCheckId =
   | "hasBrightBulb"
   | "hasLowResistance"
   | "hasAdjustedResistor"
+  | "hasLedParts"
+  | "hasForwardLed"
+  | "hasLitLed"
+  | "hasSafeLedCurrent"
   | "hasTwoBulbs"
   | "hasTwoLitBulbs"
   | "hasSeriesBulbs"
   | "hasParallelBulbs";
 
-export type LessonPartType = "battery" | "bulb" | "switch" | "resistor";
+export type LessonPartType = "battery" | "bulb" | "switch" | "resistor" | "led";
 
 export type LessonTerminalKey = "a" | "b";
 
@@ -96,6 +100,7 @@ const connectedLoopWires: LessonWorkspaceWire[] = [
 
 const starterPartIds = ["battery-1", "switch-1", "bulb-1", "resistor-1"];
 const twoBulbPartIds = ["battery-1", "switch-1", "bulb-1", "bulb-2", "resistor-1"];
+const ledPartIds = ["battery-1", "switch-1", "resistor-1", "led-1"];
 
 const starterTerminalRefs: LessonGuide["terminalRefs"] = [
   { partId: "battery-1", terminal: "a" },
@@ -106,6 +111,17 @@ const starterTerminalRefs: LessonGuide["terminalRefs"] = [
   { partId: "bulb-1", terminal: "b" },
   { partId: "resistor-1", terminal: "a" },
   { partId: "resistor-1", terminal: "b" },
+];
+
+const ledTerminalRefs: LessonGuide["terminalRefs"] = [
+  { partId: "battery-1", terminal: "a" },
+  { partId: "battery-1", terminal: "b" },
+  { partId: "switch-1", terminal: "a" },
+  { partId: "switch-1", terminal: "b" },
+  { partId: "resistor-1", terminal: "a" },
+  { partId: "resistor-1", terminal: "b" },
+  { partId: "led-1", terminal: "a" },
+  { partId: "led-1", terminal: "b" },
 ];
 
 function starterParts({ resistance = 48, switchClosed = true } = {}): LessonWorkspacePart[] {
@@ -124,6 +140,15 @@ function twoBulbParts({ resistance = 36, switchClosed = true } = {}): LessonWork
     { id: "bulb-1", name: "灯泡 A", type: "bulb", x: 572, y: 130 },
     { id: "bulb-2", name: "灯泡 B", type: "bulb", x: 572, y: 386 },
     { id: "resistor-1", name: "可变电阻器", type: "resistor", x: 296, y: 474, resistance },
+  ];
+}
+
+function ledParts({ resistance = 120, switchClosed = true } = {}): LessonWorkspacePart[] {
+  return [
+    { id: "battery-1", name: "9V 电池", type: "battery", x: 72, y: 282 },
+    { id: "switch-1", name: "单刀开关", type: "switch", x: 292, y: 122, closed: switchClosed },
+    { id: "resistor-1", name: "限流电阻", type: "resistor", x: 574, y: 118, resistance },
+    { id: "led-1", name: "红色 LED", type: "led", x: 620, y: 396 },
   ];
 }
 
@@ -398,6 +423,47 @@ export const lessonCatalog: Lesson[] = [
         guide: { partIds: ["switch-1"] },
         hint: "总开关断开后，两个并联支路都无法从电池获得电流。",
         checkId: "hasOpenSwitch",
+      },
+    ],
+  },
+  {
+    id: "light-the-led",
+    title: "实验 6：点亮 LED",
+    objective: "用电池、开关和限流电阻点亮有正负极的 LED，并理解反接不亮、限流保护的效果。",
+    starterWorkspace: {
+      parts: ledParts(),
+      selectedPartId: "led-1",
+      wires: [],
+      zoom: 82,
+    },
+    steps: [
+      {
+        id: "led-parts",
+        description: "工作台上有电池、开关、限流电阻和 LED。",
+        guide: { partIds: ledPartIds },
+        hint: "LED 是有方向的元器件，+ 端需要接到电池正极一侧，- 端回到负极一侧。",
+        checkId: "hasLedParts",
+      },
+      {
+        id: "led-forward",
+        description: "按正确方向连接 LED：电流从 + 端进入，从 - 端流出。",
+        guide: { terminalRefs: ledTerminalRefs },
+        hint: "推荐路径：电池 + → 开关 → 限流电阻 → LED +，再由 LED - 回到电池 -。",
+        checkId: "hasForwardLed",
+      },
+      {
+        id: "led-lit",
+        description: "闭合开关，让 LED 发光。",
+        guide: { partIds: ["switch-1", "led-1"] },
+        hint: "如果 LED 不亮，先检查开关是否闭合，再检查 LED 是否反接。",
+        checkId: "hasLitLed",
+      },
+      {
+        id: "led-safe",
+        description: "确认限流电阻让 LED 电流处于安全范围。",
+        guide: { partIds: ["resistor-1", "led-1"] },
+        hint: "如果出现电流偏大警告，把限流电阻调高一些。",
+        checkId: "hasSafeLedCurrent",
       },
     ],
   },

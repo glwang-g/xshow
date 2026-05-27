@@ -19,9 +19,10 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Toggle a switch to open or close the circuit
 - Adjust a variable resistor with a slider
 - Simulate bulb brightness from circuit state and resistance
+- Simulate polarity-sensitive LEDs with reverse-connection and over-current feedback
 - Animate current flow on energized wires
 - Switch between guided lesson experiments with automatic step checks
-- Include basic, open-circuit, brightness, series, and parallel guided lessons
+- Include basic, open-circuit, brightness, series, parallel, and LED guided lessons
 - Load a lesson starter workspace with one click
 - Show contextual hints for the next unfinished lesson step
 - Highlight the relevant workbench parts and terminals for the active lesson step
@@ -46,6 +47,7 @@ The current model focuses on simple closed-loop behavior:
 - A switch can break or complete the circuit
 - A variable resistor changes equivalent resistance
 - A bulb brightness value is derived from the simulated current path
+- An LED only conducts when its polarity is connected in the forward direction
 
 ## Tech Stack
 
@@ -115,6 +117,7 @@ Near-term priorities:
 - Done for v0.1: current direction animation
 - Done for v0.1: guided lesson mode first slice
 - Done for v0.1: multiple guided lesson experiments
+- Done for v0.2: polarity-sensitive LED component and guided lesson
 - Done for v0.1: one-click lesson starter workspaces
 - Done for v0.1: contextual hints for incomplete lesson steps
 - Done for v0.1: workbench highlights for active lesson steps

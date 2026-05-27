@@ -4,19 +4,20 @@ This backlog turns the current roadmap into releasable versions so `xshow circui
 
 ## v0.2: Mobile And Sharing Release
 
-Status: **Release Candidate**.
+Status: **Released as v0.2.0**.
 
 The core v0.2 features are mostly in main: mobile HUD, touch pan/zoom, guided tasks, series/parallel lessons, LED, PWA support, JSON archives, URL sharing, and image export.
 
 ### Must Finish
 
-- [ ] Run the [mobile QA checklist](mobile-qa.md) on real devices.
+- [x] Accept v0.2 for release based on project-owner review.
+- [ ] Run the [mobile QA checklist](mobile-qa.md) on real devices as follow-up regression.
 - [ ] Record iPad landscape, phone portrait, and phone landscape test results.
 - [ ] Fix blocking issues found during real-device QA.
 - [x] Update the README screenshot or add mobile screenshots.
-- [ ] Confirm deployed PWA manifest, service worker, and share links work in production.
+- [ ] Confirm deployed PWA manifest, service worker, and share links work in production after deployment.
 - [x] Write release notes.
-- [ ] Tag v0.2 after real-device and production checks are complete.
+- [x] Tag v0.2.0 after release acceptance.
 
 ### Nice To Have
 
@@ -34,7 +35,7 @@ The core v0.2 features are mostly in main: mobile HUD, touch pan/zoom, guided ta
 
 ## v0.3: Cloud Records And Cross-Device Continuation
 
-Status: **designed, not implemented**.
+Status: **starting implementation**.
 
 Reference: [Cloud Sync Plan](cloud-sync-plan.md).
 

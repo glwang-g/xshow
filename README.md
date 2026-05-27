@@ -121,7 +121,7 @@ Near-term priorities:
 - In progress for v0.2: mobile HUD, touch pan/zoom, and larger hit targets
 - In progress for v0.2: series and parallel circuit examples
 - In progress for v0.2: export the current workbench as an image
-- In progress for v0.2: PWA installability, offline relaunch, and JSON workspace archives
+- In progress for v0.2: PWA installability, offline relaunch, update prompt, and JSON workspace archives
 
 ## License
 

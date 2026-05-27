@@ -16,7 +16,9 @@ export type LessonCheckId =
   | "hasTwoBulbs"
   | "hasTwoLitBulbs"
   | "hasSeriesBulbs"
-  | "hasParallelBulbs";
+  | "hasParallelBulbs"
+  | "hasDimSeriesBulbs"
+  | "hasBrightParallelBulbs";
 
 export type LessonPartType = "battery" | "bulb" | "switch" | "resistor" | "led";
 
@@ -377,6 +379,13 @@ export const lessonCatalog: Lesson[] = [
         checkId: "hasTwoLitBulbs",
       },
       {
+        id: "series-brightness",
+        description: "观察两个串联灯泡都比较暗。",
+        guide: { partIds: ["bulb-1", "bulb-2", "resistor-1"] },
+        hint: "两个灯泡串在同一条路上，会一起分担电压；和单灯泡回路相比，亮度会低一些。",
+        checkId: "hasDimSeriesBulbs",
+      },
+      {
         id: "series-switch",
         description: "断开开关，观察两个灯泡同时熄灭。",
         guide: { partIds: ["switch-1", "bulb-1", "bulb-2"] },
@@ -416,6 +425,13 @@ export const lessonCatalog: Lesson[] = [
         guide: { partIds: ["switch-1", "bulb-1", "bulb-2"] },
         hint: "如果一个灯泡不亮，检查它的两端是否分别接到了回路两侧。",
         checkId: "hasTwoLitBulbs",
+      },
+      {
+        id: "parallel-brightness",
+        description: "观察两个并联灯泡都保持可见亮度。",
+        guide: { partIds: ["bulb-1", "bulb-2", "resistor-1"] },
+        hint: "并联时，两个灯泡分在不同支路上；每个灯泡都能从电池两端获得自己的通路。",
+        checkId: "hasBrightParallelBulbs",
       },
       {
         id: "open-switch",

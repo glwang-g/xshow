@@ -107,6 +107,12 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for the current project direction.
 
 Chinese version: [docs/ROADMAP.zh-CN.md](docs/ROADMAP.zh-CN.md).
 
+Release backlog: [docs/release-backlog.md](docs/release-backlog.md).
+
+Cloud records and cross-device sync planning: [docs/cloud-sync-plan.md](docs/cloud-sync-plan.md).
+
+v0.2 release notes draft: [docs/releases/v0.2.0.md](docs/releases/v0.2.0.md). QA report: [docs/v0.2-qa-report.md](docs/v0.2-qa-report.md).
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep English and Chinese versions in sync.
@@ -128,6 +134,7 @@ Near-term priorities:
 - In progress for v0.2: series and parallel circuit examples
 - In progress for v0.2: export the current workbench as an image
 - In progress for v0.2: PWA installability, offline relaunch, update prompt, and JSON workspace archives
+- Planned next: cloud records and cross-device sync
 
 ## License
 

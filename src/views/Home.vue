@@ -291,6 +291,10 @@ function bulbBrightness(part: CircuitPart) {
   return simulation.value.bulbs[part.id]?.brightness ?? 0;
 }
 
+function twoBulbBrightnessValues() {
+  return bulbParts().slice(0, 2).map((part) => bulbBrightness(part));
+}
+
 function ledParts() {
   return parts.value.filter((part) => part.type === "led");
 }
@@ -389,9 +393,17 @@ function hasParallelBulbRoute() {
 const lessonCheckers: Record<LessonCheckId, () => boolean> = {
   hasAdjustedResistor: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) !== 48),
   hasBrightBulb: () => mainBulbBrightness.value >= 0.4,
+  hasBrightParallelBulbs: () =>
+    hasParallelBulbRoute() &&
+    twoBulbBrightnessValues().length >= 2 &&
+    twoBulbBrightnessValues().every((brightness) => brightness >= 0.24),
   hasClosedCircuit: () => simulation.value.closed,
   hasClosedSwitch: () => parts.value.some((part) => part.type === "switch" && part.closed),
   hasDarkBulb: () => mainBulbBrightness.value === 0,
+  hasDimSeriesBulbs: () =>
+    hasSeriesBulbRoute() &&
+    twoBulbBrightnessValues().length >= 2 &&
+    twoBulbBrightnessValues().every((brightness) => brightness > 0 && brightness <= 0.32),
   hasForwardLed: () => ledParts().some((part) => ledStatus(part).forward),
   hasLedParts: () =>
     ["battery", "switch", "resistor", "led"].every((type) => parts.value.some((part) => part.type === type)),
@@ -774,7 +786,7 @@ function exportWorkbenchImage() {
   }
 
   context.fillStyle = "rgba(255, 255, 255, 0.92)";
-  roundedRectPath(context, 18, 18, 242, 56, 8);
+  roundedRectPath(context, 18, 18, 330, 72, 8);
   context.fill();
   context.strokeStyle = "#e2e8f0";
   context.stroke();
@@ -783,10 +795,11 @@ function exportWorkbenchImage() {
   context.fillText("xshow circuits", 34, 42);
   context.font = "13px Inter, sans-serif";
   context.fillStyle = "#475569";
+  context.fillText(activeLesson.value.title, 34, 62);
   context.fillText(
     `${simulation.value.closed ? "回路闭合" : "回路断开"} · ${simulation.value.currentMilliAmps} mA`,
     34,
-    62,
+    80,
   );
 
   const link = document.createElement("a");

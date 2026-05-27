@@ -1,6 +1,6 @@
 {
   "name": "xshow",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Interactive electronic brick circuit playground built with Vue 3, Vite, TypeScript, and Tailwind CSS.",
   "private": true,
   "type": "module",

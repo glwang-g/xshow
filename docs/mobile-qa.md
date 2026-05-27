@@ -28,6 +28,8 @@ This document tracks manual checks for the `xshow circuits` mobile and touch exp
 - [ ] Export Image downloads a PNG of the current workbench.
 - [ ] Export JSON downloads the current workbench archive.
 - [ ] Import JSON restores the workbench from a valid archive.
+- [ ] Copy Share Link generates and copies a URL for the current workbench.
+- [ ] Opening a share URL restores the matching workbench state.
 - [ ] After adding to the home screen, the app opens in a standalone app window.
 - [ ] After one online launch, a later offline visit shows the app shell or offline fallback.
 
@@ -36,11 +38,12 @@ This document tracks manual checks for the `xshow circuits` mobile and touch exp
 - [ ] Lesson 1: Light the bulb can complete all steps.
 - [ ] Lesson 2: Open the circuit can complete all steps.
 - [ ] Lesson 3: Brighten the bulb can complete all steps.
-- [ ] Lesson 4: Series bulbs detects two bulbs, the series route, and both bulbs lit.
-- [ ] Lesson 5: Parallel bulbs detects two bulbs, the parallel branches, and both bulbs lit.
+- [ ] Lesson 4: Series bulbs detects two bulbs, the series route, both bulbs lit, and dim series brightness.
+- [ ] Lesson 5: Parallel bulbs detects two bulbs, the parallel branches, both bulbs lit, and visible parallel brightness.
+- [ ] Lesson 6: Light the LED detects correct polarity, light output, and current limiting.
 
 ## Known Limits
 
 - The circuit model is still an educational approximation, not a SPICE-level simulator.
 - Series and parallel brightness comparison checks are not yet physically detailed.
-- URL sharing for circuit state is not implemented yet.
+- Cloud accounts and automatic cross-device sync are not implemented yet.

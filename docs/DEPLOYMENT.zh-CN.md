@@ -18,6 +18,17 @@
 
 建议让 `DEPLOY_PATH` 使用独立目录；部署会用 `rsync --delete` 镜像 `dist/`。
 
+## 云端记录的 GitHub Variables
+
+如果线上演示站要启用 Supabase 云端记录，请在仓库的 **Settings -> Secrets and variables -> Actions** 中添加这些 repository variables 或 secrets：
+
+| 名称 | 是否必填 | 示例 | 说明 |
+| --- | --- | --- | --- |
+| `VITE_SUPABASE_URL` | 否 | `https://project-ref.supabase.co` | Supabase Data API URL。 |
+| `VITE_SUPABASE_ANON_KEY` | 否 | `eyJ...` | Supabase 的 `anon public` key。不要使用 `service_role` key。 |
+
+这些值会在构建时注入，因为 Vite 会把 `VITE_` 环境变量打进静态产物。如果没有配置，线上应用仍可正常本地使用，只会显示云端同步未配置。
+
 ## 服务器准备
 
 在云服务器上创建部署用户和目标目录：

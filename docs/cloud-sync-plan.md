@@ -18,6 +18,8 @@
 - Cloud record list supports create, rename, load, and delete.
 - The latest workspace can autosync, but failures must not overwrite local records.
 
+Current implemented slice: sign-in entry, explicit save, list, load, and delete for `workspace_records`.
+
 ### Phase 2: Shared Copies
 
 - Share links open as read-only workspaces.
@@ -37,7 +39,7 @@ Cloud records can reuse the current `PersistedWorkspace` shape:
 ```ts
 type CloudWorkspaceRecord = {
   id: string;
-  ownerId: string;
+  owner_id: string;
   title: string;
   workspace: {
     activeLessonId: string;
@@ -59,8 +61,8 @@ type CloudWorkspaceRecord = {
     }>;
     zoom: number;
   };
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 };
 ```
 
@@ -72,9 +74,11 @@ type CloudWorkspaceRecord = {
 | `workspace_records` | User-owned cloud workbench records. |
 | `shared_workspaces` | Read-only shared copies or copyable templates. |
 
+The initial Supabase table, Row Level Security policies, and `updated_at` trigger are documented in [supabase-schema.sql](supabase-schema.sql).
+
 ## Conflict Strategy
 
-- Records have `updatedAt`; compare the cloud version before saving.
+- Records have `updated_at`; compare the cloud version before saving.
 - If the cloud version is newer than local edits, ask the user to overwrite cloud or save as a copy.
 - Local autosave must survive cloud sync failures.
 

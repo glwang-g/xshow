@@ -18,6 +18,8 @@
 - 云端记录列表支持创建、重命名、加载、删除。
 - 最近一次工作台自动同步，但失败时不覆盖本地记录。
 
+当前已实现的切片：登录入口，以及对 `workspace_records` 的显式保存、列表、加载、删除。
+
 ### 阶段 2：分享副本
 
 - 分享链接支持只读打开。
@@ -37,7 +39,7 @@
 ```ts
 type CloudWorkspaceRecord = {
   id: string;
-  ownerId: string;
+  owner_id: string;
   title: string;
   workspace: {
     activeLessonId: string;
@@ -59,8 +61,8 @@ type CloudWorkspaceRecord = {
     }>;
     zoom: number;
   };
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 };
 ```
 
@@ -72,9 +74,11 @@ type CloudWorkspaceRecord = {
 | `workspace_records` | 用户的云端工作台记录。 |
 | `shared_workspaces` | 只读分享副本或可复制模板。 |
 
+第一版 Supabase 表结构、Row Level Security 策略和 `updated_at` 触发器见 [supabase-schema.sql](supabase-schema.sql)。
+
 ## 同步冲突策略
 
-- 记录有 `updatedAt`，保存时比较云端版本。
+- 记录有 `updated_at`，保存时比较云端版本。
 - 如果云端更新晚于本地编辑，提示用户选择“覆盖云端”或“另存为副本”。
 - 本地 autosave 不因云端失败而丢失。
 

@@ -37,15 +37,15 @@ The core v0.2 features are mostly in main: mobile HUD, touch pan/zoom, guided ta
 
 Status: **first slice in progress**.
 
-Reference: [Cloud Sync Plan](cloud-sync-plan.md).
+Reference: [Cloud Sync Plan](cloud-sync-plan.md). Supabase table setup lives in [supabase-schema.sql](supabase-schema.sql).
 
 ### Must Finish
 
 - [x] Choose Supabase as the backend.
 - [x] Add sign-in without blocking signed-out use.
-- [ ] Add a cloud workspace record list.
-- [ ] Save the current workbench to the cloud.
-- [ ] Load cloud records into the workbench.
+- [x] Add a cloud workspace record list.
+- [x] Save the current workbench to the cloud.
+- [x] Load cloud records into the workbench.
 - [ ] Show sync state: signed out, local changes, syncing, synced, and sync failed.
 - [ ] Handle conflicts by overwriting cloud or saving as a copy.
 

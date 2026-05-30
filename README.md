@@ -121,6 +121,8 @@ Release backlog: [docs/release-backlog.md](docs/release-backlog.md).
 
 Cloud records and cross-device sync planning: [docs/cloud-sync-plan.md](docs/cloud-sync-plan.md).
 
+Supabase table setup for cloud records: [docs/supabase-schema.sql](docs/supabase-schema.sql).
+
 v0.2 release notes: [docs/releases/v0.2.0.md](docs/releases/v0.2.0.md). QA report: [docs/v0.2-qa-report.md](docs/v0.2-qa-report.md).
 
 ## Contributing
@@ -144,7 +146,7 @@ Near-term priorities:
 - Released in v0.2: series, parallel, and LED circuit examples
 - Released in v0.2: export the current workbench as an image
 - Released in v0.2: PWA installability, offline relaunch, update prompt, and JSON workspace archives
-- In progress for v0.3: Supabase-backed sign-in entry and cloud sync groundwork
+- In progress for v0.3: Supabase-backed sign-in and explicit cloud save/load/delete records
 
 ## License
 

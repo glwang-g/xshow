@@ -20,6 +20,17 @@ If the required secrets are missing, the workflow still builds the app and skips
 
 Use a dedicated `DEPLOY_PATH`; deployment mirrors `dist/` with `rsync --delete`.
 
+## GitHub Variables For Cloud Records
+
+Add these repository variables or secrets in **Settings -> Secrets and variables -> Actions** if you want the deployed site to enable Supabase cloud records:
+
+| Name | Required | Example | Notes |
+| --- | --- | --- | --- |
+| `VITE_SUPABASE_URL` | No | `https://project-ref.supabase.co` | Supabase Data API URL. |
+| `VITE_SUPABASE_ANON_KEY` | No | `eyJ...` | Supabase `anon public` key. Do not use the `service_role` key. |
+
+These values are intentionally injected at build time because Vite embeds `VITE_` variables into the static bundle. If they are missing, the deployed app still works locally and shows cloud sync as not configured.
+
 ## Server Setup
 
 Create a deployment user and target directory on the cloud server:

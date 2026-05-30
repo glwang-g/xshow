@@ -146,7 +146,7 @@ Near-term priorities:
 - Released in v0.2: series, parallel, and LED circuit examples
 - Released in v0.2: export the current workbench as an image
 - Released in v0.2: PWA installability, offline relaunch, update prompt, and JSON workspace archives
-- In progress for v0.3: Supabase-backed sign-in and explicit cloud save/load/delete records
+- In progress for v0.3: Supabase-backed sign-in, cloud records, renaming, and sync states
 
 ## License
 

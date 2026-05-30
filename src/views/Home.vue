@@ -23,6 +23,7 @@ import {
   LocateFixed,
   Mail,
   PackagePlus,
+  Pencil,
   Plus,
   RotateCcw,
   Save,
@@ -46,6 +47,7 @@ import {
   getCloudUser,
   listCloudWorkspaceRecords,
   onCloudAuthStateChange,
+  renameCloudWorkspaceRecord,
   saveCloudWorkspaceRecord,
   signInWithEmail,
   signOutCloud,
@@ -121,6 +123,8 @@ type SavedWorkspaceRecord = PersistedWorkspace & {
 };
 
 type CloudRecord = CloudWorkspaceRecord<PersistedWorkspace>;
+type CloudSyncState = "configured" | "failed" | "local-changes" | "signed-in" | "synced" | "syncing" | "unconfigured";
+type CloudSyncStatus = "failed" | "idle" | "local-changes" | "synced" | "syncing";
 
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
@@ -144,7 +148,11 @@ const cloudRecords = ref<CloudRecord[]>([]);
 const cloudRecordsBusy = ref(false);
 const cloudRecordsError = ref("");
 const cloudRecordsMessage = ref("");
+const cloudSyncStatus = ref<CloudSyncStatus>("idle");
+const cloudActiveRecordId = ref<string | null>(null);
+const cloudLastSyncedAt = ref<string | null>(null);
 const cloudUserEmail = ref<string | null>(null);
+const suppressCloudDirtyMark = ref(false);
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
@@ -299,26 +307,93 @@ const mainBulbBrightness = computed(() =>
 const ledWarnings = computed(() =>
   Object.values(simulation.value.leds).filter((state) => state.overCurrent || state.reversed),
 );
-const cloudSyncState = computed<"configured" | "signed-in" | "unconfigured">(() => {
+const cloudSyncState = computed<CloudSyncState>(() => {
   if (!cloudConfig.configured) {
     return "unconfigured";
   }
 
-  return cloudUserEmail.value ? "signed-in" : "configured";
+  if (!cloudUserEmail.value) {
+    return "configured";
+  }
+
+  if (cloudSyncStatus.value !== "idle") {
+    return cloudSyncStatus.value;
+  }
+
+  return "signed-in";
 });
 const cloudSyncLabel = computed(() => {
   if (cloudSyncState.value === "unconfigured") {
     return "未配置";
   }
 
-  return cloudSyncState.value === "signed-in" ? "已登录" : "未登录";
+  if (cloudSyncState.value === "configured") {
+    return "未登录";
+  }
+
+  if (cloudSyncState.value === "local-changes") {
+    return "本地修改";
+  }
+
+  if (cloudSyncState.value === "syncing") {
+    return "同步中";
+  }
+
+  if (cloudSyncState.value === "synced") {
+    return "已同步";
+  }
+
+  if (cloudSyncState.value === "failed") {
+    return "同步失败";
+  }
+
+  return "已登录";
 });
 const cloudSyncDescription = computed(() => {
   if (cloudSyncState.value === "unconfigured") {
     return "配置 Supabase 后可开启云端记录，本地玩法不受影响。";
   }
 
-  return cloudUserEmail.value ? "可以保存到云端记录，并在其他设备登录后继续。" : "输入邮箱获取 magic link。";
+  if (cloudSyncState.value === "configured") {
+    return "输入邮箱获取 magic link。";
+  }
+
+  if (cloudSyncState.value === "local-changes") {
+    return "当前工作台已有本地修改，保存到云端后可在其他设备继续。";
+  }
+
+  if (cloudSyncState.value === "syncing") {
+    return "正在和云端记录同步。";
+  }
+
+  if (cloudSyncState.value === "synced") {
+    return cloudLastSyncedAt.value ? `最近同步：${formatSavedTime(cloudLastSyncedAt.value)}` : "当前工作台已保存到云端。";
+  }
+
+  if (cloudSyncState.value === "failed") {
+    return "刚才的云端操作失败了，本地工作台仍会自动保存。";
+  }
+
+  return "可以保存到云端记录，并在其他设备登录后继续。";
+});
+const cloudSyncBadgeClass = computed(() => {
+  if (cloudSyncState.value === "synced") {
+    return "bg-emerald-100 text-emerald-800";
+  }
+
+  if (cloudSyncState.value === "local-changes" || cloudSyncState.value === "syncing") {
+    return "bg-amber-100 text-amber-900";
+  }
+
+  if (cloudSyncState.value === "signed-in") {
+    return "bg-cyan-100 text-cyan-800";
+  }
+
+  if (cloudSyncState.value === "failed") {
+    return "bg-rose-100 text-rose-800";
+  }
+
+  return cloudSyncState.value === "configured" ? "bg-cyan-100 text-cyan-800" : "bg-muted text-muted-foreground";
 });
 const currentAnimationDuration = computed(() => {
   if (!simulation.value.closed || simulation.value.currentMilliAmps <= 0) {
@@ -1772,10 +1847,21 @@ function saveWorkspaceToStorage() {
   lastSavedAt.value = workspace.savedAt;
 }
 
+function markCloudWorkspaceChanged() {
+  if (!cloudUserEmail.value || suppressCloudDirtyMark.value || cloudSyncStatus.value === "syncing") {
+    return;
+  }
+
+  cloudSyncStatus.value = "local-changes";
+  cloudRecordsMessage.value = "";
+}
+
 function scheduleWorkspaceSave() {
   if (typeof window === "undefined") {
     return;
   }
+
+  markCloudWorkspaceChanged();
 
   if (autosaveTimer) {
     window.clearTimeout(autosaveTimer);
@@ -1930,6 +2016,11 @@ async function refreshCloudUser() {
     cloudUserEmail.value = user?.email ?? null;
     if (user) {
       void loadCloudRecords();
+    } else {
+      cloudRecords.value = [];
+      cloudActiveRecordId.value = null;
+      cloudLastSyncedAt.value = null;
+      cloudSyncStatus.value = "idle";
     }
   } catch (error) {
     cloudAuthError.value = error instanceof Error ? error.message : "读取登录状态失败。";
@@ -1974,6 +2065,7 @@ async function loadCloudRecords() {
   try {
     cloudRecords.value = await listCloudWorkspaceRecords<PersistedWorkspace>();
   } catch (error) {
+    cloudSyncStatus.value = "failed";
     cloudRecordsError.value = error instanceof Error ? error.message : "读取云端记录失败。";
   } finally {
     cloudRecordsBusy.value = false;
@@ -1989,6 +2081,7 @@ async function saveWorkspaceToCloud() {
   cloudRecordsBusy.value = true;
   cloudRecordsError.value = "";
   cloudRecordsMessage.value = "";
+  cloudSyncStatus.value = "syncing";
 
   try {
     const snapshot = workspaceSnapshot();
@@ -1998,9 +2091,13 @@ async function saveWorkspaceToCloud() {
     );
     const record = await saveCloudWorkspaceRecord(title, snapshot);
     cloudRecords.value = [record, ...cloudRecords.value.filter((item) => item.id !== record.id)].slice(0, 20);
+    cloudActiveRecordId.value = record.id;
+    cloudLastSyncedAt.value = record.updated_at;
     cloudRecordTitle.value = "";
+    cloudSyncStatus.value = "synced";
     cloudRecordsMessage.value = "已保存到云端。";
   } catch (error) {
+    cloudSyncStatus.value = "failed";
     cloudRecordsError.value = error instanceof Error ? error.message : "保存云端记录失败。";
   } finally {
     cloudRecordsBusy.value = false;
@@ -2009,27 +2106,79 @@ async function saveWorkspaceToCloud() {
 
 function loadCloudRecord(record: CloudRecord) {
   cloudRecordsError.value = "";
+  cloudRecordsMessage.value = "";
 
   if (!isPersistedWorkspace(record.workspace)) {
+    cloudSyncStatus.value = "failed";
     cloudRecordsError.value = "这条云端记录不是有效的工作台存档。";
     return;
   }
 
+  suppressCloudDirtyMark.value = true;
   loadWorkspaceSnapshot(record.workspace);
   saveWorkspaceToStorage();
+  cloudActiveRecordId.value = record.id;
+  cloudLastSyncedAt.value = record.updated_at;
   cloudRecordsMessage.value = `已加载 ${record.title}`;
+  void nextTick(() => {
+    suppressCloudDirtyMark.value = false;
+    cloudSyncStatus.value = "synced";
+  });
+}
+
+async function renameCloudRecord(record: CloudRecord) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const nextTitle = window.prompt("新的云端记录名称：", record.title)?.trim().slice(0, 120);
+  if (!nextTitle || nextTitle === record.title) {
+    return;
+  }
+
+  const previousStatus = cloudSyncStatus.value;
+  cloudRecordsBusy.value = true;
+  cloudRecordsError.value = "";
+  cloudRecordsMessage.value = "";
+  cloudSyncStatus.value = "syncing";
+
+  try {
+    const updatedRecord = await renameCloudWorkspaceRecord<PersistedWorkspace>(record.id, nextTitle);
+    cloudRecords.value = cloudRecords.value.map((item) => (item.id === updatedRecord.id ? updatedRecord : item));
+    if (cloudActiveRecordId.value === updatedRecord.id) {
+      cloudLastSyncedAt.value = updatedRecord.updated_at;
+      cloudSyncStatus.value = "synced";
+    } else {
+      cloudSyncStatus.value = previousStatus === "syncing" ? "idle" : previousStatus;
+    }
+    cloudRecordsMessage.value = "云端记录已重命名。";
+  } catch (error) {
+    cloudSyncStatus.value = "failed";
+    cloudRecordsError.value = error instanceof Error ? error.message : "重命名云端记录失败。";
+  } finally {
+    cloudRecordsBusy.value = false;
+  }
 }
 
 async function removeCloudRecord(recordId: string) {
   cloudRecordsBusy.value = true;
   cloudRecordsError.value = "";
   cloudRecordsMessage.value = "";
+  cloudSyncStatus.value = "syncing";
 
   try {
     await deleteCloudWorkspaceRecord(recordId);
     cloudRecords.value = cloudRecords.value.filter((record) => record.id !== recordId);
+    if (cloudActiveRecordId.value === recordId) {
+      cloudActiveRecordId.value = null;
+      cloudLastSyncedAt.value = null;
+      cloudSyncStatus.value = "local-changes";
+    } else {
+      cloudSyncStatus.value = "idle";
+    }
     cloudRecordsMessage.value = "云端记录已删除。";
   } catch (error) {
+    cloudSyncStatus.value = "failed";
     cloudRecordsError.value = error instanceof Error ? error.message : "删除云端记录失败。";
   } finally {
     cloudRecordsBusy.value = false;
@@ -2045,6 +2194,9 @@ async function handleCloudSignOut() {
     await signOutCloud();
     cloudUserEmail.value = null;
     cloudRecords.value = [];
+    cloudActiveRecordId.value = null;
+    cloudLastSyncedAt.value = null;
+    cloudSyncStatus.value = "idle";
     cloudAuthMessage.value = "已退出云端同步。";
   } catch (error) {
     cloudAuthError.value = error instanceof Error ? error.message : "退出登录失败。";
@@ -2342,6 +2494,9 @@ onMounted(() => {
       void loadCloudRecords();
     } else {
       cloudRecords.value = [];
+      cloudActiveRecordId.value = null;
+      cloudLastSyncedAt.value = null;
+      cloudSyncStatus.value = "idle";
     }
   });
   fitMobileWorkbenchAfterRender();
@@ -3045,21 +3200,19 @@ onBeforeUnmount(() => {
           <section class="rounded-md border bg-background p-3">
             <div class="mb-3 flex items-center justify-between gap-3">
               <div class="flex min-w-0 items-center gap-2">
-                <CloudOff v-if="cloudSyncState === 'unconfigured'" class="h-4 w-4 shrink-0 text-muted-foreground" />
-                <CloudCheck v-else-if="cloudSyncState === 'signed-in'" class="h-4 w-4 shrink-0 text-emerald-700" />
-                <CloudSync v-else class="h-4 w-4 shrink-0 text-cyan-700" />
+                <CloudOff
+                  v-if="cloudSyncState === 'unconfigured' || cloudSyncState === 'configured'"
+                  class="h-4 w-4 shrink-0 text-muted-foreground"
+                />
+                <TriangleAlert v-else-if="cloudSyncState === 'failed'" class="h-4 w-4 shrink-0 text-rose-700" />
+                <CloudSync
+                  v-else-if="cloudSyncState === 'local-changes' || cloudSyncState === 'syncing'"
+                  class="h-4 w-4 shrink-0 text-amber-700"
+                />
+                <CloudCheck v-else class="h-4 w-4 shrink-0 text-emerald-700" />
                 <span class="text-sm font-medium">云端同步</span>
               </div>
-              <span
-                class="rounded-md px-2 py-1 text-xs font-medium"
-                :class="
-                  cloudSyncState === 'signed-in'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : cloudSyncState === 'configured'
-                      ? 'bg-cyan-100 text-cyan-800'
-                      : 'bg-muted text-muted-foreground'
-                "
-              >
+              <span class="rounded-md px-2 py-1 text-xs font-medium" :class="cloudSyncBadgeClass">
                 {{ cloudSyncLabel }}
               </span>
             </div>
@@ -3114,6 +3267,15 @@ onBeforeUnmount(() => {
                       @click="loadCloudRecord(record)"
                     >
                       <FolderOpen class="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="重命名云端记录"
+                      :disabled="cloudRecordsBusy"
+                      @click="renameCloudRecord(record)"
+                    >
+                      <Pencil class="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"

@@ -46,13 +46,13 @@ Reference: [Cloud Sync Plan](cloud-sync-plan.md). Supabase table setup lives in 
 - [x] Add a cloud workspace record list.
 - [x] Save the current workbench to the cloud.
 - [x] Load cloud records into the workbench.
-- [ ] Show sync state: signed out, local changes, syncing, synced, and sync failed.
+- [x] Show sync state: signed out, local changes, syncing, synced, and sync failed.
 - [ ] Handle conflicts by overwriting cloud or saving as a copy.
 
 ### Nice To Have
 
 - [ ] Let users copy a shared workspace into their own records.
-- [ ] Rename and delete cloud records.
+- [x] Rename and delete cloud records.
 - [ ] After first sign-in, ask whether to upload the current local workbench.
 
 ## v0.4: More Components And Better Rules

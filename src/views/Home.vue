@@ -10,6 +10,7 @@ import {
   CloudCheck,
   CloudOff,
   CloudSync,
+  CloudUpload,
   Download,
   FileDown,
   FileUp,
@@ -39,7 +40,17 @@ import {
   ZoomOut,
 } from "@lucide/vue";
 import Button from "@/components/ui/Button.vue";
-import { cloudConfig, getCloudUser, onCloudAuthStateChange, signInWithEmail, signOutCloud } from "@/lib/cloud";
+import {
+  cloudConfig,
+  deleteCloudWorkspaceRecord,
+  getCloudUser,
+  listCloudWorkspaceRecords,
+  onCloudAuthStateChange,
+  saveCloudWorkspaceRecord,
+  signInWithEmail,
+  signOutCloud,
+  type CloudWorkspaceRecord,
+} from "@/lib/cloud";
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
@@ -109,6 +120,8 @@ type SavedWorkspaceRecord = PersistedWorkspace & {
   title: string;
 };
 
+type CloudRecord = CloudWorkspaceRecord<PersistedWorkspace>;
+
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
 const workspaceShareParam = "workspace";
@@ -126,6 +139,11 @@ const cloudAuthBusy = ref(false);
 const cloudAuthError = ref("");
 const cloudAuthMessage = ref("");
 const cloudEmail = ref("");
+const cloudRecordTitle = ref("");
+const cloudRecords = ref<CloudRecord[]>([]);
+const cloudRecordsBusy = ref(false);
+const cloudRecordsError = ref("");
+const cloudRecordsMessage = ref("");
 const cloudUserEmail = ref<string | null>(null);
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
@@ -300,7 +318,7 @@ const cloudSyncDescription = computed(() => {
     return "配置 Supabase 后可开启云端记录，本地玩法不受影响。";
   }
 
-  return cloudUserEmail.value ? cloudUserEmail.value : "输入邮箱获取 magic link。";
+  return cloudUserEmail.value ? "可以保存到云端记录，并在其他设备登录后继续。" : "输入邮箱获取 magic link。";
 });
 const currentAnimationDuration = computed(() => {
   if (!simulation.value.closed || simulation.value.currentMilliAmps <= 0) {
@@ -1910,6 +1928,9 @@ async function refreshCloudUser() {
   try {
     const user = await getCloudUser();
     cloudUserEmail.value = user?.email ?? null;
+    if (user) {
+      void loadCloudRecords();
+    }
   } catch (error) {
     cloudAuthError.value = error instanceof Error ? error.message : "读取登录状态失败。";
   }
@@ -1941,6 +1962,80 @@ async function requestCloudSignIn() {
   }
 }
 
+async function loadCloudRecords() {
+  if (!cloudConfig.configured || !cloudUserEmail.value) {
+    cloudRecords.value = [];
+    return;
+  }
+
+  cloudRecordsBusy.value = true;
+  cloudRecordsError.value = "";
+
+  try {
+    cloudRecords.value = await listCloudWorkspaceRecords<PersistedWorkspace>();
+  } catch (error) {
+    cloudRecordsError.value = error instanceof Error ? error.message : "读取云端记录失败。";
+  } finally {
+    cloudRecordsBusy.value = false;
+  }
+}
+
+async function saveWorkspaceToCloud() {
+  if (!cloudUserEmail.value) {
+    cloudRecordsError.value = "请先登录云端同步。";
+    return;
+  }
+
+  cloudRecordsBusy.value = true;
+  cloudRecordsError.value = "";
+  cloudRecordsMessage.value = "";
+
+  try {
+    const snapshot = workspaceSnapshot();
+    const title = (cloudRecordTitle.value.trim() || recordTitle.value.trim() || `云端记录 ${formatSavedTime(snapshot.savedAt)}`).slice(
+      0,
+      120,
+    );
+    const record = await saveCloudWorkspaceRecord(title, snapshot);
+    cloudRecords.value = [record, ...cloudRecords.value.filter((item) => item.id !== record.id)].slice(0, 20);
+    cloudRecordTitle.value = "";
+    cloudRecordsMessage.value = "已保存到云端。";
+  } catch (error) {
+    cloudRecordsError.value = error instanceof Error ? error.message : "保存云端记录失败。";
+  } finally {
+    cloudRecordsBusy.value = false;
+  }
+}
+
+function loadCloudRecord(record: CloudRecord) {
+  cloudRecordsError.value = "";
+
+  if (!isPersistedWorkspace(record.workspace)) {
+    cloudRecordsError.value = "这条云端记录不是有效的工作台存档。";
+    return;
+  }
+
+  loadWorkspaceSnapshot(record.workspace);
+  saveWorkspaceToStorage();
+  cloudRecordsMessage.value = `已加载 ${record.title}`;
+}
+
+async function removeCloudRecord(recordId: string) {
+  cloudRecordsBusy.value = true;
+  cloudRecordsError.value = "";
+  cloudRecordsMessage.value = "";
+
+  try {
+    await deleteCloudWorkspaceRecord(recordId);
+    cloudRecords.value = cloudRecords.value.filter((record) => record.id !== recordId);
+    cloudRecordsMessage.value = "云端记录已删除。";
+  } catch (error) {
+    cloudRecordsError.value = error instanceof Error ? error.message : "删除云端记录失败。";
+  } finally {
+    cloudRecordsBusy.value = false;
+  }
+}
+
 async function handleCloudSignOut() {
   cloudAuthError.value = "";
   cloudAuthMessage.value = "";
@@ -1949,6 +2044,7 @@ async function handleCloudSignOut() {
   try {
     await signOutCloud();
     cloudUserEmail.value = null;
+    cloudRecords.value = [];
     cloudAuthMessage.value = "已退出云端同步。";
   } catch (error) {
     cloudAuthError.value = error instanceof Error ? error.message : "退出登录失败。";
@@ -2242,6 +2338,11 @@ onMounted(() => {
   void refreshCloudUser();
   cloudAuthUnsubscribe = onCloudAuthStateChange((user) => {
     cloudUserEmail.value = user?.email ?? null;
+    if (user) {
+      void loadCloudRecords();
+    } else {
+      cloudRecords.value = [];
+    }
   });
   fitMobileWorkbenchAfterRender();
   window.addEventListener("resize", handleMobileViewportChange);
@@ -2976,6 +3077,59 @@ onBeforeUnmount(() => {
                 <div class="text-muted-foreground">当前账号</div>
                 <div class="truncate font-medium">{{ cloudUserEmail }}</div>
               </div>
+              <div class="space-y-2">
+                <input
+                  v-model="cloudRecordTitle"
+                  class="h-9 w-full rounded-md border bg-card px-3 text-sm"
+                  placeholder="云端记录名称"
+                  type="text"
+                />
+                <div class="grid grid-cols-2 gap-2">
+                  <Button size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud">
+                    <CloudUpload class="h-4 w-4" />
+                    {{ cloudRecordsBusy ? "处理中" : "保存云端" }}
+                  </Button>
+                  <Button variant="outline" size="sm" :disabled="cloudRecordsBusy" @click="loadCloudRecords">
+                    <RotateCcw class="h-4 w-4" />
+                    刷新
+                  </Button>
+                </div>
+              </div>
+              <div v-if="cloudRecords.length" class="space-y-2">
+                <div
+                  v-for="record in cloudRecords"
+                  :key="record.id"
+                  class="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-xs"
+                >
+                  <div class="min-w-0">
+                    <div class="truncate font-medium">{{ record.title }}</div>
+                    <div class="text-xs text-muted-foreground">{{ formatSavedTime(record.updated_at) }}</div>
+                  </div>
+                  <div class="flex shrink-0 items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="加载云端记录"
+                      :disabled="cloudRecordsBusy"
+                      @click="loadCloudRecord(record)"
+                    >
+                      <FolderOpen class="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      title="删除云端记录"
+                      :disabled="cloudRecordsBusy"
+                      @click="removeCloudRecord(record.id)"
+                    >
+                      <Trash2 class="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="rounded-md border border-dashed px-3 py-3 text-xs text-muted-foreground">
+                暂无云端记录
+              </div>
               <Button class="w-full" variant="outline" size="sm" :disabled="cloudAuthBusy" @click="handleCloudSignOut">
                 <LogOut class="h-4 w-4" />
                 退出云端同步
@@ -2999,6 +3153,12 @@ onBeforeUnmount(() => {
             </div>
             <div v-if="cloudAuthError" class="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-950">
               {{ cloudAuthError }}
+            </div>
+            <div v-if="cloudRecordsMessage" class="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950">
+              {{ cloudRecordsMessage }}
+            </div>
+            <div v-if="cloudRecordsError" class="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-950">
+              {{ cloudRecordsError }}
             </div>
           </section>
 

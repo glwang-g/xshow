@@ -16,7 +16,7 @@ Current focus: **v0.3 cloud records and cross-device continuation**.
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
-| Workspace records | v0.3 starting | The browser automatically restores local workspaces; v0.3 adds a Supabase-backed sign-in entry as the first cloud sync slice. |
+| Workspace records | v0.3 in progress | The browser automatically restores local workspaces; v0.3 adds Supabase sign-in and explicit cloud save/load/delete records. |
 | Mobile responsive experience | Released in v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |
@@ -88,7 +88,7 @@ Status: **In progress for v0.2**
 
 ### Workspace records
 
-Status: **In progress for v0.2**
+Status: **In progress for v0.3**
 
 - [x] Automatically save and restore the current workspace in the same browser
 - [x] Save named local records for intermediate experiment states
@@ -98,7 +98,8 @@ Status: **In progress for v0.2**
 - [x] Share the current workbench state by URL
 - [x] Add a cloud records and cross-device sync plan
 - [x] Choose Supabase and add a non-blocking sign-in entry
-- [ ] Add cloud-backed records after user accounts or a backend are introduced
+- [x] Add explicit cloud-backed save, list, load, and delete records
+- [ ] Add rename, sync states, and conflict handling for cloud records
 
 ### PWA and offline experience
 

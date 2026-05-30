@@ -40,6 +40,10 @@ export async function getCloudUser(): Promise<User | null> {
 
   const { data, error } = await supabase.auth.getUser();
   if (error) {
+    if (error.message.toLowerCase().includes("auth session missing")) {
+      return null;
+    }
+
     throw error;
   }
 

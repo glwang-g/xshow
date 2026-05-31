@@ -144,6 +144,7 @@ type CloudSyncStatus = "failed" | "idle" | "local-changes" | "synced" | "syncing
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
 const cloudUploadSuggestionKeyPrefix = "xshow.cloud.upload-suggestion.v1";
+const maxEditorHistoryEntries = 40;
 const workspaceShareParam = "workspace";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
 const board = useBoardStore();
@@ -154,6 +155,8 @@ const activeLessonId = ref(lessonCatalog[0].id);
 const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
+const undoStack = ref<PersistedWorkspace[]>([]);
+const redoStack = ref<PersistedWorkspace[]>([]);
 const shareLinkState = ref<"copied" | "idle" | "manual">("idle");
 const cloudAuthBusy = ref(false);
 const cloudAuthError = ref("");
@@ -671,6 +674,23 @@ function clearInteractionState() {
   newWireDrag.value = null;
   suppressNextTerminalClick.value = false;
   dragging.value = null;
+}
+
+function clearSelection() {
+  clearInteractionState();
+  selectedPartId.value = "";
+}
+
+function hasTransientInteraction() {
+  return Boolean(
+    dragging.value ||
+      endpointDrag.value ||
+      newWireDrag.value ||
+      rewiring.value ||
+      selectedTerminal.value ||
+      hoveredEndpoint.value ||
+      hoveredWireId.value,
+  );
 }
 
 function getSpec(part: CircuitPart | PartType) {
@@ -1443,9 +1463,9 @@ function handleWorkbenchPointerMove(event: PointerEvent) {
   }
 
   const point = boardPoint(event);
-  const spec = getSpec(part);
-  part.x = Math.round(Math.min(workbench.width - spec.width - 16, Math.max(16, point.x - dragging.value.offsetX)));
-  part.y = Math.round(Math.min(workbench.height - spec.height - 16, Math.max(16, point.y - dragging.value.offsetY)));
+  const position = clampPartPosition(part, point.x - dragging.value.offsetX, point.y - dragging.value.offsetY);
+  part.x = position.x;
+  part.y = position.y;
 }
 
 function endDrag() {
@@ -1572,6 +1592,7 @@ function finishRewire(target: TerminalRef) {
   });
 
   if (!hasSameWire) {
+    pushEditorHistory();
     wire[current.end] = target;
   }
 
@@ -1598,6 +1619,7 @@ function addWireBetween(from: TerminalRef, to: TerminalRef) {
     return null;
   }
 
+  pushEditorHistory();
   const wire = {
     id: `wire-${Date.now()}`,
     from,
@@ -1749,9 +1771,18 @@ function isLessonPartTarget(part: CircuitPart) {
   );
 }
 
+function clampPartPosition(part: CircuitPart, x: number, y: number) {
+  const spec = getSpec(part);
+  return {
+    x: Math.round(Math.min(workbench.width - spec.width - 16, Math.max(16, x))),
+    y: Math.round(Math.min(workbench.height - spec.height - 16, Math.max(16, y))),
+  };
+}
+
 function addPart(type: PartType) {
   const index = parts.value.filter((part) => part.type === type).length + 1;
   const spec = getSpec(type);
+  pushEditorHistory();
   const nextPart: CircuitPart = {
     id: `${type}-${Date.now()}`,
     name: `${spec.label} ${index}`,
@@ -1774,12 +1805,34 @@ function addPart(type: PartType) {
   palettePanelOpen.value = false;
 }
 
+function duplicateSelectedPart() {
+  const selected = selectedPart.value;
+  if (!selected) {
+    return;
+  }
+
+  pushEditorHistory();
+  const index = parts.value.filter((part) => part.type === selected.type).length + 1;
+  const position = clampPartPosition(selected, selected.x + 36, selected.y + 36);
+  const nextPart: CircuitPart = {
+    ...selected,
+    id: `${selected.type}-${Date.now()}`,
+    name: `${getSpec(selected).label} ${index}`,
+    x: position.x,
+    y: position.y,
+  };
+  parts.value.push(nextPart);
+  clearInteractionState();
+  selectedPartId.value = nextPart.id;
+}
+
 function removeSelectedPart() {
   const selected = selectedPart.value;
   if (!selected || parts.value.length <= 1) {
     return;
   }
 
+  pushEditorHistory();
   parts.value = parts.value.filter((part) => part.id !== selected.id);
   wires.value = wires.value.filter(
     (wire) => wire.from.partId !== selected.id && wire.to.partId !== selected.id,
@@ -1789,6 +1842,11 @@ function removeSelectedPart() {
 }
 
 function removeWire(wireId: string) {
+  if (!wires.value.some((wire) => wire.id === wireId)) {
+    return;
+  }
+
+  pushEditorHistory();
   wires.value = wires.value.filter((wire) => wire.id !== wireId);
   if (selectedWireId.value === wireId) {
     selectedWireId.value = null;
@@ -1812,8 +1870,149 @@ function removeWire(wireId: string) {
 }
 
 function clearWires() {
+  if (wires.value.length === 0) {
+    return;
+  }
+
+  pushEditorHistory();
   wires.value = [];
   clearInteractionState();
+}
+
+function deleteSelectedWorkbenchItem() {
+  if (selectedWire.value) {
+    removeWire(selectedWire.value.id);
+    return;
+  }
+
+  if (selectedPart.value) {
+    removeSelectedPart();
+  }
+}
+
+function nudgeSelectedPart(deltaX: number, deltaY: number, shouldRecordHistory = true) {
+  const selected = selectedPart.value;
+  if (!selected) {
+    return;
+  }
+
+  if (shouldRecordHistory) {
+    pushEditorHistory();
+  }
+
+  const position = clampPartPosition(selected, selected.x + deltaX, selected.y + deltaY);
+  selected.x = position.x;
+  selected.y = position.y;
+  selectedWireId.value = null;
+}
+
+function cancelWorkbenchInteraction() {
+  if (lessonCompletePanelOpen.value || palettePanelOpen.value || statusPanelOpen.value) {
+    lessonCompletePanelOpen.value = false;
+    palettePanelOpen.value = false;
+    statusPanelOpen.value = false;
+    return;
+  }
+
+  if (hasTransientInteraction()) {
+    clearInteractionState();
+    return;
+  }
+
+  clearSelection();
+}
+
+function isKeyboardShortcutBlocked(target: EventTarget | null) {
+  return target instanceof HTMLElement
+    ? Boolean(target.closest("input, textarea, select, button, [contenteditable='true']"))
+    : false;
+}
+
+function setWorkbenchZoom(value: number) {
+  pushEditorHistory();
+  board.setZoom(value);
+}
+
+function handleWorkbenchKeydown(event: KeyboardEvent) {
+  if (isKeyboardShortcutBlocked(event.target)) {
+    return;
+  }
+
+  const key = event.key;
+  const keyLower = key.toLowerCase();
+  const commandKey = event.metaKey || event.ctrlKey;
+
+  if (commandKey && keyLower === "z") {
+    event.preventDefault();
+    if (event.shiftKey) {
+      redoWorkspaceChange();
+    } else {
+      undoWorkspaceChange();
+    }
+    return;
+  }
+
+  if (commandKey && keyLower === "y") {
+    event.preventDefault();
+    redoWorkspaceChange();
+    return;
+  }
+
+  if (commandKey && keyLower === "d") {
+    event.preventDefault();
+    duplicateSelectedPart();
+    return;
+  }
+
+  if (key === "Delete" || key === "Backspace") {
+    event.preventDefault();
+    deleteSelectedWorkbenchItem();
+    return;
+  }
+
+  if (key === "Escape") {
+    event.preventDefault();
+    cancelWorkbenchInteraction();
+    return;
+  }
+
+  const nudgeDistance = event.shiftKey ? 16 : 4;
+  const nudgeMap: Partial<Record<string, [number, number]>> = {
+    ArrowDown: [0, nudgeDistance],
+    ArrowLeft: [-nudgeDistance, 0],
+    ArrowRight: [nudgeDistance, 0],
+    ArrowUp: [0, -nudgeDistance],
+  };
+  const nudge = nudgeMap[key];
+  if (nudge) {
+    event.preventDefault();
+    nudgeSelectedPart(nudge[0], nudge[1], !event.repeat);
+    return;
+  }
+
+  if ((key === "Enter" || key === " ") && selectedPart.value?.type === "switch") {
+    event.preventDefault();
+    toggleSwitch(selectedPart.value);
+    return;
+  }
+
+  if (key === "+" || key === "=") {
+    event.preventDefault();
+    setWorkbenchZoom(board.zoom + 5);
+    return;
+  }
+
+  if (key === "-" || key === "_") {
+    event.preventDefault();
+    setWorkbenchZoom(board.zoom - 5);
+    return;
+  }
+
+  if (key === "0") {
+    event.preventDefault();
+    pushEditorHistory();
+    resetMobileView();
+  }
 }
 
 function loadWorkspace(workspace: LessonWorkspace) {
@@ -1843,6 +2042,55 @@ function workspaceSnapshot(savedAt = new Date().toISOString()): PersistedWorkspa
     })),
     zoom: board.zoom,
   };
+}
+
+function workspaceHistoryKey(workspace: PersistedWorkspace) {
+  return JSON.stringify({
+    activeLessonId: workspace.activeLessonId,
+    parts: workspace.parts,
+    selectedPartId: workspace.selectedPartId,
+    wires: workspace.wires,
+    zoom: workspace.zoom,
+  });
+}
+
+function pushEditorHistory() {
+  const snapshot = workspaceSnapshot();
+  const previous = undoStack.value[undoStack.value.length - 1];
+
+  if (previous && workspaceHistoryKey(previous) === workspaceHistoryKey(snapshot)) {
+    return;
+  }
+
+  undoStack.value = [...undoStack.value, snapshot].slice(-maxEditorHistoryEntries);
+  redoStack.value = [];
+}
+
+function restoreEditorHistorySnapshot(snapshot: PersistedWorkspace) {
+  loadWorkspaceSnapshot(snapshot);
+  saveWorkspaceToStorage();
+}
+
+function undoWorkspaceChange() {
+  const previous = undoStack.value[undoStack.value.length - 1];
+  if (!previous) {
+    return;
+  }
+
+  undoStack.value = undoStack.value.slice(0, -1);
+  redoStack.value = [...redoStack.value, workspaceSnapshot()].slice(-maxEditorHistoryEntries);
+  restoreEditorHistorySnapshot(previous);
+}
+
+function redoWorkspaceChange() {
+  const next = redoStack.value[redoStack.value.length - 1];
+  if (!next) {
+    return;
+  }
+
+  redoStack.value = redoStack.value.slice(0, -1);
+  undoStack.value = [...undoStack.value, workspaceSnapshot()].slice(-maxEditorHistoryEntries);
+  restoreEditorHistorySnapshot(next);
 }
 
 function isPersistedWorkspace(value: unknown): value is PersistedWorkspace {
@@ -2118,6 +2366,7 @@ async function importWorkspaceJson(event: Event) {
       return;
     }
 
+    pushEditorHistory();
     loadWorkspaceSnapshot(parsed);
     saveWorkspaceToStorage();
     statusPanelOpen.value = false;
@@ -2127,6 +2376,7 @@ async function importWorkspaceJson(event: Event) {
 }
 
 function loadSavedRecord(record: SavedWorkspaceRecord) {
+  pushEditorHistory();
   loadWorkspaceSnapshot(record);
   saveWorkspaceToStorage();
 }
@@ -2295,6 +2545,7 @@ function loadCloudRecord(record: CloudRecord) {
   }
 
   suppressCloudDirtyMark.value = true;
+  pushEditorHistory();
   loadWorkspaceSnapshot(record.workspace);
   saveWorkspaceToStorage();
   cloudActiveRecordId.value = record.id;
@@ -2395,6 +2646,7 @@ async function handleCloudSignOut() {
 
 function loadLessonWorkspace(lessonId = activeLesson.value.id) {
   const lesson = lessonCatalog.find((item) => item.id === lessonId) ?? activeLesson.value;
+  pushEditorHistory();
   activeLessonId.value = lesson.id;
   loadWorkspace(lesson.starterWorkspace);
 }
@@ -2414,6 +2666,7 @@ function loadNextLesson() {
 
 function resetDemo() {
   const demoLesson = lessonCatalog.find((lesson) => lesson.id === "open-the-circuit") ?? lessonCatalog[0];
+  pushEditorHistory();
   loadWorkspace({
     ...demoLesson.starterWorkspace,
     selectedPartId: "bulb-1",
@@ -2421,6 +2674,7 @@ function resetDemo() {
 }
 
 function toggleSwitch(part: CircuitPart) {
+  pushEditorHistory();
   part.closed = !part.closed;
 }
 
@@ -2726,6 +2980,7 @@ onMounted(() => {
     }
   });
   fitMobileWorkbenchAfterRender();
+  window.addEventListener("keydown", handleWorkbenchKeydown);
   window.addEventListener("resize", handleMobileViewportChange);
   window.addEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
   window.visualViewport?.addEventListener("resize", handleMobileViewportChange);
@@ -2735,6 +2990,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cloudAuthUnsubscribe?.();
   cloudAuthUnsubscribe = null;
+  window.removeEventListener("keydown", handleWorkbenchKeydown);
   window.removeEventListener("resize", handleMobileViewportChange);
   window.removeEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
   window.visualViewport?.removeEventListener("resize", handleMobileViewportChange);

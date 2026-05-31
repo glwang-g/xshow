@@ -38,6 +38,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Import or export the current workbench as a JSON archive for cross-device migration
 - Copy a shareable URL that restores the current workbench state
 - Display circuit status, current, equivalent resistance, and brightness
+- Use editor-style shortcuts for delete, cancel, nudge, duplicate, zoom, undo, and redo
 - Export the current workbench as a PNG image
 - Reset to a ready-made demo circuit
 
@@ -110,6 +111,16 @@ pnpm preview
 11. Use **Copy Share Link** to send the current workbench state as a URL.
 12. Use **Clear Wires** to remove connections.
 13. Use **Reset** to restore the default demo circuit.
+
+Keyboard shortcuts:
+
+- `Delete` / `Backspace`: delete the selected component or wire
+- `Esc`: cancel the current wire/drag state, or clear selection
+- Arrow keys: nudge the selected component by 4px, or 16px with `Shift`
+- `Cmd/Ctrl + Z`: undo, `Cmd/Ctrl + Shift + Z` or `Cmd/Ctrl + Y`: redo
+- `Cmd/Ctrl + D`: duplicate the selected component
+- `Enter` / `Space`: toggle a selected switch
+- `+` / `-` / `0`: zoom in, zoom out, and reset the view
 
 ## Deployment
 

@@ -57,11 +57,11 @@ Reference: [Cloud Sync Plan](cloud-sync-plan.md). Supabase table setup lives in 
 
 ## v0.4: More Components And Better Rules
 
-Status: **idea pool**.
+Status: **first slice in progress**.
 
 ### Candidate Components
 
-- [ ] Buzzer
+- [x] Buzzer
 - [ ] Motor
 - [ ] Diode
 - [ ] Capacitor

@@ -6,7 +6,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 
 **Live Demo:** https://labs.freexlib.com
 
-`xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the bulb respond immediately.
+`xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, buzzers, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the circuit respond immediately.
 
 ![xshow circuits screenshot](docs/screenshot.png)
 
@@ -21,6 +21,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Toggle a switch to open or close the circuit
 - Adjust a variable resistor with a slider
 - Simulate bulb brightness from circuit state and resistance
+- Simulate a buzzer that becomes active in a powered closed loop
 - Simulate polarity-sensitive LEDs with reverse-connection and over-current feedback
 - Animate current flow on energized wires
 - Switch between guided lesson experiments with automatic step checks
@@ -49,6 +50,7 @@ The current model focuses on simple closed-loop behavior:
 - A switch can break or complete the circuit
 - A variable resistor changes equivalent resistance
 - A bulb brightness value is derived from the simulated current path
+- A buzzer becomes active when it is connected through the powered circuit
 - An LED only conducts when its polarity is connected in the forward direction
 
 ## Tech Stack
@@ -131,11 +133,12 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep Englis
 
 Near-term priorities:
 
-- Current focus: v0.3 cloud records and cross-device continuation
+- Current focus: v0.4 more components and better simulation rules
 - Done for v0.1: current direction animation
 - Done for v0.1: guided lesson mode first slice
 - Done for v0.1: multiple guided lesson experiments
 - Done for v0.2: polarity-sensitive LED component and guided lesson
+- First slice for v0.4: buzzer component with powered-state feedback
 - Done for v0.1: one-click lesson starter workspaces
 - Done for v0.1: contextual hints for incomplete lesson steps
 - Done for v0.1: workbench highlights for active lesson steps
@@ -146,7 +149,7 @@ Near-term priorities:
 - Released in v0.2: series, parallel, and LED circuit examples
 - Released in v0.2: export the current workbench as an image
 - Released in v0.2: PWA installability, offline relaunch, update prompt, and JSON workspace archives
-- In progress for v0.3: Supabase-backed sign-in, cloud records, renaming, and sync states
+- v0.3 feature complete: Supabase-backed sign-in, cloud records, renaming, conflict handling, and sync states
 
 ## License
 

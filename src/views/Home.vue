@@ -35,6 +35,7 @@ import {
   TriangleAlert,
   Trophy,
   Unplug,
+  Volume2,
   X,
   Zap,
   ZoomIn,
@@ -57,7 +58,7 @@ import {
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
-type PartType = "battery" | "bulb" | "switch" | "resistor" | "led";
+type PartType = "battery" | "bulb" | "switch" | "resistor" | "led" | "buzzer";
 type TerminalKey = "a" | "b";
 
 type TerminalRef = {
@@ -110,6 +111,12 @@ type LedState = {
   forward: boolean;
   overCurrent: boolean;
   reversed: boolean;
+};
+
+type BuzzerState = {
+  active: boolean;
+  volume: number;
+  volumePercent: number;
 };
 
 type PersistedWorkspace = LessonWorkspace & {
@@ -191,7 +198,9 @@ const workbench = {
 };
 const bulbOhms = 18;
 const ledOhms = 28;
+const buzzerOhms = 32;
 const ledSafeCurrentMilliAmps = 65;
+const buzzerLoudCurrentMilliAmps = 160;
 
 const partSpecs: Record<
   PartType,
@@ -253,12 +262,23 @@ const partSpecs: Record<
       b: { x: 156, y: 64, label: "+" },
     },
   },
+  buzzer: {
+    icon: Volume2,
+    label: "蜂鸣器",
+    width: 156,
+    height: 128,
+    terminals: {
+      a: { x: 0, y: 64, label: "A" },
+      b: { x: 156, y: 64, label: "B" },
+    },
+  },
 };
 
 const palette: Array<{ type: PartType; description: string }> = [
   { type: "battery", description: "9V 电源" },
   { type: "switch", description: "控制通断" },
   { type: "bulb", description: "显示亮度" },
+  { type: "buzzer", description: "闭合后响" },
   { type: "resistor", description: "调节电流" },
   { type: "led", description: "有正负极" },
 ];
@@ -313,6 +333,8 @@ const mainBulbBrightness = computed(() =>
 const ledWarnings = computed(() =>
   Object.values(simulation.value.leds).filter((state) => state.overCurrent || state.reversed),
 );
+const hasBuzzerParts = computed(() => parts.value.some((part) => part.type === "buzzer"));
+const activeBuzzerCount = computed(() => Object.values(simulation.value.buzzers).filter((state) => state.active).length);
 const cloudSyncState = computed<CloudSyncState>(() => {
   if (!cloudConfig.configured) {
     return "unconfigured";
@@ -450,6 +472,16 @@ function ledStatus(part: CircuitPart): LedState {
       forward: false,
       overCurrent: false,
       reversed: false,
+    }
+  );
+}
+
+function buzzerStatus(part: CircuitPart): BuzzerState {
+  return (
+    simulation.value.buzzers[part.id] ?? {
+      active: false,
+      volume: 0,
+      volumePercent: 0,
     }
   );
 }
@@ -802,6 +834,10 @@ function partExportColors(part: CircuitPart) {
     return { background: "#fff1f2", foreground: "#881337", muted: "#e11d48" };
   }
 
+  if (part.type === "buzzer") {
+    return { background: "#f0f9ff", foreground: "#0c4a6e", muted: "#0284c7" };
+  }
+
   return { background: "#ffffff", foreground: "#0f172a", muted: part.closed ? "#10b981" : "#f43f5e" };
 }
 
@@ -864,6 +900,19 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart) {
     context.stroke();
     context.fillStyle = colors.foreground;
     context.fillText(state.reversed ? "reversed" : "+ to -", part.x + 18, part.y + 52);
+  } else if (part.type === "buzzer") {
+    const state = buzzerStatus(part);
+    context.fillText(state.active ? `${state.volumePercent}% buzzing` : "silent", part.x + 18, part.y + spec.height - 18);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 4;
+    context.beginPath();
+    context.arc(part.x + spec.width / 2 - 10, part.y + 64, 24, Math.PI * 0.3, Math.PI * 1.7);
+    context.stroke();
+    context.beginPath();
+    context.arc(part.x + spec.width / 2 + 8, part.y + 64, 36, Math.PI * 0.22, Math.PI * 1.78);
+    context.globalAlpha = 0.35 + state.volume * 0.55;
+    context.stroke();
+    context.globalAlpha = 1;
   }
 
   for (const terminal of ["a", "b"] as TerminalKey[]) {
@@ -2432,8 +2481,10 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   const battery = sourceParts.find((part) => part.type === "battery");
   const bulbs = sourceParts.filter((part) => part.type === "bulb");
   const leds = sourceParts.filter((part) => part.type === "led");
+  const buzzers = sourceParts.filter((part) => part.type === "buzzer");
   const bulbStates: Record<string, { brightness: number; brightnessPercent: number }> = {};
   const ledStates: Record<string, LedState> = {};
+  const buzzerStates: Record<string, BuzzerState> = {};
   const wireStates: Record<string, { active: boolean; reverse: boolean }> = {};
 
   if (!battery) {
@@ -2442,6 +2493,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
       currentMilliAmps: 0,
       equivalentResistance: 0,
       bulbs: bulbStates,
+      buzzers: buzzerStates,
       leds: ledStates,
       wires: wireStates,
     };
@@ -2464,10 +2516,11 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   );
   const conductingBulbs = bulbs.filter((part) => closed && partBridgesBattery(part, battery, edges));
   const conductingLeds = leds.filter((part) => closed && conductiveLedIds.has(part.id));
+  const conductingBuzzers = buzzers.filter((part) => closed && partBridgesBattery(part, battery, edges));
   const resistorOhms = seriesResistors.reduce((total, part) => total + (part.resistance ?? 0), 0);
   const loadOhms = Math.max(
     bulbOhms,
-    conductingBulbs.length * bulbOhms + conductingLeds.length * ledOhms,
+    conductingBulbs.length * bulbOhms + conductingLeds.length * ledOhms + conductingBuzzers.length * buzzerOhms,
   );
   const equivalentResistance = closed ? loadOhms + resistorOhms : 0;
   const current = equivalentResistance > 0 ? 9 / equivalentResistance : 0;
@@ -2506,11 +2559,23 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
     };
   }
 
+  for (const buzzer of buzzers) {
+    const conducting = conductingBuzzers.some((part) => part.id === buzzer.id);
+    const volume = conducting ? Math.min(1, Math.max(0.14, currentMilliAmps / buzzerLoudCurrentMilliAmps)) : 0;
+
+    buzzerStates[buzzer.id] = {
+      active: volume > 0,
+      volume,
+      volumePercent: Math.round(volume * 100),
+    };
+  }
+
   return {
     closed,
     currentMilliAmps,
     equivalentResistance,
     bulbs: bulbStates,
+    buzzers: buzzerStates,
     leds: ledStates,
     wires: wireStates,
   };
@@ -2977,6 +3042,7 @@ onBeforeUnmount(() => {
               part.type === 'bulb' ? 'bg-amber-50' : '',
               part.type === 'resistor' ? 'bg-cyan-50' : '',
               part.type === 'led' ? 'bg-rose-50' : '',
+              part.type === 'buzzer' ? 'bg-sky-50' : '',
             ]"
             :style="partStyle(part)"
             @pointerdown="handlePartPointerDown($event, part)"
@@ -3085,6 +3151,30 @@ onBeforeUnmount(() => {
                 <div class="text-sm font-semibold text-rose-950">{{ part.name }}</div>
                 <div class="text-xs text-muted-foreground">
                   {{ ledStatus(part).reversed ? "反接" : `${ledStatus(part).brightnessPercent}%` }}
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="part.type === 'buzzer'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
+              <div
+                class="relative flex h-16 w-16 items-center justify-center rounded-full border border-sky-300 bg-sky-100 transition-all"
+                :style="{
+                  boxShadow:
+                    buzzerStatus(part).active
+                      ? `0 0 ${12 + buzzerStatus(part).volume * 34}px rgba(2, 132, 199, ${0.22 + buzzerStatus(part).volume * 0.36})`
+                      : 'none',
+                }"
+              >
+                <span
+                  v-if="buzzerStatus(part).active"
+                  class="absolute h-16 w-16 animate-ping rounded-full border border-sky-400 opacity-40"
+                />
+                <Volume2 class="h-9 w-9 text-sky-900" />
+              </div>
+              <div class="text-center">
+                <div class="text-sm font-semibold text-sky-950">{{ part.name }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ buzzerStatus(part).active ? `${buzzerStatus(part).volumePercent}% 响` : "静音" }}
                 </div>
               </div>
             </div>
@@ -3485,6 +3575,11 @@ onBeforeUnmount(() => {
               </div>
               <div class="text-xs text-muted-foreground">brightness</div>
             </div>
+            <div v-if="hasBuzzerParts" class="rounded-md border bg-background p-3">
+              <div class="text-xs text-muted-foreground">蜂鸣器</div>
+              <div class="mt-2 text-2xl font-semibold tabular-nums">{{ activeBuzzerCount }}</div>
+              <div class="text-xs text-muted-foreground">active</div>
+            </div>
           </section>
 
           <section class="rounded-md border bg-background p-3">
@@ -3579,6 +3674,18 @@ onBeforeUnmount(() => {
                 <div class="flex items-center justify-between">
                   <span class="text-muted-foreground">亮度</span>
                   <span class="font-medium tabular-nums">{{ ledStatus(selectedPart).brightnessPercent }}%</span>
+                </div>
+              </div>
+              <div v-if="selectedPart.type === 'buzzer'" class="rounded-md border bg-card px-3 py-2 text-xs">
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="text-muted-foreground">状态</span>
+                  <span class="font-medium" :class="buzzerStatus(selectedPart).active ? 'text-sky-700' : 'text-muted-foreground'">
+                    {{ buzzerStatus(selectedPart).active ? "响铃" : "静音" }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-muted-foreground">强度</span>
+                  <span class="font-medium tabular-nums">{{ buzzerStatus(selectedPart).volumePercent }}%</span>
                 </div>
               </div>
             </div>

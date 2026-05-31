@@ -16,7 +16,7 @@ Current focus: **v0.3 cloud records and cross-device continuation**.
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
-| Workspace records | v0.3 in progress | The browser automatically restores local workspaces; v0.3 adds Supabase sign-in, explicit cloud records, renaming, and visible sync states. |
+| Workspace records | v0.3 feature complete | The browser automatically restores local workspaces; v0.3 adds Supabase sign-in, explicit cloud records, renaming, conflict handling, and visible sync states. |
 | Mobile responsive experience | Released in v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |
@@ -100,7 +100,9 @@ Status: **In progress for v0.3**
 - [x] Choose Supabase and add a non-blocking sign-in entry
 - [x] Add explicit cloud-backed save, list, load, rename, and delete records
 - [x] Add visible cloud sync states
-- [ ] Add conflict handling for cloud records
+- [x] Add conflict handling for cloud records
+- [x] Let shared links be copied into a signed-in user's cloud records
+- [x] Prompt first-time cloud users to upload the current local workbench
 
 ### PWA and offline experience
 

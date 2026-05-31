@@ -108,6 +108,33 @@ export async function saveCloudWorkspaceRecord<TWorkspace>(title: string, worksp
   return data as CloudWorkspaceRecord<TWorkspace>;
 }
 
+export async function updateCloudWorkspaceRecord<TWorkspace>(
+  recordId: string,
+  title: string,
+  workspace: TWorkspace,
+  expectedUpdatedAt?: string,
+) {
+  let query = requireSupabase()
+    .from("workspace_records")
+    .update({
+      title,
+      workspace,
+    })
+    .eq("id", recordId);
+
+  if (expectedUpdatedAt) {
+    query = query.eq("updated_at", expectedUpdatedAt);
+  }
+
+  const { data, error } = await query.select("id,title,workspace,created_at,updated_at").maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data as CloudWorkspaceRecord<TWorkspace> | null;
+}
+
 export async function renameCloudWorkspaceRecord<TWorkspace>(recordId: string, title: string) {
   const { data, error } = await requireSupabase()
     .from("workspace_records")

@@ -18,7 +18,7 @@
 - Cloud record list supports create, rename, load, and delete.
 - The latest workspace can autosync, but failures must not overwrite local records.
 
-Current implemented slice: sign-in entry, explicit save, list, load, rename, delete, and visible sync states for `workspace_records`.
+Current implemented slice: sign-in entry, explicit save, update, list, load, rename, delete, visible sync states, overwrite-or-copy conflict handling, shared-link copy, and first-sign-in upload prompts for `workspace_records`.
 
 ### Phase 2: Shared Copies
 

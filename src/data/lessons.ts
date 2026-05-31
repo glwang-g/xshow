@@ -28,6 +28,7 @@ export type LessonWorkspacePart = {
   closed?: boolean;
   id: string;
   name: string;
+  polarity?: "normal" | "reversed";
   resistance?: number;
   type: LessonPartType;
   x: number;

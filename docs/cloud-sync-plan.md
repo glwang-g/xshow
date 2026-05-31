@@ -47,6 +47,7 @@ type CloudWorkspaceRecord = {
       closed?: boolean;
       id: string;
       name: string;
+      polarity?: "normal" | "reversed";
       resistance?: number;
       type: "battery" | "bulb" | "switch" | "resistor" | "led" | "buzzer" | "motor";
       x: number;

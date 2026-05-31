@@ -51,6 +51,7 @@ import {
   saveCloudWorkspaceRecord,
   signInWithEmail,
   signOutCloud,
+  updateCloudWorkspaceRecord,
   type CloudWorkspaceRecord,
 } from "@/lib/cloud";
 import { pwaUpdateAvailableEvent } from "@/pwa";
@@ -128,6 +129,7 @@ type CloudSyncStatus = "failed" | "idle" | "local-changes" | "synced" | "syncing
 
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
+const cloudUploadSuggestionKeyPrefix = "xshow.cloud.upload-suggestion.v1";
 const workspaceShareParam = "workspace";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
 const board = useBoardStore();
@@ -148,10 +150,14 @@ const cloudRecords = ref<CloudRecord[]>([]);
 const cloudRecordsBusy = ref(false);
 const cloudRecordsError = ref("");
 const cloudRecordsMessage = ref("");
+const cloudPendingSnapshot = ref<PersistedWorkspace | null>(null);
+const cloudPendingTitle = ref("");
+const cloudShouldSuggestInitialUpload = ref(false);
 const cloudSyncStatus = ref<CloudSyncStatus>("idle");
 const cloudActiveRecordId = ref<string | null>(null);
 const cloudLastSyncedAt = ref<string | null>(null);
 const cloudUserEmail = ref<string | null>(null);
+const sharedWorkspaceLoaded = ref(false);
 const suppressCloudDirtyMark = ref(false);
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
@@ -394,6 +400,14 @@ const cloudSyncBadgeClass = computed(() => {
   }
 
   return cloudSyncState.value === "configured" ? "bg-cyan-100 text-cyan-800" : "bg-muted text-muted-foreground";
+});
+const activeCloudRecord = computed(() => cloudRecords.value.find((record) => record.id === cloudActiveRecordId.value));
+const cloudSaveLabel = computed(() => {
+  if (cloudRecordsBusy.value) {
+    return "处理中";
+  }
+
+  return cloudActiveRecordId.value ? "更新云端" : "保存云端";
 });
 const currentAnimationDuration = computed(() => {
   if (!simulation.value.closed || simulation.value.currentMilliAmps <= 0) {
@@ -1811,6 +1825,7 @@ function restoreWorkspaceFromUrl() {
 
     loadWorkspaceSnapshot(parsed);
     saveWorkspaceToStorage();
+    sharedWorkspaceLoaded.value = true;
     return true;
   } catch {
     return false;
@@ -1854,6 +1869,18 @@ function markCloudWorkspaceChanged() {
 
   cloudSyncStatus.value = "local-changes";
   cloudRecordsMessage.value = "";
+}
+
+function cloudUploadSuggestionKey() {
+  return cloudUserEmail.value ? `${cloudUploadSuggestionKeyPrefix}.${cloudUserEmail.value}` : cloudUploadSuggestionKeyPrefix;
+}
+
+function dismissCloudInitialUploadSuggestion() {
+  cloudShouldSuggestInitialUpload.value = false;
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(cloudUploadSuggestionKey(), "dismissed");
+  }
 }
 
 function scheduleWorkspaceSave() {
@@ -2020,6 +2047,9 @@ async function refreshCloudUser() {
       cloudRecords.value = [];
       cloudActiveRecordId.value = null;
       cloudLastSyncedAt.value = null;
+      cloudRecordTitle.value = "";
+      cloudShouldSuggestInitialUpload.value = false;
+      clearCloudConflict();
       cloudSyncStatus.value = "idle";
     }
   } catch (error) {
@@ -2064,6 +2094,11 @@ async function loadCloudRecords() {
 
   try {
     cloudRecords.value = await listCloudWorkspaceRecords<PersistedWorkspace>();
+    cloudShouldSuggestInitialUpload.value =
+      cloudRecords.value.length === 0 &&
+      !cloudActiveRecordId.value &&
+      typeof window !== "undefined" &&
+      !window.localStorage.getItem(cloudUploadSuggestionKey());
   } catch (error) {
     cloudSyncStatus.value = "failed";
     cloudRecordsError.value = error instanceof Error ? error.message : "读取云端记录失败。";
@@ -2072,7 +2107,28 @@ async function loadCloudRecords() {
   }
 }
 
-async function saveWorkspaceToCloud() {
+function clearCloudConflict() {
+  cloudPendingSnapshot.value = null;
+  cloudPendingTitle.value = "";
+}
+
+function getCloudRecordTitle(snapshot: PersistedWorkspace) {
+  return (
+    cloudRecordTitle.value.trim() ||
+    activeCloudRecord.value?.title ||
+    recordTitle.value.trim() ||
+    `云端记录 ${formatSavedTime(snapshot.savedAt)}`
+  ).slice(0, 120);
+}
+
+function upsertCloudRecord(record: CloudRecord) {
+  cloudRecords.value = [record, ...cloudRecords.value.filter((item) => item.id !== record.id)].slice(0, 20);
+  cloudActiveRecordId.value = record.id;
+  cloudLastSyncedAt.value = record.updated_at;
+  cloudRecordTitle.value = record.title;
+}
+
+async function saveWorkspaceToCloud(options: { forceOverwrite?: boolean; saveAsCopy?: boolean } = {}) {
   if (!cloudUserEmail.value) {
     cloudRecordsError.value = "请先登录云端同步。";
     return;
@@ -2084,18 +2140,39 @@ async function saveWorkspaceToCloud() {
   cloudSyncStatus.value = "syncing";
 
   try {
-    const snapshot = workspaceSnapshot();
-    const title = (cloudRecordTitle.value.trim() || recordTitle.value.trim() || `云端记录 ${formatSavedTime(snapshot.savedAt)}`).slice(
-      0,
-      120,
-    );
-    const record = await saveCloudWorkspaceRecord(title, snapshot);
-    cloudRecords.value = [record, ...cloudRecords.value.filter((item) => item.id !== record.id)].slice(0, 20);
-    cloudActiveRecordId.value = record.id;
-    cloudLastSyncedAt.value = record.updated_at;
-    cloudRecordTitle.value = "";
+    const snapshot = cloudPendingSnapshot.value && (options.forceOverwrite || options.saveAsCopy)
+      ? cloudPendingSnapshot.value
+      : workspaceSnapshot();
+    const title = (cloudPendingTitle.value && (options.forceOverwrite || options.saveAsCopy))
+      ? cloudPendingTitle.value
+      : getCloudRecordTitle(snapshot);
+    const shouldUpdateActiveRecord = Boolean(cloudActiveRecordId.value && !options.saveAsCopy);
+    const record = shouldUpdateActiveRecord
+      ? await updateCloudWorkspaceRecord<PersistedWorkspace>(
+          cloudActiveRecordId.value as string,
+          title,
+          snapshot,
+          options.forceOverwrite ? undefined : cloudLastSyncedAt.value ?? undefined,
+        )
+      : await saveCloudWorkspaceRecord(title, snapshot);
+
+    if (!record) {
+      cloudPendingSnapshot.value = snapshot;
+      cloudPendingTitle.value = title;
+      await loadCloudRecords();
+      cloudSyncStatus.value = "failed";
+      cloudRecordsError.value = "云端记录已在其他设备更新。请选择覆盖云端，或另存为副本。";
+      return;
+    }
+
+    upsertCloudRecord(record);
+    clearCloudConflict();
+    if (cloudShouldSuggestInitialUpload.value) {
+      dismissCloudInitialUploadSuggestion();
+    }
+    sharedWorkspaceLoaded.value = false;
     cloudSyncStatus.value = "synced";
-    cloudRecordsMessage.value = "已保存到云端。";
+    cloudRecordsMessage.value = shouldUpdateActiveRecord ? "已更新云端记录。" : "已保存到云端。";
   } catch (error) {
     cloudSyncStatus.value = "failed";
     cloudRecordsError.value = error instanceof Error ? error.message : "保存云端记录失败。";
@@ -2119,6 +2196,8 @@ function loadCloudRecord(record: CloudRecord) {
   saveWorkspaceToStorage();
   cloudActiveRecordId.value = record.id;
   cloudLastSyncedAt.value = record.updated_at;
+  cloudRecordTitle.value = record.title;
+  clearCloudConflict();
   cloudRecordsMessage.value = `已加载 ${record.title}`;
   void nextTick(() => {
     suppressCloudDirtyMark.value = false;
@@ -2172,6 +2251,9 @@ async function removeCloudRecord(recordId: string) {
     if (cloudActiveRecordId.value === recordId) {
       cloudActiveRecordId.value = null;
       cloudLastSyncedAt.value = null;
+      cloudRecordTitle.value = "";
+      cloudShouldSuggestInitialUpload.value = false;
+      clearCloudConflict();
       cloudSyncStatus.value = "local-changes";
     } else {
       cloudSyncStatus.value = "idle";
@@ -2196,6 +2278,9 @@ async function handleCloudSignOut() {
     cloudRecords.value = [];
     cloudActiveRecordId.value = null;
     cloudLastSyncedAt.value = null;
+    cloudRecordTitle.value = "";
+    cloudShouldSuggestInitialUpload.value = false;
+    clearCloudConflict();
     cloudSyncStatus.value = "idle";
     cloudAuthMessage.value = "已退出云端同步。";
   } catch (error) {
@@ -2496,6 +2581,9 @@ onMounted(() => {
       cloudRecords.value = [];
       cloudActiveRecordId.value = null;
       cloudLastSyncedAt.value = null;
+      cloudRecordTitle.value = "";
+      cloudShouldSuggestInitialUpload.value = false;
+      clearCloudConflict();
       cloudSyncStatus.value = "idle";
     }
   });
@@ -3230,6 +3318,32 @@ onBeforeUnmount(() => {
                 <div class="text-muted-foreground">当前账号</div>
                 <div class="truncate font-medium">{{ cloudUserEmail }}</div>
               </div>
+              <div
+                v-if="sharedWorkspaceLoaded"
+                class="space-y-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-950"
+              >
+                <div class="font-medium">这是从分享链接打开的工作台</div>
+                <div class="leading-5">保存为云端副本后，就会进入你的个人记录列表。</div>
+                <Button class="w-full" size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud({ saveAsCopy: true })">
+                  <CloudUpload class="h-4 w-4" />
+                  复制到我的记录
+                </Button>
+              </div>
+              <div
+                v-else-if="cloudShouldSuggestInitialUpload"
+                class="space-y-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-950"
+              >
+                <div class="font-medium">要把当前工作台保存到云端吗？</div>
+                <div class="leading-5">保存后，换设备登录也可以继续这个实验。</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <Button size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud()">
+                    现在上传
+                  </Button>
+                  <Button variant="outline" size="sm" :disabled="cloudRecordsBusy" @click="dismissCloudInitialUploadSuggestion">
+                    稍后
+                  </Button>
+                </div>
+              </div>
               <div class="space-y-2">
                 <input
                   v-model="cloudRecordTitle"
@@ -3238,13 +3352,44 @@ onBeforeUnmount(() => {
                   type="text"
                 />
                 <div class="grid grid-cols-2 gap-2">
-                  <Button size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud">
+                  <Button size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud()">
                     <CloudUpload class="h-4 w-4" />
-                    {{ cloudRecordsBusy ? "处理中" : "保存云端" }}
+                    {{ cloudSaveLabel }}
                   </Button>
                   <Button variant="outline" size="sm" :disabled="cloudRecordsBusy" @click="loadCloudRecords">
                     <RotateCcw class="h-4 w-4" />
                     刷新
+                  </Button>
+                </div>
+                <Button
+                  v-if="cloudActiveRecordId"
+                  class="w-full"
+                  variant="outline"
+                  size="sm"
+                  :disabled="cloudRecordsBusy"
+                  @click="saveWorkspaceToCloud({ saveAsCopy: true })"
+                >
+                  <CloudUpload class="h-4 w-4" />
+                  另存云端副本
+                </Button>
+              </div>
+              <div
+                v-if="cloudPendingSnapshot"
+                class="space-y-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
+              >
+                <div class="font-medium">云端记录可能已经被更新</div>
+                <div class="leading-5">可以覆盖云端记录，也可以把当前工作台另存为新的云端副本。</div>
+                <div class="grid grid-cols-2 gap-2">
+                  <Button size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud({ forceOverwrite: true })">
+                    覆盖云端
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    :disabled="cloudRecordsBusy"
+                    @click="saveWorkspaceToCloud({ saveAsCopy: true })"
+                  >
+                    另存副本
                   </Button>
                 </div>
               </div>

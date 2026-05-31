@@ -35,7 +35,7 @@ The core v0.2 features are mostly in main: mobile HUD, touch pan/zoom, guided ta
 
 ## v0.3: Cloud Records And Cross-Device Continuation
 
-Status: **first slice in progress**.
+Status: **feature complete, pending live auth QA**.
 
 Reference: [Cloud Sync Plan](cloud-sync-plan.md). Supabase table setup lives in [supabase-schema.sql](supabase-schema.sql).
 
@@ -47,13 +47,13 @@ Reference: [Cloud Sync Plan](cloud-sync-plan.md). Supabase table setup lives in 
 - [x] Save the current workbench to the cloud.
 - [x] Load cloud records into the workbench.
 - [x] Show sync state: signed out, local changes, syncing, synced, and sync failed.
-- [ ] Handle conflicts by overwriting cloud or saving as a copy.
+- [x] Handle conflicts by overwriting cloud or saving as a copy.
 
 ### Nice To Have
 
-- [ ] Let users copy a shared workspace into their own records.
+- [x] Let users copy a shared workspace into their own records.
 - [x] Rename and delete cloud records.
-- [ ] After first sign-in, ask whether to upload the current local workbench.
+- [x] After first sign-in, ask whether to upload the current local workbench.
 
 ## v0.4: More Components And Better Rules
 

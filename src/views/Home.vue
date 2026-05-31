@@ -28,6 +28,7 @@ import {
   Plus,
   RotateCcw,
   Save,
+  ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   ToggleLeft,
@@ -51,8 +52,11 @@ import {
   onCloudAuthStateChange,
   renameCloudWorkspaceRecord,
   saveCloudWorkspaceRecord,
-  signInWithEmail,
+  sendPasswordResetEmail,
+  signInWithEmailPassword,
   signOutCloud,
+  signUpWithEmailPassword,
+  updateCloudPassword,
   updateCloudWorkspaceRecord,
   type CloudWorkspaceRecord,
 } from "@/lib/cloud";
@@ -138,6 +142,7 @@ type SavedWorkspaceRecord = PersistedWorkspace & {
 };
 
 type CloudRecord = CloudWorkspaceRecord<PersistedWorkspace>;
+type CloudAuthMode = "reset" | "sign-in" | "sign-up" | "update-password";
 type CloudSyncState = "configured" | "failed" | "local-changes" | "signed-in" | "synced" | "syncing" | "unconfigured";
 type CloudSyncStatus = "failed" | "idle" | "local-changes" | "synced" | "syncing";
 
@@ -160,8 +165,11 @@ const redoStack = ref<PersistedWorkspace[]>([]);
 const shareLinkState = ref<"copied" | "idle" | "manual">("idle");
 const cloudAuthBusy = ref(false);
 const cloudAuthError = ref("");
+const cloudAuthMode = ref<CloudAuthMode>("sign-in");
 const cloudAuthMessage = ref("");
 const cloudEmail = ref("");
+const cloudPassword = ref("");
+const cloudPasswordConfirm = ref("");
 const cloudRecordTitle = ref("");
 const cloudRecords = ref<CloudRecord[]>([]);
 const cloudRecordsBusy = ref(false);
@@ -408,7 +416,7 @@ const cloudSyncDescription = computed(() => {
   }
 
   if (cloudSyncState.value === "configured") {
-    return "输入邮箱获取 magic link。";
+    return "使用邮箱和密码登录后，可跨设备保存实验记录。";
   }
 
   if (cloudSyncState.value === "local-changes") {
@@ -449,6 +457,55 @@ const cloudSyncBadgeClass = computed(() => {
   return cloudSyncState.value === "configured" ? "bg-cyan-100 text-cyan-800" : "bg-muted text-muted-foreground";
 });
 const activeCloudRecord = computed(() => cloudRecords.value.find((record) => record.id === cloudActiveRecordId.value));
+const cloudAuthTitle = computed(() => {
+  if (cloudAuthMode.value === "sign-up") {
+    return "创建云端账号";
+  }
+
+  if (cloudAuthMode.value === "reset") {
+    return "重置密码";
+  }
+
+  if (cloudAuthMode.value === "update-password") {
+    return "设置新密码";
+  }
+
+  return "登录云端同步";
+});
+const cloudAuthSubmitLabel = computed(() => {
+  if (cloudAuthBusy.value) {
+    return "处理中";
+  }
+
+  if (cloudAuthMode.value === "sign-up") {
+    return "注册并登录";
+  }
+
+  if (cloudAuthMode.value === "reset") {
+    return "发送重置邮件";
+  }
+
+  if (cloudAuthMode.value === "update-password") {
+    return "更新密码";
+  }
+
+  return "登录";
+});
+const cloudAuthHelpText = computed(() => {
+  if (cloudAuthMode.value === "sign-up") {
+    return "注册后 Supabase 可能会发送确认邮件；确认后即可用密码登录。";
+  }
+
+  if (cloudAuthMode.value === "reset") {
+    return "输入账号邮箱，我们会发送一封密码重置邮件。";
+  }
+
+  if (cloudAuthMode.value === "update-password") {
+    return "请输入新密码。更新后，下次就可以直接用邮箱和新密码登录。";
+  }
+
+  return "登录状态会保存在当前浏览器中，下次打开会自动恢复。";
+});
 const cloudSaveLabel = computed(() => {
   if (cloudRecordsBusy.value) {
     return "处理中";
@@ -2402,6 +2459,7 @@ async function refreshCloudUser() {
       cloudLastSyncedAt.value = null;
       cloudRecordTitle.value = "";
       cloudShouldSuggestInitialUpload.value = false;
+      cloudAuthMode.value = "sign-in";
       clearCloudConflict();
       cloudSyncStatus.value = "idle";
     }
@@ -2410,7 +2468,34 @@ async function refreshCloudUser() {
   }
 }
 
-async function requestCloudSignIn() {
+function setCloudAuthMode(mode: CloudAuthMode) {
+  cloudAuthMode.value = mode;
+  cloudAuthError.value = "";
+  cloudAuthMessage.value = "";
+  cloudPassword.value = "";
+  cloudPasswordConfirm.value = "";
+}
+
+function validateCloudPassword({ requireConfirm = false } = {}) {
+  if (!cloudPassword.value) {
+    cloudAuthError.value = "请输入密码。";
+    return false;
+  }
+
+  if (cloudPassword.value.length < 6) {
+    cloudAuthError.value = "密码至少需要 6 位。";
+    return false;
+  }
+
+  if (requireConfirm && cloudPassword.value !== cloudPasswordConfirm.value) {
+    cloudAuthError.value = "两次输入的密码不一致。";
+    return false;
+  }
+
+  return true;
+}
+
+async function requestCloudAuth() {
   const email = cloudEmail.value.trim();
   cloudAuthError.value = "";
   cloudAuthMessage.value = "";
@@ -2420,17 +2505,58 @@ async function requestCloudSignIn() {
     return;
   }
 
-  if (!email) {
+  if (cloudAuthMode.value !== "update-password" && !email) {
     cloudAuthError.value = "请输入邮箱地址。";
+    return;
+  }
+
+  if (cloudAuthMode.value === "sign-in" && !validateCloudPassword()) {
+    return;
+  }
+
+  if (cloudAuthMode.value === "sign-up" && !validateCloudPassword({ requireConfirm: true })) {
+    return;
+  }
+
+  if (cloudAuthMode.value === "update-password" && !validateCloudPassword({ requireConfirm: true })) {
     return;
   }
 
   cloudAuthBusy.value = true;
   try {
-    await signInWithEmail(email);
-    cloudAuthMessage.value = "登录链接已发送，请检查邮箱。";
+    if (cloudAuthMode.value === "sign-in") {
+      await signInWithEmailPassword(email, cloudPassword.value);
+      cloudPassword.value = "";
+      cloudPasswordConfirm.value = "";
+      cloudAuthMessage.value = "已登录云端同步。";
+      await refreshCloudUser();
+      return;
+    }
+
+    if (cloudAuthMode.value === "sign-up") {
+      await signUpWithEmailPassword(email, cloudPassword.value);
+      cloudPassword.value = "";
+      cloudPasswordConfirm.value = "";
+      cloudAuthMessage.value = "账号已创建。如果收到确认邮件，请先完成邮箱确认。";
+      cloudAuthMode.value = "sign-in";
+      await refreshCloudUser();
+      return;
+    }
+
+    if (cloudAuthMode.value === "reset") {
+      await sendPasswordResetEmail(email);
+      cloudAuthMessage.value = "密码重置邮件已发送，请检查邮箱。";
+      cloudAuthMode.value = "sign-in";
+      return;
+    }
+
+    await updateCloudPassword(cloudPassword.value);
+    cloudPassword.value = "";
+    cloudPasswordConfirm.value = "";
+    cloudAuthMode.value = "sign-in";
+    cloudAuthMessage.value = "密码已更新。";
   } catch (error) {
-    cloudAuthError.value = error instanceof Error ? error.message : "发送登录链接失败。";
+    cloudAuthError.value = error instanceof Error ? error.message : "云端账号操作失败。";
   } finally {
     cloudAuthBusy.value = false;
   }
@@ -2634,6 +2760,9 @@ async function handleCloudSignOut() {
     cloudLastSyncedAt.value = null;
     cloudRecordTitle.value = "";
     cloudShouldSuggestInitialUpload.value = false;
+    cloudPassword.value = "";
+    cloudPasswordConfirm.value = "";
+    cloudAuthMode.value = "sign-in";
     clearCloudConflict();
     cloudSyncStatus.value = "idle";
     cloudAuthMessage.value = "已退出云端同步。";
@@ -2965,9 +3094,15 @@ function openMobileStatusPanel() {
 
 onMounted(() => {
   void refreshCloudUser();
-  cloudAuthUnsubscribe = onCloudAuthStateChange((user) => {
+  cloudAuthUnsubscribe = onCloudAuthStateChange((user, event) => {
     cloudUserEmail.value = user?.email ?? null;
     if (user) {
+      if (event === "PASSWORD_RECOVERY") {
+        cloudAuthMode.value = "update-password";
+        cloudAuthMessage.value = "请设置一个新密码。";
+      } else if (cloudAuthMode.value !== "update-password") {
+        cloudAuthMode.value = "sign-in";
+      }
       void loadCloudRecords();
     } else {
       cloudRecords.value = [];
@@ -2975,6 +3110,7 @@ onMounted(() => {
       cloudLastSyncedAt.value = null;
       cloudRecordTitle.value = "";
       cloudShouldSuggestInitialUpload.value = false;
+      cloudAuthMode.value = "sign-in";
       clearCloudConflict();
       cloudSyncStatus.value = "idle";
     }
@@ -3758,6 +3894,37 @@ onBeforeUnmount(() => {
               在 `.env.local` 中配置 `VITE_SUPABASE_URL` 和 `VITE_SUPABASE_ANON_KEY` 后，可启用登录入口。
             </div>
             <div v-else-if="cloudUserEmail" class="space-y-2">
+              <form
+                v-if="cloudAuthMode === 'update-password'"
+                class="space-y-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-3 text-xs text-cyan-950"
+                @submit.prevent="requestCloudAuth"
+              >
+                <div class="font-medium">{{ cloudAuthTitle }}</div>
+                <div class="leading-5">{{ cloudAuthHelpText }}</div>
+                <input
+                  v-model="cloudPassword"
+                  autocomplete="new-password"
+                  class="h-9 w-full rounded-md border bg-card px-3 text-sm text-foreground"
+                  placeholder="新密码"
+                  type="password"
+                />
+                <input
+                  v-model="cloudPasswordConfirm"
+                  autocomplete="new-password"
+                  class="h-9 w-full rounded-md border bg-card px-3 text-sm text-foreground"
+                  placeholder="再次输入新密码"
+                  type="password"
+                />
+                <div class="grid grid-cols-2 gap-2">
+                  <Button size="sm" :disabled="cloudAuthBusy" type="submit">
+                    <ShieldCheck class="h-4 w-4" />
+                    {{ cloudAuthSubmitLabel }}
+                  </Button>
+                  <Button variant="outline" size="sm" :disabled="cloudAuthBusy" type="button" @click="setCloudAuthMode('sign-in')">
+                    稍后
+                  </Button>
+                </div>
+              </form>
               <div class="rounded-md border bg-card px-3 py-2 text-xs">
                 <div class="text-muted-foreground">当前账号</div>
                 <div class="truncate font-medium">{{ cloudUserEmail }}</div>
@@ -3886,18 +4053,66 @@ onBeforeUnmount(() => {
                 退出云端同步
               </Button>
             </div>
-            <form v-else class="space-y-2" @submit.prevent="requestCloudSignIn">
+            <form v-else class="space-y-2" @submit.prevent="requestCloudAuth">
+              <div>
+                <div class="text-sm font-medium">{{ cloudAuthTitle }}</div>
+                <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ cloudAuthHelpText }}</p>
+              </div>
               <input
                 v-model="cloudEmail"
+                autocomplete="email"
                 class="h-9 w-full rounded-md border bg-card px-3 text-sm"
                 inputmode="email"
                 placeholder="邮箱地址"
                 type="email"
               />
+              <input
+                v-if="cloudAuthMode !== 'reset'"
+                v-model="cloudPassword"
+                :autocomplete="cloudAuthMode === 'sign-in' ? 'current-password' : 'new-password'"
+                class="h-9 w-full rounded-md border bg-card px-3 text-sm"
+                placeholder="密码"
+                type="password"
+              />
+              <input
+                v-if="cloudAuthMode === 'sign-up'"
+                v-model="cloudPasswordConfirm"
+                autocomplete="new-password"
+                class="h-9 w-full rounded-md border bg-card px-3 text-sm"
+                placeholder="再次输入密码"
+                type="password"
+              />
               <Button class="w-full" size="sm" :disabled="cloudAuthBusy" type="submit">
-                <Mail class="h-4 w-4" />
-                {{ cloudAuthBusy ? "发送中" : "发送登录链接" }}
+                <Mail v-if="cloudAuthMode === 'reset'" class="h-4 w-4" />
+                <ShieldCheck v-else class="h-4 w-4" />
+                {{ cloudAuthSubmitLabel }}
               </Button>
+              <div class="flex flex-wrap items-center justify-center gap-2 text-xs">
+                <button
+                  v-if="cloudAuthMode === 'sign-in'"
+                  class="text-cyan-700 hover:underline"
+                  type="button"
+                  @click="setCloudAuthMode('sign-up')"
+                >
+                  创建账号
+                </button>
+                <button
+                  v-if="cloudAuthMode === 'sign-in'"
+                  class="text-muted-foreground hover:text-foreground hover:underline"
+                  type="button"
+                  @click="setCloudAuthMode('reset')"
+                >
+                  忘记密码
+                </button>
+                <button
+                  v-if="cloudAuthMode !== 'sign-in'"
+                  class="text-muted-foreground hover:text-foreground hover:underline"
+                  type="button"
+                  @click="setCloudAuthMode('sign-in')"
+                >
+                  返回登录
+                </button>
+              </div>
             </form>
             <div v-if="cloudAuthMessage" class="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950">
               {{ cloudAuthMessage }}

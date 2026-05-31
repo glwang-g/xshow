@@ -13,12 +13,12 @@
 
 ### Phase 1: Minimal Cloud Records
 
-- Sign in with email OTP or magic link.
+- Sign in or sign up with email and password; use email only for confirmation and password resets.
 - Save the current workbench snapshot to the cloud.
 - Cloud record list supports create, rename, load, and delete.
 - The latest workspace can autosync, but failures must not overwrite local records.
 
-Current implemented slice: sign-in entry, explicit save, update, list, load, rename, delete, visible sync states, overwrite-or-copy conflict handling, shared-link copy, and first-sign-in upload prompts for `workspace_records`.
+Current implemented slice: email/password sign-in, sign-up, password reset, explicit save, update, list, load, rename, delete, visible sync states, overwrite-or-copy conflict handling, shared-link copy, and first-sign-in upload prompts for `workspace_records`.
 
 ### Phase 2: Shared Copies
 
@@ -86,7 +86,7 @@ The initial Supabase table, Row Level Security policies, and `updated_at` trigge
 
 Supabase is selected for the first implementation slice:
 
-- Auth supports email OTP and magic links.
+- Auth uses Supabase email/password sessions with local session persistence, plus email-based password reset.
 - Postgres fits JSON workbench payloads.
 - Row Level Security can enforce record ownership.
 - Share links and classroom templates can grow from the same model.

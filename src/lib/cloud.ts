@@ -1,4 +1,4 @@
-import { createClient, type SupabaseClient, type User } from "@supabase/supabase-js";
+import { createClient, type AuthChangeEvent, type SupabaseClient, type User } from "@supabase/supabase-js";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? "";
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? "";
@@ -50,16 +50,55 @@ export async function getCloudUser(): Promise<User | null> {
   return data.user;
 }
 
-export async function signInWithEmail(email: string) {
+function currentOrigin() {
+  return typeof window === "undefined" ? undefined : window.location.origin;
+}
+
+export async function signInWithEmailPassword(email: string, password: string) {
   const client = requireSupabase();
 
-  const emailRedirectTo = typeof window === "undefined" ? undefined : window.location.origin;
-  const { error } = await client.auth.signInWithOtp({
+  const { error } = await client.auth.signInWithPassword({
     email,
+    password,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function signUpWithEmailPassword(email: string, password: string) {
+  const client = requireSupabase();
+
+  const { error } = await client.auth.signUp({
+    email,
+    password,
     options: {
-      emailRedirectTo,
+      emailRedirectTo: currentOrigin(),
     },
   });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function sendPasswordResetEmail(email: string) {
+  const client = requireSupabase();
+
+  const { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: currentOrigin(),
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updateCloudPassword(password: string) {
+  const client = requireSupabase();
+
+  const { error } = await client.auth.updateUser({ password });
 
   if (error) {
     throw error;
@@ -158,13 +197,13 @@ export async function deleteCloudWorkspaceRecord(recordId: string) {
   }
 }
 
-export function onCloudAuthStateChange(callback: (user: User | null) => void) {
+export function onCloudAuthStateChange(callback: (user: User | null, event: AuthChangeEvent) => void) {
   if (!supabase) {
     return () => {};
   }
 
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user ?? null);
+  const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(session?.user ?? null, event);
   });
 
   return () => data.subscription.unsubscribe();

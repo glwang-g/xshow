@@ -20,7 +20,7 @@ export type LessonCheckId =
   | "hasDimSeriesBulbs"
   | "hasBrightParallelBulbs";
 
-export type LessonPartType = "battery" | "bulb" | "switch" | "resistor" | "led" | "buzzer";
+export type LessonPartType = "battery" | "bulb" | "switch" | "resistor" | "led" | "buzzer" | "motor";
 
 export type LessonTerminalKey = "a" | "b";
 

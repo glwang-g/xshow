@@ -11,6 +11,7 @@ import {
   CloudOff,
   CloudSync,
   CloudUpload,
+  Cog,
   Download,
   FileDown,
   FileUp,
@@ -58,7 +59,7 @@ import {
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
-type PartType = "battery" | "bulb" | "switch" | "resistor" | "led" | "buzzer";
+type PartType = "battery" | "bulb" | "switch" | "resistor" | "led" | "buzzer" | "motor";
 type TerminalKey = "a" | "b";
 
 type TerminalRef = {
@@ -117,6 +118,12 @@ type BuzzerState = {
   active: boolean;
   volume: number;
   volumePercent: number;
+};
+
+type MotorState = {
+  active: boolean;
+  speed: number;
+  speedPercent: number;
 };
 
 type PersistedWorkspace = LessonWorkspace & {
@@ -199,8 +206,10 @@ const workbench = {
 const bulbOhms = 18;
 const ledOhms = 28;
 const buzzerOhms = 32;
+const motorOhms = 44;
 const ledSafeCurrentMilliAmps = 65;
 const buzzerLoudCurrentMilliAmps = 160;
+const motorFastCurrentMilliAmps = 180;
 
 const partSpecs: Record<
   PartType,
@@ -272,6 +281,16 @@ const partSpecs: Record<
       b: { x: 156, y: 64, label: "B" },
     },
   },
+  motor: {
+    icon: Cog,
+    label: "电机",
+    width: 156,
+    height: 128,
+    terminals: {
+      a: { x: 0, y: 64, label: "A" },
+      b: { x: 156, y: 64, label: "B" },
+    },
+  },
 };
 
 const palette: Array<{ type: PartType; description: string }> = [
@@ -279,6 +298,7 @@ const palette: Array<{ type: PartType; description: string }> = [
   { type: "switch", description: "控制通断" },
   { type: "bulb", description: "显示亮度" },
   { type: "buzzer", description: "闭合后响" },
+  { type: "motor", description: "闭合后转" },
   { type: "resistor", description: "调节电流" },
   { type: "led", description: "有正负极" },
 ];
@@ -335,6 +355,8 @@ const ledWarnings = computed(() =>
 );
 const hasBuzzerParts = computed(() => parts.value.some((part) => part.type === "buzzer"));
 const activeBuzzerCount = computed(() => Object.values(simulation.value.buzzers).filter((state) => state.active).length);
+const hasMotorParts = computed(() => parts.value.some((part) => part.type === "motor"));
+const activeMotorCount = computed(() => Object.values(simulation.value.motors).filter((state) => state.active).length);
 const cloudSyncState = computed<CloudSyncState>(() => {
   if (!cloudConfig.configured) {
     return "unconfigured";
@@ -482,6 +504,16 @@ function buzzerStatus(part: CircuitPart): BuzzerState {
       active: false,
       volume: 0,
       volumePercent: 0,
+    }
+  );
+}
+
+function motorStatus(part: CircuitPart): MotorState {
+  return (
+    simulation.value.motors[part.id] ?? {
+      active: false,
+      speed: 0,
+      speedPercent: 0,
     }
   );
 }
@@ -838,6 +870,10 @@ function partExportColors(part: CircuitPart) {
     return { background: "#f0f9ff", foreground: "#0c4a6e", muted: "#0284c7" };
   }
 
+  if (part.type === "motor") {
+    return { background: "#f0fdf4", foreground: "#14532d", muted: "#16a34a" };
+  }
+
   return { background: "#ffffff", foreground: "#0f172a", muted: part.closed ? "#10b981" : "#f43f5e" };
 }
 
@@ -911,6 +947,24 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart) {
     context.beginPath();
     context.arc(part.x + spec.width / 2 + 8, part.y + 64, 36, Math.PI * 0.22, Math.PI * 1.78);
     context.globalAlpha = 0.35 + state.volume * 0.55;
+    context.stroke();
+    context.globalAlpha = 1;
+  } else if (part.type === "motor") {
+    const state = motorStatus(part);
+    context.fillText(state.active ? `${state.speedPercent}% motor` : "stopped", part.x + 18, part.y + spec.height - 18);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 4;
+    context.beginPath();
+    context.arc(part.x + spec.width / 2, part.y + 64, 30, 0, Math.PI * 2);
+    context.stroke();
+    context.beginPath();
+    context.moveTo(part.x + spec.width / 2, part.y + 64);
+    context.lineTo(part.x + spec.width / 2 + 28, part.y + 64);
+    context.moveTo(part.x + spec.width / 2, part.y + 64);
+    context.lineTo(part.x + spec.width / 2 - 14, part.y + 40);
+    context.moveTo(part.x + spec.width / 2, part.y + 64);
+    context.lineTo(part.x + spec.width / 2 - 14, part.y + 88);
+    context.globalAlpha = 0.45 + state.speed * 0.45;
     context.stroke();
     context.globalAlpha = 1;
   }
@@ -2482,9 +2536,11 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   const bulbs = sourceParts.filter((part) => part.type === "bulb");
   const leds = sourceParts.filter((part) => part.type === "led");
   const buzzers = sourceParts.filter((part) => part.type === "buzzer");
+  const motors = sourceParts.filter((part) => part.type === "motor");
   const bulbStates: Record<string, { brightness: number; brightnessPercent: number }> = {};
   const ledStates: Record<string, LedState> = {};
   const buzzerStates: Record<string, BuzzerState> = {};
+  const motorStates: Record<string, MotorState> = {};
   const wireStates: Record<string, { active: boolean; reverse: boolean }> = {};
 
   if (!battery) {
@@ -2495,6 +2551,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
       bulbs: bulbStates,
       buzzers: buzzerStates,
       leds: ledStates,
+      motors: motorStates,
       wires: wireStates,
     };
   }
@@ -2517,10 +2574,14 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   const conductingBulbs = bulbs.filter((part) => closed && partBridgesBattery(part, battery, edges));
   const conductingLeds = leds.filter((part) => closed && conductiveLedIds.has(part.id));
   const conductingBuzzers = buzzers.filter((part) => closed && partBridgesBattery(part, battery, edges));
+  const conductingMotors = motors.filter((part) => closed && partBridgesBattery(part, battery, edges));
   const resistorOhms = seriesResistors.reduce((total, part) => total + (part.resistance ?? 0), 0);
   const loadOhms = Math.max(
     bulbOhms,
-    conductingBulbs.length * bulbOhms + conductingLeds.length * ledOhms + conductingBuzzers.length * buzzerOhms,
+    conductingBulbs.length * bulbOhms +
+      conductingLeds.length * ledOhms +
+      conductingBuzzers.length * buzzerOhms +
+      conductingMotors.length * motorOhms,
   );
   const equivalentResistance = closed ? loadOhms + resistorOhms : 0;
   const current = equivalentResistance > 0 ? 9 / equivalentResistance : 0;
@@ -2570,6 +2631,17 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
     };
   }
 
+  for (const motor of motors) {
+    const conducting = conductingMotors.some((part) => part.id === motor.id);
+    const speed = conducting ? Math.min(1, Math.max(0.12, currentMilliAmps / motorFastCurrentMilliAmps)) : 0;
+
+    motorStates[motor.id] = {
+      active: speed > 0,
+      speed,
+      speedPercent: Math.round(speed * 100),
+    };
+  }
+
   return {
     closed,
     currentMilliAmps,
@@ -2577,6 +2649,7 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
     bulbs: bulbStates,
     buzzers: buzzerStates,
     leds: ledStates,
+    motors: motorStates,
     wires: wireStates,
   };
 }
@@ -3043,6 +3116,7 @@ onBeforeUnmount(() => {
               part.type === 'resistor' ? 'bg-cyan-50' : '',
               part.type === 'led' ? 'bg-rose-50' : '',
               part.type === 'buzzer' ? 'bg-sky-50' : '',
+              part.type === 'motor' ? 'bg-emerald-50' : '',
             ]"
             :style="partStyle(part)"
             @pointerdown="handlePartPointerDown($event, part)"
@@ -3175,6 +3249,30 @@ onBeforeUnmount(() => {
                 <div class="text-sm font-semibold text-sky-950">{{ part.name }}</div>
                 <div class="text-xs text-muted-foreground">
                   {{ buzzerStatus(part).active ? `${buzzerStatus(part).volumePercent}% 响` : "静音" }}
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="part.type === 'motor'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
+              <div
+                class="relative flex h-16 w-16 items-center justify-center rounded-full border border-emerald-300 bg-emerald-100 transition-all"
+                :style="{
+                  boxShadow:
+                    motorStatus(part).active
+                      ? `0 0 ${10 + motorStatus(part).speed * 30}px rgba(22, 163, 74, ${0.18 + motorStatus(part).speed * 0.32})`
+                      : 'none',
+                }"
+              >
+                <Cog
+                  class="h-10 w-10 text-emerald-900"
+                  :class="motorStatus(part).active ? 'animate-spin' : ''"
+                  :style="{ animationDuration: `${Math.max(0.55, 2 - motorStatus(part).speed * 1.25)}s` }"
+                />
+              </div>
+              <div class="text-center">
+                <div class="text-sm font-semibold text-emerald-950">{{ part.name }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ motorStatus(part).active ? `${motorStatus(part).speedPercent}% 转` : "停止" }}
                 </div>
               </div>
             </div>
@@ -3580,6 +3678,11 @@ onBeforeUnmount(() => {
               <div class="mt-2 text-2xl font-semibold tabular-nums">{{ activeBuzzerCount }}</div>
               <div class="text-xs text-muted-foreground">active</div>
             </div>
+            <div v-if="hasMotorParts" class="rounded-md border bg-background p-3">
+              <div class="text-xs text-muted-foreground">电机</div>
+              <div class="mt-2 text-2xl font-semibold tabular-nums">{{ activeMotorCount }}</div>
+              <div class="text-xs text-muted-foreground">active</div>
+            </div>
           </section>
 
           <section class="rounded-md border bg-background p-3">
@@ -3686,6 +3789,18 @@ onBeforeUnmount(() => {
                 <div class="flex items-center justify-between">
                   <span class="text-muted-foreground">强度</span>
                   <span class="font-medium tabular-nums">{{ buzzerStatus(selectedPart).volumePercent }}%</span>
+                </div>
+              </div>
+              <div v-if="selectedPart.type === 'motor'" class="rounded-md border bg-card px-3 py-2 text-xs">
+                <div class="mb-2 flex items-center justify-between">
+                  <span class="text-muted-foreground">状态</span>
+                  <span class="font-medium" :class="motorStatus(selectedPart).active ? 'text-emerald-700' : 'text-muted-foreground'">
+                    {{ motorStatus(selectedPart).active ? "转动" : "停止" }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-muted-foreground">速度</span>
+                  <span class="font-medium tabular-nums">{{ motorStatus(selectedPart).speedPercent }}%</span>
                 </div>
               </div>
             </div>

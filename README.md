@@ -6,7 +6,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 
 **Live Demo:** https://labs.freexlib.com
 
-`xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, buzzers, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the circuit respond immediately.
+`xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, buzzers, motors, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the circuit respond immediately.
 
 ![xshow circuits screenshot](docs/screenshot.png)
 
@@ -22,6 +22,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Adjust a variable resistor with a slider
 - Simulate bulb brightness from circuit state and resistance
 - Simulate a buzzer that becomes active in a powered closed loop
+- Simulate a motor that spins in a powered closed loop
 - Simulate polarity-sensitive LEDs with reverse-connection and over-current feedback
 - Animate current flow on energized wires
 - Switch between guided lesson experiments with automatic step checks
@@ -51,6 +52,7 @@ The current model focuses on simple closed-loop behavior:
 - A variable resistor changes equivalent resistance
 - A bulb brightness value is derived from the simulated current path
 - A buzzer becomes active when it is connected through the powered circuit
+- A motor spins when it is connected through the powered circuit
 - An LED only conducts when its polarity is connected in the forward direction
 
 ## Tech Stack
@@ -138,7 +140,7 @@ Near-term priorities:
 - Done for v0.1: guided lesson mode first slice
 - Done for v0.1: multiple guided lesson experiments
 - Done for v0.2: polarity-sensitive LED component and guided lesson
-- First slice for v0.4: buzzer component with powered-state feedback
+- First slice for v0.4: buzzer and motor components with powered-state feedback
 - Done for v0.1: one-click lesson starter workspaces
 - Done for v0.1: contextual hints for incomplete lesson steps
 - Done for v0.1: workbench highlights for active lesson steps

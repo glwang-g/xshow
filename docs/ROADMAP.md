@@ -12,12 +12,12 @@ Current focus: **v0.4 more components and better simulation rules**.
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Interactive circuit playground | Done | Battery, switch, bulb, resistor, LED, buzzer, wires, brightness, polarity, and circuit state are working. |
+| Interactive circuit playground | Done | Battery, switch, bulb, resistor, LED, buzzer, motor, wires, brightness, polarity, and circuit state are working. |
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
 | Workspace records | v0.3 feature complete | The browser automatically restores local workspaces; v0.3 adds Supabase sign-in, explicit cloud records, renaming, conflict handling, and visible sync states. |
-| More components | v0.4 first slice | The buzzer component is available and becomes active in powered closed loops. |
+| More components | v0.4 first slice | Buzzer and motor components are available and become active in powered closed loops. |
 | Mobile responsive experience | Released in v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |
@@ -129,7 +129,8 @@ Status: **First slice done**
 
 - [x] Add a polarity-sensitive LED component
 - [x] Add a buzzer component
-- [ ] More components: motor, diode, capacitor, ammeter, voltmeter
+- [x] Add a motor component
+- [ ] More components: diode, capacitor, ammeter, voltmeter
 - [x] Save and load circuit workspaces
 - [x] Export circuits as images
 - [x] Circuit state sharing by URL

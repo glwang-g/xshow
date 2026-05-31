@@ -62,7 +62,7 @@ Status: **first slice in progress**.
 ### Candidate Components
 
 - [x] Buzzer
-- [ ] Motor
+- [x] Motor
 - [ ] Diode
 - [ ] Capacitor
 - [ ] Ammeter

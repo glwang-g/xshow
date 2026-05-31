@@ -48,7 +48,7 @@ type CloudWorkspaceRecord = {
       id: string;
       name: string;
       resistance?: number;
-      type: "battery" | "bulb" | "switch" | "resistor" | "led";
+      type: "battery" | "bulb" | "switch" | "resistor" | "led" | "buzzer";
       x: number;
       y: number;
     }>;

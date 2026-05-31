@@ -88,6 +88,7 @@ type Point = {
 type CircuitPart = {
   id: string;
   name: string;
+  polarity?: "normal" | "reversed";
   type: PartType;
   x: number;
   y: number;
@@ -357,6 +358,7 @@ const renderedWires = computed(() => {
   ];
 });
 const simulation = computed(() => evaluateCircuit(parts.value, wires.value));
+const primaryBattery = computed(() => parts.value.find((part) => part.type === "battery"));
 const mainBulb = computed(() => parts.value.find((part) => part.type === "bulb"));
 const mainBulbBrightness = computed(() =>
   mainBulb.value ? simulation.value.bulbs[mainBulb.value.id]?.brightness ?? 0 : 0,
@@ -762,6 +764,30 @@ function terminalId(ref: TerminalRef) {
   return `${ref.partId}:${ref.terminal}`;
 }
 
+function batteryPolarity(part: CircuitPart) {
+  return part.type === "battery" && part.polarity === "reversed" ? "reversed" : "normal";
+}
+
+function batteryPositiveTerminal(part: CircuitPart): TerminalKey {
+  return batteryPolarity(part) === "reversed" ? "a" : "b";
+}
+
+function batteryNegativeTerminal(part: CircuitPart): TerminalKey {
+  return batteryPolarity(part) === "reversed" ? "b" : "a";
+}
+
+function batteryPolarityLabel(part: CircuitPart) {
+  return batteryPositiveTerminal(part) === "a" ? "正极在左侧" : "正极在右侧";
+}
+
+function terminalDisplayLabel(part: CircuitPart, terminal: TerminalKey) {
+  if (part.type === "battery") {
+    return batteryPositiveTerminal(part) === terminal ? "+" : "-";
+  }
+
+  return getSpec(part).terminals[terminal].label;
+}
+
 function sameTerminal(left: TerminalRef, right: TerminalRef) {
   return left.partId === right.partId && left.terminal === right.terminal;
 }
@@ -974,7 +1000,7 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart) {
   context.fillStyle = colors.muted;
 
   if (part.type === "battery") {
-    context.fillText("9V power", part.x + 18, part.y + 52);
+    context.fillText(`9V power · ${batteryPositiveTerminal(part) === "a" ? "+ left" : "+ right"}`, part.x + 18, part.y + 52);
     context.fillRect(part.x + 18, part.y + 70, 26, 12);
     context.fillRect(part.x + 50, part.y + 66, 32, 20);
   } else if (part.type === "switch") {
@@ -1427,7 +1453,7 @@ function terminalLabel(ref: TerminalRef) {
     return "Missing terminal";
   }
 
-  return `${part.name}${getSpec(part).terminals[ref.terminal].label}`;
+  return `${part.name}${terminalDisplayLabel(part, ref.terminal)}`;
 }
 
 function wireLabel(wire: Wire) {
@@ -2050,6 +2076,12 @@ function handleWorkbenchKeydown(event: KeyboardEvent) {
   if ((key === "Enter" || key === " ") && selectedPart.value?.type === "switch") {
     event.preventDefault();
     toggleSwitch(selectedPart.value);
+    return;
+  }
+
+  if ((key === "Enter" || key === " ") && selectedPart.value?.type === "battery") {
+    event.preventDefault();
+    toggleBatteryPolarity(selectedPart.value);
     return;
   }
 
@@ -2807,6 +2839,17 @@ function toggleSwitch(part: CircuitPart) {
   part.closed = !part.closed;
 }
 
+function toggleBatteryPolarity(part: CircuitPart) {
+  pushEditorHistory();
+
+  if (batteryPolarity(part) === "normal") {
+    part.polarity = "reversed";
+    return;
+  }
+
+  delete part.polarity;
+}
+
 function setResistance(part: CircuitPart, value: number) {
   part.resistance = Math.round(value);
 }
@@ -2875,8 +2918,8 @@ function hasPath(from: string, to: string, edges: Edge[]) {
 }
 
 function partBatteryBridgeDirection(part: CircuitPart, battery: CircuitPart, edges: Edge[]) {
-  const positive = `${battery.id}:b`;
-  const negative = `${battery.id}:a`;
+  const positive = terminalId({ partId: battery.id, terminal: batteryPositiveTerminal(battery) });
+  const negative = terminalId({ partId: battery.id, terminal: batteryNegativeTerminal(battery) });
   const a = `${part.id}:a`;
   const b = `${part.id}:b`;
   const edgesWithoutPart = edges.filter((edge) => edge.partId !== part.id);
@@ -2897,8 +2940,8 @@ function partBridgesBattery(part: CircuitPart, battery: CircuitPart, edges: Edge
 }
 
 function wireDirectionThroughBattery(wire: Wire, battery: CircuitPart, edges: Edge[]) {
-  const positive = `${battery.id}:b`;
-  const negative = `${battery.id}:a`;
+  const positive = terminalId({ partId: battery.id, terminal: batteryPositiveTerminal(battery) });
+  const negative = terminalId({ partId: battery.id, terminal: batteryNegativeTerminal(battery) });
   const from = terminalId(wire.from);
   const to = terminalId(wire.to);
   const edgesWithoutWire = edges.filter((edge) => edge.wireId !== wire.id);
@@ -2948,8 +2991,8 @@ function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   );
   const edges = buildEdges(sourceParts, sourceWires, undefined, conductiveLedIds);
 
-  const positive = `${battery.id}:b`;
-  const negative = `${battery.id}:a`;
+  const positive = terminalId({ partId: battery.id, terminal: batteryPositiveTerminal(battery) });
+  const negative = terminalId({ partId: battery.id, terminal: batteryNegativeTerminal(battery) });
   const closed = hasPath(positive, negative, edges);
   const seriesResistors = sourceParts.filter(
     (part) => part.type === "resistor" && partBridgesBattery(part, battery, edges),
@@ -3385,7 +3428,7 @@ onBeforeUnmount(() => {
             重接{{ rewiring.end === "from" ? "左端" : "右端" }}：点击新的端子
           </span>
           <span v-if="selectedTerminal" class="text-xs text-muted-foreground">
-            {{ getPart(selectedTerminal.partId)?.name }} {{ getSpec(getPart(selectedTerminal.partId) ?? "battery").terminals[selectedTerminal.terminal].label }}
+            {{ terminalLabel(selectedTerminal) }}
           </span>
         </div>
 
@@ -3524,14 +3567,14 @@ onBeforeUnmount(() => {
                 isLessonTerminalTarget(part, terminal) ? 'lesson-terminal-target' : '',
               ]"
               :style="terminalStyle(part, terminal)"
-              :title="getSpec(part).terminals[terminal].label"
+              :title="terminalDisplayLabel(part, terminal)"
               @pointerdown.stop="startNewWireDrag($event, part, terminal)"
               @pointermove.stop="updateNewWireDrag"
               @pointerup.stop="finishNewWireDrag"
               @pointercancel.stop="finishNewWireDrag"
               @click.stop="handleTerminalClick(part, terminal)"
             >
-              {{ getSpec(part).terminals[terminal].label }}
+              {{ terminalDisplayLabel(part, terminal) }}
             </button>
 
             <div v-if="part.type === 'battery'" class="flex h-full flex-col justify-between p-4">
@@ -3545,7 +3588,16 @@ onBeforeUnmount(() => {
               <div class="flex items-center gap-2">
                 <span class="h-9 w-4 rounded-sm border border-white/30 bg-white/10" />
                 <span class="h-12 w-4 rounded-sm border border-white/30 bg-white/20" />
-                <span class="h-9 flex-1 rounded-sm bg-gradient-to-r from-cyan-400 to-emerald-300" />
+                <span
+                  class="h-9 flex-1 rounded-sm from-cyan-400 to-emerald-300"
+                  :class="batteryPositiveTerminal(part) === 'b' ? 'bg-gradient-to-r' : 'bg-gradient-to-l'"
+                />
+              </div>
+              <div class="flex items-center justify-between text-xs text-white/70">
+                <span>{{ batteryPolarityLabel(part) }}</span>
+                <button class="rounded border border-white/20 px-2 py-1 text-white hover:bg-white/10" @pointerdown.stop @click.stop="toggleBatteryPolarity(part)">
+                  反转
+                </button>
               </div>
             </div>
 
@@ -4170,6 +4222,9 @@ onBeforeUnmount(() => {
               <div>
                 <div class="text-xs text-muted-foreground">电源</div>
                 <div class="font-medium">9 V</div>
+                <div v-if="primaryBattery" class="text-xs text-muted-foreground">
+                  {{ batteryPolarityLabel(primaryBattery) }}
+                </div>
               </div>
               <div>
                 <div class="text-xs text-muted-foreground">等效电阻</div>
@@ -4226,6 +4281,15 @@ onBeforeUnmount(() => {
               >
                 <component :is="selectedPart.closed ? ToggleRight : ToggleLeft" class="h-4 w-4" />
                 {{ selectedPart.closed ? "开关已闭合" : "开关已断开" }}
+              </Button>
+              <Button
+                v-if="selectedPart.type === 'battery'"
+                class="w-full"
+                variant="outline"
+                @click="toggleBatteryPolarity(selectedPart)"
+              >
+                <RotateCcw class="h-4 w-4" />
+                {{ batteryPolarityLabel(selectedPart) }}
               </Button>
               <label v-if="selectedPart.type === 'resistor'" class="block space-y-2">
                 <span class="text-xs text-muted-foreground">阻值 {{ selectedPart.resistance ?? 0 }} Ω</span>

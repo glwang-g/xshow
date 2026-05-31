@@ -48,7 +48,7 @@ Status: **Done for v0.1, polish later**
 - [x] Animate current flow when the circuit is closed
 - [x] Pause current animation when the circuit is open
 - [x] Make animation speed reflect simulated current strength
-- [ ] Reverse animation direction when polarity changes
+- [x] Reverse animation direction when polarity changes
 - [ ] Make brightness and current feedback feel more visually connected
 
 ### Guided lesson mode

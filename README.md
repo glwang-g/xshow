@@ -19,6 +19,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Drag an existing wire endpoint to reconnect it
 - Hold Alt while dragging an existing endpoint to branch a new wire from that terminal
 - Toggle a switch to open or close the circuit
+- Reverse battery polarity and watch wire direction and LED state update
 - Adjust a variable resistor with a slider
 - Simulate bulb brightness from circuit state and resistance
 - Simulate a buzzer that becomes active in a powered closed loop
@@ -50,7 +51,7 @@ This project is currently a teaching-oriented interactive prototype, not a full 
 
 The current model focuses on simple closed-loop behavior:
 
-- A battery provides a fixed 9V source
+- A battery provides a fixed 9V source with reversible polarity
 - A switch can break or complete the circuit
 - A variable resistor changes equivalent resistance
 - A bulb brightness value is derived from the simulated current path
@@ -105,14 +106,15 @@ pnpm preview
 3. Drag an existing wire endpoint to reconnect it to another terminal.
 4. Hold Alt while dragging an existing endpoint to create a new branch wire.
 5. Click the switch to open or close the circuit.
-6. Drag the variable resistor slider to change the bulb brightness.
-7. On phones and tablets, use the bottom HUD to open the component drawer, status panel, image export, view recentering, and zoom controls.
-8. Use **Export** to save the current workbench as a PNG image.
-9. Use **Records** to save and reload named local workspace snapshots.
-10. Use **Import JSON / Export JSON** to move the current workbench between devices.
-11. Use **Copy Share Link** to send the current workbench state as a URL.
-12. Use **Clear Wires** to remove connections.
-13. Use **Reset** to restore the default demo circuit.
+6. Select the battery and reverse polarity to flip current direction.
+7. Drag the variable resistor slider to change the bulb brightness.
+8. On phones and tablets, use the bottom HUD to open the component drawer, status panel, image export, view recentering, and zoom controls.
+9. Use **Export** to save the current workbench as a PNG image.
+10. Use **Records** to save and reload named local workspace snapshots.
+11. Use **Import JSON / Export JSON** to move the current workbench between devices.
+12. Use **Copy Share Link** to send the current workbench state as a URL.
+13. Use **Clear Wires** to remove connections.
+14. Use **Reset** to restore the default demo circuit.
 
 Keyboard shortcuts:
 

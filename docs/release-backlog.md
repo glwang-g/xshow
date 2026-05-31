@@ -70,7 +70,7 @@ Status: **first slice in progress**.
 
 ### Simulation Improvements
 
-- [ ] Fully connect current direction with battery polarity.
+- [x] Fully connect current direction with battery polarity.
 - [ ] Make bulb, LED, wire animation, and current values feel visually consistent.
 - [ ] Move from single-path approximations to a clearer node/branch model.
 

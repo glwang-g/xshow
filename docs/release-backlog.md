@@ -42,7 +42,7 @@ Reference: [Cloud Sync Plan](cloud-sync-plan.md). Supabase table setup lives in 
 ### Must Finish
 
 - [x] Choose Supabase as the backend.
-- [x] Add sign-in without blocking signed-out use.
+- [x] Add email/password auth without blocking signed-out use.
 - [x] Add a cloud workspace record list.
 - [x] Save the current workbench to the cloud.
 - [x] Load cloud records into the workbench.

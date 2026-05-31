@@ -35,6 +35,8 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Add the app to the home screen as a PWA and cache core static assets for offline relaunch
 - Automatically restore the last workspace in the same browser
 - Save named local workspace records for intermediate experiment states
+- Sign in with email/password and keep the cloud session in the browser
+- Save, load, rename, and delete cloud workspace records across devices
 - Import or export the current workbench as a JSON archive for cross-device migration
 - Copy a shareable URL that restores the current workbench state
 - Display circuit status, current, equivalent resistance, and brightness

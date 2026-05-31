@@ -16,7 +16,7 @@ Current focus: **v0.4 more components and better simulation rules**.
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
-| Workspace records | v0.3 feature complete | The browser automatically restores local workspaces; v0.3 adds Supabase sign-in, explicit cloud records, renaming, conflict handling, and visible sync states. |
+| Workspace records | v0.3 feature complete | The browser automatically restores local workspaces; v0.3 adds Supabase email/password auth, explicit cloud records, renaming, conflict handling, and visible sync states. |
 | More components | v0.4 first slice | Buzzer and motor components are available and become active in powered closed loops. |
 | Mobile responsive experience | Released in v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
@@ -98,7 +98,7 @@ Status: **In progress for v0.3**
 - [x] Import the current workbench from a JSON archive
 - [x] Share the current workbench state by URL
 - [x] Add a cloud records and cross-device sync plan
-- [x] Choose Supabase and add a non-blocking sign-in entry
+- [x] Choose Supabase and add non-blocking email/password auth
 - [x] Add explicit cloud-backed save, list, load, rename, and delete records
 - [x] Add visible cloud sync states
 - [x] Add conflict handling for cloud records

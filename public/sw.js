@@ -1,4 +1,4 @@
-const CACHE_NAME = "xshow-circuits-v5";
+const CACHE_NAME = "xshow-circuits-v6";
 const APP_SHELL = [
   "/",
   "/index.html",

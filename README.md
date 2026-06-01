@@ -140,6 +140,8 @@ Release backlog: [docs/release-backlog.md](docs/release-backlog.md).
 
 Cloud records and cross-device sync planning: [docs/cloud-sync-plan.md](docs/cloud-sync-plan.md).
 
+Architecture notes: [docs/architecture.md](docs/architecture.md).
+
 Supabase table setup for cloud records: [docs/supabase-schema.sql](docs/supabase-schema.sql).
 
 v0.2 release notes: [docs/releases/v0.2.0.md](docs/releases/v0.2.0.md). QA report: [docs/v0.2-qa-report.md](docs/v0.2-qa-report.md).

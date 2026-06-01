@@ -135,6 +135,8 @@ pnpm preview
 
 云端记录和跨设备同步计划见 [docs/cloud-sync-plan.zh-CN.md](docs/cloud-sync-plan.zh-CN.md)。
 
+架构拆分说明见 [docs/architecture.zh-CN.md](docs/architecture.zh-CN.md)。
+
 v0.2 发布说明见 [docs/releases/v0.2.0.zh-CN.md](docs/releases/v0.2.0.zh-CN.md)，QA 记录见 [docs/v0.2-qa-report.zh-CN.md](docs/v0.2-qa-report.zh-CN.md)。
 
 ## 贡献说明

@@ -9,12 +9,14 @@ import {
   CloudOff,
   CloudSync,
   CloudUpload,
+  Copy,
   FileDown,
   FileUp,
   FolderOpen,
   Link,
   LogOut,
   Mail,
+  PackageCheck,
   Pencil,
   RotateCcw,
   Save,
@@ -41,6 +43,7 @@ import type {
   WireEnd,
 } from "@/lib/circuit";
 import type { CloudWorkspaceRecord } from "@/lib/cloud";
+import type { PhysicalBuildPlan } from "@/lib/physical-build";
 import { getSpec, statusPanelTabs, type StatusPanelTab } from "@/lib/workbench-ui";
 import type {
   CloudAuthMode,
@@ -110,6 +113,8 @@ defineProps<{
   motorStatus: (part: CircuitPart) => MotorState;
   nextLessonStep: LessonStepState | undefined;
   open: boolean;
+  physicalBuildPlan: PhysicalBuildPlan;
+  physicalBuildPlanCopyState: "copied" | "idle" | "manual";
   primaryBattery: CircuitPart | undefined;
   recordTitle: string;
   removeCloudRecord: (recordId: string) => void | Promise<void>;
@@ -142,6 +147,8 @@ defineProps<{
 
 const emit = defineEmits<{
   close: [];
+  "copy-physical-build-plan": [];
+  "export-physical-build-plan": [];
   "copy-workspace-share-link": [];
   "export-workspace-json": [];
   "update:activeLessonId": [lessonId: string];
@@ -267,6 +274,101 @@ function updateInput(event: Event) {
               <Check v-if="step.complete" class="h-3.5 w-3.5" />
             </span>
             <span class="leading-5">{{ step.description }}</span>
+          </div>
+        </div>
+      </section>
+
+      <section v-if="tab === 'kit'" class="space-y-3">
+        <div class="rounded-md border bg-background p-3">
+          <div class="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <div class="flex items-center gap-2 text-sm font-medium">
+                <PackageCheck class="h-4 w-4 text-cyan-700" />
+                实体搭建清单
+              </div>
+              <p class="mt-1 text-xs leading-5 text-muted-foreground">
+                {{ physicalBuildPlan.summary }}
+              </p>
+            </div>
+            <span
+              class="shrink-0 rounded-md px-2 py-1 text-xs font-medium"
+              :class="physicalBuildPlan.ready ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'"
+            >
+              {{ physicalBuildPlan.ready ? "可搭建" : "待补齐" }}
+            </span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" @click="emit('copy-physical-build-plan')">
+              <Copy class="h-4 w-4" />
+              {{
+                physicalBuildPlanCopyState === "copied"
+                  ? "已复制"
+                  : physicalBuildPlanCopyState === "manual"
+                    ? "手动复制"
+                    : "复制清单"
+              }}
+            </Button>
+            <Button variant="outline" size="sm" @click="emit('export-physical-build-plan')">
+              <FileDown class="h-4 w-4" />
+              导出 MD
+            </Button>
+          </div>
+        </div>
+
+        <div class="rounded-md border bg-background p-3">
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-sm font-medium">物料</span>
+            <span class="text-xs text-muted-foreground">{{ physicalBuildPlan.items.length }} 类</span>
+          </div>
+          <div class="space-y-2">
+            <div
+              v-for="item in physicalBuildPlan.items"
+              :key="item.id"
+              class="rounded-md border bg-card px-3 py-2 text-xs"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-medium">{{ item.label }}</span>
+                <span class="rounded-md bg-muted px-2 py-0.5 font-medium tabular-nums">x{{ item.quantity }}</span>
+              </div>
+              <div class="mt-1 leading-5 text-muted-foreground">{{ item.note }}</div>
+              <div class="mt-1 leading-5 text-cyan-800">
+                采购关键词：{{ item.purchaseKeywords.join(" / ") }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-md border bg-background p-3">
+          <div class="mb-2 flex items-center justify-between">
+            <span class="text-sm font-medium">接线步骤</span>
+            <span class="text-xs text-muted-foreground">{{ physicalBuildPlan.connections.length }} 条</span>
+          </div>
+          <div v-if="physicalBuildPlan.connections.length" class="space-y-2">
+            <div
+              v-for="connection in physicalBuildPlan.connections"
+              :key="connection.id"
+              class="rounded-md border bg-card px-3 py-2 text-xs leading-5"
+            >
+              {{ connection.instruction }}
+            </div>
+          </div>
+          <div v-else class="rounded-md border border-dashed px-3 py-3 text-xs text-muted-foreground">
+            连接元器件后，这里会生成可照着搭的接线步骤。
+          </div>
+        </div>
+
+        <div v-if="physicalBuildPlan.warnings.length" class="space-y-2">
+          <div
+            v-for="warning in physicalBuildPlan.warnings"
+            :key="warning.id"
+            class="rounded-md border px-3 py-2 text-xs leading-5"
+            :class="
+              warning.tone === 'warning'
+                ? 'border-amber-200 bg-amber-50 text-amber-950'
+                : 'border-cyan-200 bg-cyan-50 text-cyan-950'
+            "
+          >
+            {{ warning.message }}
           </div>
         </div>
       </section>

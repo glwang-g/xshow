@@ -11,12 +11,14 @@
 | Circuit domain model and simulation | `src/lib/circuit.ts` | Owns component types, wire types, polarity helpers, wire-node merging, branch solving, and circuit evaluation. |
 | Workbench UI configuration | `src/lib/workbench-ui.ts` | Owns reusable part specs, palette entries, status tabs, and board dimensions. |
 | Workbench export | `src/lib/workbench-export.ts` | Renders the current circuit to a PNG without living in the page component. |
+| Physical build plan | `src/lib/physical-build.ts` | Converts the current workspace into a first-pass component list, purchase keywords, wiring steps, and safety notes for hands-on building. |
 | Workspace codec and records | `src/lib/workspace-codec.ts`, `src/lib/workspace-records.ts` | Owns workspace snapshot types, record types, validation, share-link encoding, and time formatting. |
 | Editor history | `src/composables/useWorkbenchHistory.ts` | Owns undo/redo stacks for workspace snapshots. |
 | Lesson content | `src/data/lessons.ts` | Keeps lesson text, starter workspaces, and checks data-editable. |
 | Cloud records | `src/lib/cloud.ts` | Wraps Supabase auth and workspace record calls. |
 | Shared board state | `src/stores/board.ts` | Tracks zoom and viewport-related workbench state. |
 | Small UI primitives | `src/components/ui` | Local shadcn-vue inspired components. |
+| Domain regression tests | `tests/simulation.mjs` | Covers single-loop, series, parallel, LED/diode polarity, meter readings, battery reversal, and physical build-plan output. |
 
 ## Refactor Direction
 
@@ -31,4 +33,4 @@
 - Focused `StatusPanel` tab components for lesson, circuit, records, cloud, selection, and wires.
 - Cloud/workspace sync composables so account state and record persistence stop living in `Home.vue`.
 - Wire interaction composables for endpoint dragging, snapping, and route rendering.
-- Unit tests around the node/branch solver covering series, parallel, reversed LEDs, blocked diodes, meter readings, and reversed battery polarity.
+- Expand domain tests as new components, physical-build rules, and lesson circuits are added.

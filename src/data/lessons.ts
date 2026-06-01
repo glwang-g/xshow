@@ -1,3 +1,5 @@
+import type { PartType } from "@/lib/circuit";
+
 export type LessonCheckId =
   | "hasStarterParts"
   | "hasClosedCircuit"
@@ -20,7 +22,7 @@ export type LessonCheckId =
   | "hasDimSeriesBulbs"
   | "hasBrightParallelBulbs";
 
-export type LessonPartType = "battery" | "bulb" | "switch" | "resistor" | "led" | "buzzer" | "motor";
+export type LessonPartType = PartType;
 
 export type LessonTerminalKey = "a" | "b";
 

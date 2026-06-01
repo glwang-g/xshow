@@ -57,22 +57,22 @@ Reference: [Cloud Sync Plan](cloud-sync-plan.md). Supabase table setup lives in 
 
 ## v0.4: More Components And Better Rules
 
-Status: **first slice in progress**.
+Status: **first slice implemented, pending regression QA**.
 
 ### Candidate Components
 
 - [x] Buzzer
 - [x] Motor
-- [ ] Diode
-- [ ] Capacitor
-- [ ] Ammeter
-- [ ] Voltmeter
+- [x] Diode
+- [x] Capacitor
+- [x] Ammeter
+- [x] Voltmeter
 
 ### Simulation Improvements
 
 - [x] Fully connect current direction with battery polarity.
-- [ ] Make bulb, LED, wire animation, and current values feel visually consistent.
-- [ ] Move from single-path approximations to a clearer node/branch model.
+- [x] Make bulb, LED, wire animation, and current values feel visually consistent.
+- [x] Move from single-path approximations to a clearer node/branch model.
 
 ## Ship Rule
 

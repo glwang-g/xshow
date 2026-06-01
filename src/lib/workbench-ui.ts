@@ -1,5 +1,7 @@
 import {
+  Activity,
   BatteryCharging,
+  BatteryMedium,
   Cable,
   CircleDot,
   CloudSync,
@@ -9,6 +11,7 @@ import {
   Save,
   SlidersHorizontal,
   ToggleRight,
+  TriangleRight,
   Trophy,
   Volume2,
 } from "@lucide/vue";
@@ -91,6 +94,46 @@ export const partSpecs: Record<PartType, PartSpec> = {
       b: { x: 156, y: 64, label: "+" },
     },
   },
+  diode: {
+    icon: TriangleRight,
+    label: "二极管",
+    width: 156,
+    height: 112,
+    terminals: {
+      a: { x: 0, y: 56, label: "-" },
+      b: { x: 156, y: 56, label: "+" },
+    },
+  },
+  capacitor: {
+    icon: BatteryMedium,
+    label: "电容",
+    width: 156,
+    height: 112,
+    terminals: {
+      a: { x: 0, y: 56, label: "A" },
+      b: { x: 156, y: 56, label: "B" },
+    },
+  },
+  ammeter: {
+    icon: Activity,
+    label: "电流表",
+    width: 156,
+    height: 112,
+    terminals: {
+      a: { x: 0, y: 56, label: "A" },
+      b: { x: 156, y: 56, label: "B" },
+    },
+  },
+  voltmeter: {
+    icon: Gauge,
+    label: "电压表",
+    width: 156,
+    height: 112,
+    terminals: {
+      a: { x: 0, y: 56, label: "A" },
+      b: { x: 156, y: 56, label: "B" },
+    },
+  },
   buzzer: {
     icon: Volume2,
     label: "蜂鸣器",
@@ -121,6 +164,10 @@ export const palette: PaletteItem[] = [
   { type: "motor", description: "闭合后转" },
   { type: "resistor", description: "调节电流" },
   { type: "led", description: "有正负极" },
+  { type: "diode", description: "单向导通" },
+  { type: "capacitor", description: "储存电荷" },
+  { type: "ammeter", description: "测量电流" },
+  { type: "voltmeter", description: "测量电压" },
 ];
 
 export const statusPanelTabs: StatusPanelTabItem[] = [

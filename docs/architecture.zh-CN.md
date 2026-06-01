@@ -11,12 +11,14 @@
 | 电路领域模型和仿真 | `src/lib/circuit.ts` | 负责元器件类型、导线类型、极性辅助函数、导线节点合并、支路求解和电路求值。 |
 | 工作台 UI 配置 | `src/lib/workbench-ui.ts` | 负责元器件规格、元器件库配置、状态面板标签和桌面尺寸。 |
 | 工作台导出 | `src/lib/workbench-export.ts` | 负责把当前电路绘制成 PNG，不再放在页面组件里。 |
+| 实体搭建清单 | `src/lib/physical-build.ts` | 负责把当前工作台转换成第一版物料清单、采购关键词、接线步骤和实体搭建注意事项。 |
 | 工作台记录类型和编码 | `src/lib/workspace-records.ts`、`src/lib/workspace-codec.ts` | 负责工作台快照类型、记录类型、校验、分享链接编码和时间格式化。 |
 | 编辑历史 | `src/composables/useWorkbenchHistory.ts` | 负责工作台快照的撤销/重做栈。 |
 | 课程内容 | `src/data/lessons.ts` | 保存课程文案、初始工作台和检查项，避免写死在组件里。 |
 | 云端记录 | `src/lib/cloud.ts` | 封装 Supabase 登录和工作台记录接口。 |
 | 工作台共享状态 | `src/stores/board.ts` | 管理缩放和视口相关的工作台状态。 |
 | 小型 UI 基础组件 | `src/components/ui` | 本地 shadcn-vue 风格组件。 |
+| 领域回归测试 | `tests/simulation.mjs` | 覆盖单灯、串联、并联、LED/二极管方向、电表读数、电池反转和实体搭建清单输出。 |
 
 ## 后续重构方向
 
@@ -31,4 +33,4 @@
 - 将 `StatusPanel.vue` 继续拆成课程、回路、记录、云端、属性、导线等专门标签组件。
 - 抽出云端/工作台同步 composable，让账号状态和记录持久化不再堆在 `Home.vue`。
 - 抽出导线交互 composable，收拢端点拖动、吸附和路径渲染。
-- 给节点/支路求解器增加单元测试，覆盖串联、并联、LED 反接、二极管截止、电表读数和电池极性反转。
+- 随着新增元器件、实体搭建规则和课程电路继续扩展领域测试。

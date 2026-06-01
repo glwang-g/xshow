@@ -73,6 +73,17 @@ Status: **first slice implemented, pending regression QA**.
 - [x] Fully connect current direction with battery polarity.
 - [x] Make bulb, LED, wire animation, and current values feel visually consistent.
 - [x] Move from single-path approximations to a clearer node/branch model.
+- [x] Add regression tests for the node/branch solver and physical build-plan output.
+
+### Physical Build Bridge
+
+- [x] Generate a first-pass component list from the current workspace.
+- [x] Add purchase keywords for each virtual part before real SKU mapping.
+- [x] Generate wiring steps from the current wires.
+- [x] Add safety notes for polarity-sensitive parts and meter placement.
+- [x] Export the first-pass build plan as Markdown.
+- [ ] Map virtual parts to real kit SKUs or recommended purchase links.
+- [ ] Export a printable assembly sheet with layout and wiring.
 
 ## Ship Rule
 

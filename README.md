@@ -6,7 +6,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 
 **Live Demo:** https://labs.freexlib.com
 
-`xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, buzzers, motors, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the circuit respond immediately.
+`xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, LEDs, diodes, capacitors, buzzers, motors, meters, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the circuit respond immediately.
 
 ![xshow circuits screenshot](docs/screenshot.png)
 
@@ -25,6 +25,8 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Simulate a buzzer that becomes active in a powered closed loop
 - Simulate a motor that spins in a powered closed loop
 - Simulate polarity-sensitive LEDs with reverse-connection and over-current feedback
+- Simulate diodes, capacitors, ammeters, and voltmeters with first-pass educational feedback
+- Solve simple circuits with a node/branch model for branch current, equivalent resistance, and meter readings
 - Animate current flow on energized wires
 - Switch between guided lesson experiments with automatic step checks
 - Include basic, open-circuit, brightness, series, parallel, and LED guided lessons
@@ -40,6 +42,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Save, load, rename, and delete cloud workspace records across devices
 - Import or export the current workbench as a JSON archive for cross-device migration
 - Copy a shareable URL that restores the current workbench state
+- Generate and export a first-pass physical build list with component quantities, purchase keywords, and wiring steps
 - Display circuit status, current, equivalent resistance, and brightness
 - Use editor-style shortcuts for delete, cancel, nudge, duplicate, zoom, undo, and redo
 - Export the current workbench as a PNG image
@@ -49,15 +52,15 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 
 This project is currently a teaching-oriented interactive prototype, not a full SPICE-level circuit simulator.
 
-The current model focuses on simple closed-loop behavior:
+The current model focuses on simple teaching circuits:
 
 - A battery provides a fixed 9V source with reversible polarity
 - A switch can break or complete the circuit
-- A variable resistor changes equivalent resistance
-- A bulb brightness value is derived from the simulated current path
-- A buzzer becomes active when it is connected through the powered circuit
-- A motor spins when it is connected through the powered circuit
-- An LED only conducts when its polarity is connected in the forward direction
+- Wires and closed switches merge terminals into electrical nodes
+- Resistors, bulbs, buzzers, motors, ammeters, and forward-biased LEDs/diodes become solved branches
+- Branch currents drive bulb brightness, buzzer volume, motor speed, and ammeter readings
+- Voltmeters and capacitors read voltage across connected nodes without closing the circuit
+- LEDs and diodes only conduct when their polarity is connected in the forward direction
 
 ## Tech Stack
 
@@ -96,6 +99,8 @@ cp .env.example .env.local
 ```bash
 pnpm dev
 pnpm build
+pnpm test
+pnpm test:simulation
 pnpm preview
 ```
 
@@ -113,8 +118,9 @@ pnpm preview
 10. Use **Records** to save and reload named local workspace snapshots.
 11. Use **Import JSON / Export JSON** to move the current workbench between devices.
 12. Use **Copy Share Link** to send the current workbench state as a URL.
-13. Use **Clear Wires** to remove connections.
-14. Use **Reset** to restore the default demo circuit.
+13. Use **Physical** to copy or export a component list and wiring steps for hands-on building.
+14. Use **Clear Wires** to remove connections.
+15. Use **Reset** to restore the default demo circuit.
 
 Keyboard shortcuts:
 
@@ -159,6 +165,8 @@ Near-term priorities:
 - Done for v0.2: polarity-sensitive LED component and guided lesson
 - First slice for v0.4: buzzer, motor, diode, capacitor, ammeter, and voltmeter components with powered-state feedback
 - First slice for v0.4: node/branch simulation with branch currents, equivalent resistance, and meter readings
+- First slice for v0.4: simulation and physical-build regression tests
+- Product direction slice: turn the current workspace into a copyable/exportable physical component list, purchase keywords, and wiring steps
 - Done for v0.1: one-click lesson starter workspaces
 - Done for v0.1: contextual hints for incomplete lesson steps
 - Done for v0.1: workbench highlights for active lesson steps

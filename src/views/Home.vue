@@ -59,6 +59,10 @@ import {
   isPersistedWorkspace,
   isSavedWorkspaceRecord,
 } from "@/lib/workspace-codec";
+import {
+  createPhysicalBuildPlan,
+  formatPhysicalBuildPlanMarkdown,
+} from "@/lib/physical-build";
 import { exportWorkbenchImage as exportWorkbenchImageFile } from "@/lib/workbench-export";
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
@@ -92,6 +96,7 @@ const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
 const shareLinkState = ref<"copied" | "idle" | "manual">("idle");
+const buildPlanCopyState = ref<"copied" | "idle" | "manual">("idle");
 const cloudAuthBusy = ref(false);
 const cloudAuthError = ref("");
 const cloudAuthMode = ref<CloudAuthMode>("sign-in");
@@ -209,6 +214,7 @@ const activeMotorCount = computed(() => Object.values(simulation.value.motors).f
 const activeAmmeterCount = computed(() => Object.values(simulation.value.ammeters).filter((state) => state.active).length);
 const activeVoltmeterCount = computed(() => Object.values(simulation.value.voltmeters).filter((state) => state.active).length);
 const currentVisualStrength = computed(() => Math.min(1, simulation.value.currentMilliAmps / 180));
+const physicalBuildPlan = computed(() => createPhysicalBuildPlan(parts.value, wires.value));
 const cloudSyncState = computed<CloudSyncState>(() => {
   if (!cloudConfig.configured) {
     return "unconfigured";
@@ -610,6 +616,7 @@ const {
 });
 
 let autosaveTimer: number | null = null;
+let buildPlanCopyFeedbackTimer: number | null = null;
 let cloudAuthUnsubscribe: (() => void) | null = null;
 let shareLinkFeedbackTimer: number | null = null;
 
@@ -2010,6 +2017,48 @@ async function copyWorkspaceShareLink() {
   }
 }
 
+function showBuildPlanCopyFeedback(state: "copied" | "manual") {
+  buildPlanCopyState.value = state;
+
+  if (buildPlanCopyFeedbackTimer) {
+    window.clearTimeout(buildPlanCopyFeedbackTimer);
+  }
+
+  buildPlanCopyFeedbackTimer = window.setTimeout(() => {
+    buildPlanCopyState.value = "idle";
+    buildPlanCopyFeedbackTimer = null;
+  }, state === "copied" ? 1800 : 3600);
+}
+
+async function copyPhysicalBuildPlan() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const markdown = formatPhysicalBuildPlanMarkdown(physicalBuildPlan.value);
+
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("Clipboard API unavailable");
+    }
+
+    await navigator.clipboard.writeText(markdown);
+    showBuildPlanCopyFeedback("copied");
+  } catch {
+    showBuildPlanCopyFeedback("manual");
+    window.prompt("浏览器没有允许自动复制，请手动复制这个实体搭建清单：", markdown);
+  }
+}
+
+function exportPhysicalBuildPlan() {
+  const date = new Date().toISOString().slice(0, 10);
+  downloadTextFile(
+    `xshow-physical-build-${date}.md`,
+    formatPhysicalBuildPlanMarkdown(physicalBuildPlan.value),
+    "text/markdown;charset=utf-8",
+  );
+}
+
 async function importWorkspaceJson(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
@@ -2524,6 +2573,10 @@ onBeforeUnmount(() => {
   if (shareLinkFeedbackTimer) {
     window.clearTimeout(shareLinkFeedbackTimer);
   }
+
+  if (buildPlanCopyFeedbackTimer) {
+    window.clearTimeout(buildPlanCopyFeedbackTimer);
+  }
 });
 </script>
 
@@ -2693,6 +2746,8 @@ onBeforeUnmount(() => {
         :motor-status="motorStatus"
         :next-lesson-step="nextLessonStep"
         :open="statusPanelOpen"
+        :physical-build-plan="physicalBuildPlan"
+        :physical-build-plan-copy-state="buildPlanCopyState"
         :primary-battery="primaryBattery"
         :remove-cloud-record="removeCloudRecord"
         :remove-saved-record="removeSavedRecord"
@@ -2720,7 +2775,9 @@ onBeforeUnmount(() => {
         :wire-label="wireLabel"
         :wires="wires"
         @close="statusPanelOpen = false"
+        @copy-physical-build-plan="copyPhysicalBuildPlan"
         @copy-workspace-share-link="copyWorkspaceShareLink"
+        @export-physical-build-plan="exportPhysicalBuildPlan"
         @export-workspace-json="exportWorkspaceJson"
       />
     </section>

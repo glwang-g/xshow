@@ -8,6 +8,7 @@ import {
   Cog,
   Gauge,
   Lightbulb,
+  PackageCheck,
   Save,
   SlidersHorizontal,
   ToggleRight,
@@ -30,7 +31,7 @@ export type PaletteItem = {
   type: PartType;
 };
 
-export type StatusPanelTab = "circuit" | "cloud" | "lesson" | "records" | "selection" | "wires";
+export type StatusPanelTab = "circuit" | "cloud" | "kit" | "lesson" | "records" | "selection" | "wires";
 
 export type StatusPanelTabItem = {
   icon: unknown;
@@ -174,6 +175,7 @@ export const statusPanelTabs: StatusPanelTabItem[] = [
   { icon: Trophy, id: "lesson", label: "课程" },
   { icon: Gauge, id: "circuit", label: "回路" },
   { icon: SlidersHorizontal, id: "selection", label: "属性" },
+  { icon: PackageCheck, id: "kit", label: "实体" },
   { icon: Save, id: "records", label: "记录" },
   { icon: CloudSync, id: "cloud", label: "云端" },
   { icon: Cable, id: "wires", label: "导线" },

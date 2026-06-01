@@ -25,7 +25,6 @@ import {
   Mail,
   PackagePlus,
   Pencil,
-  Plus,
   RotateCcw,
   Save,
   ShieldCheck,
@@ -45,6 +44,23 @@ import {
 } from "@lucide/vue";
 import Button from "@/components/ui/Button.vue";
 import {
+  batteryPolarity,
+  batteryPositiveTerminal,
+  evaluateCircuit,
+  hasPath,
+  sameTerminal,
+  terminalId,
+  type BuzzerState,
+  type CircuitPart,
+  type LedState,
+  type MotorState,
+  type PartType,
+  type TerminalKey,
+  type TerminalRef,
+  type Wire,
+  type WireEnd,
+} from "@/lib/circuit";
+import {
   cloudConfig,
   deleteCloudWorkspaceRecord,
   getCloudUser,
@@ -63,14 +79,6 @@ import {
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
-type PartType = "battery" | "bulb" | "switch" | "resistor" | "led" | "buzzer" | "motor";
-type TerminalKey = "a" | "b";
-
-type TerminalRef = {
-  partId: string;
-  terminal: TerminalKey;
-};
-
 type TerminalHit = {
   distance: number;
   position: {
@@ -83,52 +91,6 @@ type TerminalHit = {
 type Point = {
   x: number;
   y: number;
-};
-
-type CircuitPart = {
-  id: string;
-  name: string;
-  polarity?: "normal" | "reversed";
-  type: PartType;
-  x: number;
-  y: number;
-  closed?: boolean;
-  resistance?: number;
-};
-
-type Wire = {
-  id: string;
-  from: TerminalRef;
-  to: TerminalRef;
-};
-
-type WireEnd = "from" | "to";
-
-type Edge = {
-  from: string;
-  to: string;
-  partId?: string;
-  wireId?: string;
-};
-
-type LedState = {
-  brightness: number;
-  brightnessPercent: number;
-  forward: boolean;
-  overCurrent: boolean;
-  reversed: boolean;
-};
-
-type BuzzerState = {
-  active: boolean;
-  volume: number;
-  volumePercent: number;
-};
-
-type MotorState = {
-  active: boolean;
-  speed: number;
-  speedPercent: number;
 };
 
 type PersistedWorkspace = LessonWorkspace & {
@@ -146,6 +108,7 @@ type CloudRecord = CloudWorkspaceRecord<PersistedWorkspace>;
 type CloudAuthMode = "reset" | "sign-in" | "sign-up" | "update-password";
 type CloudSyncState = "configured" | "failed" | "local-changes" | "signed-in" | "synced" | "syncing" | "unconfigured";
 type CloudSyncStatus = "failed" | "idle" | "local-changes" | "synced" | "syncing";
+type StatusPanelTab = "circuit" | "cloud" | "lesson" | "records" | "selection" | "wires";
 
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
@@ -188,6 +151,7 @@ const suppressCloudDirtyMark = ref(false);
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
+const statusPanelTab = ref<StatusPanelTab>("lesson");
 const lessonCompletePanelOpen = ref(false);
 const dismissedLessonCompletionId = ref<string | null>(null);
 const hoveredWireId = ref<string | null>(null);
@@ -215,13 +179,6 @@ const workbench = {
   width: 1060,
   height: 640,
 };
-const bulbOhms = 18;
-const ledOhms = 28;
-const buzzerOhms = 32;
-const motorOhms = 44;
-const ledSafeCurrentMilliAmps = 65;
-const buzzerLoudCurrentMilliAmps = 160;
-const motorFastCurrentMilliAmps = 180;
 
 const partSpecs: Record<
   PartType,
@@ -313,6 +270,15 @@ const palette: Array<{ type: PartType; description: string }> = [
   { type: "motor", description: "闭合后转" },
   { type: "resistor", description: "调节电流" },
   { type: "led", description: "有正负极" },
+];
+
+const statusPanelTabs: Array<{ icon: unknown; id: StatusPanelTab; label: string }> = [
+  { icon: Trophy, id: "lesson", label: "课程" },
+  { icon: Gauge, id: "circuit", label: "回路" },
+  { icon: SlidersHorizontal, id: "selection", label: "属性" },
+  { icon: Save, id: "records", label: "记录" },
+  { icon: CloudSync, id: "cloud", label: "云端" },
+  { icon: Cable, id: "wires", label: "导线" },
 ];
 
 const parts = ref<CircuitPart[]>([
@@ -760,22 +726,6 @@ function partIcon(type: PartType) {
   return partSpecs[type].icon;
 }
 
-function terminalId(ref: TerminalRef) {
-  return `${ref.partId}:${ref.terminal}`;
-}
-
-function batteryPolarity(part: CircuitPart) {
-  return part.type === "battery" && part.polarity === "reversed" ? "reversed" : "normal";
-}
-
-function batteryPositiveTerminal(part: CircuitPart): TerminalKey {
-  return batteryPolarity(part) === "reversed" ? "a" : "b";
-}
-
-function batteryNegativeTerminal(part: CircuitPart): TerminalKey {
-  return batteryPolarity(part) === "reversed" ? "b" : "a";
-}
-
 function batteryPolarityLabel(part: CircuitPart) {
   return batteryPositiveTerminal(part) === "a" ? "正极在左侧" : "正极在右侧";
 }
@@ -786,10 +736,6 @@ function terminalDisplayLabel(part: CircuitPart, terminal: TerminalKey) {
   }
 
   return getSpec(part).terminals[terminal].label;
-}
-
-function sameTerminal(left: TerminalRef, right: TerminalRef) {
-  return left.partId === right.partId && left.terminal === right.terminal;
 }
 
 function getPart(partId: string) {
@@ -1509,6 +1455,7 @@ function handlePartPointerDown(event: PointerEvent, part: CircuitPart) {
   endpointDrag.value = null;
   newWireDrag.value = null;
   selectedPartId.value = part.id;
+  statusPanelTab.value = "selection";
   const point = boardPoint(event);
   dragging.value = {
     id: part.id,
@@ -1573,6 +1520,7 @@ function selectWire(wireId: string) {
   selectedWireId.value = wireId;
   selectedTerminal.value = null;
   rewiring.value = null;
+  statusPanelTab.value = "selection";
 }
 
 function startRewire(wireId: string, end: WireEnd) {
@@ -1885,6 +1833,7 @@ function addPart(type: PartType) {
   parts.value.push(nextPart);
   clearInteractionState();
   selectedPartId.value = nextPart.id;
+  statusPanelTab.value = "selection";
   palettePanelOpen.value = false;
 }
 
@@ -2854,232 +2803,6 @@ function setResistance(part: CircuitPart, value: number) {
   part.resistance = Math.round(value);
 }
 
-function buildEdges(
-  sourceParts: CircuitPart[],
-  sourceWires: Wire[],
-  excludedPartId?: string,
-  conductiveLedIds = new Set<string>(),
-) {
-  const edges: Edge[] = sourceWires.map((wire) => ({
-    from: terminalId(wire.from),
-    to: terminalId(wire.to),
-    wireId: wire.id,
-  }));
-
-  for (const part of sourceParts) {
-    if (part.id === excludedPartId || part.type === "battery") {
-      continue;
-    }
-
-    if (part.type === "switch" && !part.closed) {
-      continue;
-    }
-
-    if (part.type === "led" && !conductiveLedIds.has(part.id)) {
-      continue;
-    }
-
-    edges.push({
-      from: `${part.id}:a`,
-      to: `${part.id}:b`,
-      partId: part.id,
-    });
-  }
-
-  return edges;
-}
-
-function hasPath(from: string, to: string, edges: Edge[]) {
-  const graph = new Map<string, string[]>();
-
-  for (const edge of edges) {
-    graph.set(edge.from, [...(graph.get(edge.from) ?? []), edge.to]);
-    graph.set(edge.to, [...(graph.get(edge.to) ?? []), edge.from]);
-  }
-
-  const queue = [from];
-  const visited = new Set<string>();
-
-  while (queue.length > 0) {
-    const node = queue.shift() as string;
-    if (node === to) {
-      return true;
-    }
-
-    if (visited.has(node)) {
-      continue;
-    }
-
-    visited.add(node);
-    queue.push(...(graph.get(node) ?? []).filter((next) => !visited.has(next)));
-  }
-
-  return false;
-}
-
-function partBatteryBridgeDirection(part: CircuitPart, battery: CircuitPart, edges: Edge[]) {
-  const positive = terminalId({ partId: battery.id, terminal: batteryPositiveTerminal(battery) });
-  const negative = terminalId({ partId: battery.id, terminal: batteryNegativeTerminal(battery) });
-  const a = `${part.id}:a`;
-  const b = `${part.id}:b`;
-  const edgesWithoutPart = edges.filter((edge) => edge.partId !== part.id);
-
-  if (hasPath(positive, b, edgesWithoutPart) && hasPath(a, negative, edgesWithoutPart)) {
-    return "forward";
-  }
-
-  if (hasPath(positive, a, edgesWithoutPart) && hasPath(b, negative, edgesWithoutPart)) {
-    return "reverse";
-  }
-
-  return null;
-}
-
-function partBridgesBattery(part: CircuitPart, battery: CircuitPart, edges: Edge[]) {
-  return Boolean(partBatteryBridgeDirection(part, battery, edges));
-}
-
-function wireDirectionThroughBattery(wire: Wire, battery: CircuitPart, edges: Edge[]) {
-  const positive = terminalId({ partId: battery.id, terminal: batteryPositiveTerminal(battery) });
-  const negative = terminalId({ partId: battery.id, terminal: batteryNegativeTerminal(battery) });
-  const from = terminalId(wire.from);
-  const to = terminalId(wire.to);
-  const edgesWithoutWire = edges.filter((edge) => edge.wireId !== wire.id);
-
-  if (hasPath(positive, from, edgesWithoutWire) && hasPath(to, negative, edgesWithoutWire)) {
-    return "forward";
-  }
-
-  if (hasPath(positive, to, edgesWithoutWire) && hasPath(from, negative, edgesWithoutWire)) {
-    return "reverse";
-  }
-
-  return null;
-}
-
-function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
-  const battery = sourceParts.find((part) => part.type === "battery");
-  const bulbs = sourceParts.filter((part) => part.type === "bulb");
-  const leds = sourceParts.filter((part) => part.type === "led");
-  const buzzers = sourceParts.filter((part) => part.type === "buzzer");
-  const motors = sourceParts.filter((part) => part.type === "motor");
-  const bulbStates: Record<string, { brightness: number; brightnessPercent: number }> = {};
-  const ledStates: Record<string, LedState> = {};
-  const buzzerStates: Record<string, BuzzerState> = {};
-  const motorStates: Record<string, MotorState> = {};
-  const wireStates: Record<string, { active: boolean; reverse: boolean }> = {};
-
-  if (!battery) {
-    return {
-      closed: false,
-      currentMilliAmps: 0,
-      equivalentResistance: 0,
-      bulbs: bulbStates,
-      buzzers: buzzerStates,
-      leds: ledStates,
-      motors: motorStates,
-      wires: wireStates,
-    };
-  }
-
-  const allLedIds = new Set(leds.map((part) => part.id));
-  const orientationEdges = buildEdges(sourceParts, sourceWires, undefined, allLedIds);
-  const conductiveLedIds = new Set(
-    leds
-      .filter((part) => partBatteryBridgeDirection(part, battery, orientationEdges) === "forward")
-      .map((part) => part.id),
-  );
-  const edges = buildEdges(sourceParts, sourceWires, undefined, conductiveLedIds);
-
-  const positive = terminalId({ partId: battery.id, terminal: batteryPositiveTerminal(battery) });
-  const negative = terminalId({ partId: battery.id, terminal: batteryNegativeTerminal(battery) });
-  const closed = hasPath(positive, negative, edges);
-  const seriesResistors = sourceParts.filter(
-    (part) => part.type === "resistor" && partBridgesBattery(part, battery, edges),
-  );
-  const conductingBulbs = bulbs.filter((part) => closed && partBridgesBattery(part, battery, edges));
-  const conductingLeds = leds.filter((part) => closed && conductiveLedIds.has(part.id));
-  const conductingBuzzers = buzzers.filter((part) => closed && partBridgesBattery(part, battery, edges));
-  const conductingMotors = motors.filter((part) => closed && partBridgesBattery(part, battery, edges));
-  const resistorOhms = seriesResistors.reduce((total, part) => total + (part.resistance ?? 0), 0);
-  const loadOhms = Math.max(
-    bulbOhms,
-    conductingBulbs.length * bulbOhms +
-      conductingLeds.length * ledOhms +
-      conductingBuzzers.length * buzzerOhms +
-      conductingMotors.length * motorOhms,
-  );
-  const equivalentResistance = closed ? loadOhms + resistorOhms : 0;
-  const current = equivalentResistance > 0 ? 9 / equivalentResistance : 0;
-  const currentMilliAmps = Math.round(current * 1000);
-
-  for (const wire of sourceWires) {
-    const direction = closed ? wireDirectionThroughBattery(wire, battery, edges) : null;
-    wireStates[wire.id] = {
-      active: Boolean(direction),
-      reverse: direction === "reverse",
-    };
-  }
-
-  for (const bulb of bulbs) {
-    const conducting = conductingBulbs.some((part) => part.id === bulb.id);
-    const normalized = conducting && equivalentResistance > 0 ? bulbOhms / equivalentResistance : 0;
-    const brightness = conducting ? Math.min(1, Math.max(0.1, normalized)) : 0;
-
-    bulbStates[bulb.id] = {
-      brightness,
-      brightnessPercent: Math.round(brightness * 100),
-    };
-  }
-
-  for (const led of leds) {
-    const direction = partBatteryBridgeDirection(led, battery, orientationEdges);
-    const conducting = closed && conductiveLedIds.has(led.id);
-    const brightness = conducting ? Math.min(1, Math.max(0.18, currentMilliAmps / ledSafeCurrentMilliAmps)) : 0;
-
-    ledStates[led.id] = {
-      brightness,
-      brightnessPercent: Math.round(brightness * 100),
-      forward: direction === "forward",
-      overCurrent: conducting && currentMilliAmps > ledSafeCurrentMilliAmps,
-      reversed: direction === "reverse",
-    };
-  }
-
-  for (const buzzer of buzzers) {
-    const conducting = conductingBuzzers.some((part) => part.id === buzzer.id);
-    const volume = conducting ? Math.min(1, Math.max(0.14, currentMilliAmps / buzzerLoudCurrentMilliAmps)) : 0;
-
-    buzzerStates[buzzer.id] = {
-      active: volume > 0,
-      volume,
-      volumePercent: Math.round(volume * 100),
-    };
-  }
-
-  for (const motor of motors) {
-    const conducting = conductingMotors.some((part) => part.id === motor.id);
-    const speed = conducting ? Math.min(1, Math.max(0.12, currentMilliAmps / motorFastCurrentMilliAmps)) : 0;
-
-    motorStates[motor.id] = {
-      active: speed > 0,
-      speed,
-      speedPercent: Math.round(speed * 100),
-    };
-  }
-
-  return {
-    closed,
-    currentMilliAmps,
-    equivalentResistance,
-    bulbs: bulbStates,
-    buzzers: buzzerStates,
-    leds: ledStates,
-    motors: motorStates,
-    wires: wireStates,
-  };
-}
-
 loadSavedRecords();
 if (!restoreWorkspaceFromUrl()) {
   restoreAutoSavedWorkspace();
@@ -3130,7 +2853,8 @@ function applyPwaUpdate() {
   waitingWorker.postMessage({ type: "SKIP_WAITING" });
 }
 
-function openMobileStatusPanel() {
+function openMobileStatusPanel(tab: StatusPanelTab = statusPanelTab.value) {
+  statusPanelTab.value = tab;
   statusPanelOpen.value = true;
   palettePanelOpen.value = false;
 }
@@ -3245,7 +2969,7 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <section class="relative grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[260px_minmax(700px,1fr)_320px]">
+    <section class="relative grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[224px_minmax(700px,1fr)_340px]">
       <div
         v-if="palettePanelOpen || statusPanelOpen"
         class="fixed inset-0 z-30 bg-slate-950/20 backdrop-blur-[1px] xl:hidden"
@@ -3266,25 +2990,22 @@ onBeforeUnmount(() => {
           </Button>
         </div>
 
-        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-3 xl:p-4">
+        <div class="min-h-0 flex-1 overflow-y-auto p-3">
           <section class="space-y-2">
-            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-1">
+            <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-2">
               <button
                 v-for="item in palette"
                 :key="item.type"
-                class="flex w-full items-center justify-between rounded-md border bg-background px-3 py-3 text-left transition-colors hover:bg-muted"
+                class="flex min-h-20 w-full flex-col items-center justify-center gap-2 rounded-md border bg-background px-2 py-2 text-center transition-colors hover:border-cyan-300 hover:bg-cyan-50"
                 @click="addPart(item.type)"
               >
-                <span class="flex min-w-0 items-center gap-3">
-                  <span class="flex h-9 w-9 items-center justify-center rounded-md bg-muted text-foreground">
-                    <component :is="partIcon(item.type)" class="h-4 w-4" />
-                  </span>
-                  <span class="min-w-0">
-                    <span class="block text-sm font-medium">{{ getSpec(item.type).label }}</span>
-                    <span class="block truncate text-xs text-muted-foreground">{{ item.description }}</span>
-                  </span>
+                <span class="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-foreground">
+                  <component :is="partIcon(item.type)" class="h-4 w-4" />
                 </span>
-                <Plus class="h-4 w-4 shrink-0 text-muted-foreground" />
+                <span class="min-w-0">
+                  <span class="block truncate text-xs font-medium">{{ getSpec(item.type).label }}</span>
+                  <span class="block max-w-full truncate text-[11px] text-muted-foreground">{{ item.description }}</span>
+                </span>
               </button>
             </div>
           </section>
@@ -3303,7 +3024,7 @@ onBeforeUnmount(() => {
         <button
           class="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 z-20 flex h-10 items-center gap-2 overflow-hidden rounded-md border bg-card/95 px-3 text-left text-sm shadow-panel xl:hidden"
           :class="lessonComplete ? 'border-emerald-200 text-emerald-950' : 'border-cyan-200 text-cyan-950'"
-          @click="openMobileStatusPanel"
+          @click="openMobileStatusPanel('lesson')"
         >
           <span
             class="flex h-6 min-w-12 shrink-0 items-center justify-center rounded-md text-xs font-medium tabular-nums"
@@ -3764,8 +3485,25 @@ onBeforeUnmount(() => {
           </Button>
         </div>
 
+        <div class="grid grid-cols-3 gap-1 border-b bg-muted/30 p-2">
+          <button
+            v-for="tab in statusPanelTabs"
+            :key="tab.id"
+            class="flex h-11 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
+            :class="
+              statusPanelTab === tab.id
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
+            "
+            @click="statusPanelTab = tab.id"
+          >
+            <component :is="tab.icon" class="h-3.5 w-3.5 shrink-0" />
+            <span>{{ tab.label }}</span>
+          </button>
+        </div>
+
         <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-3 xl:p-4">
-          <section class="rounded-md border bg-background p-3">
+          <section v-if="statusPanelTab === 'lesson'" class="rounded-md border bg-background p-3">
             <div class="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div class="text-xs text-muted-foreground">Lesson</div>
@@ -3843,7 +3581,7 @@ onBeforeUnmount(() => {
             </div>
           </section>
 
-          <section class="rounded-md border bg-background p-3">
+          <section v-if="statusPanelTab === 'records'" class="rounded-md border bg-background p-3">
             <div class="mb-3 flex items-center justify-between">
               <span class="text-sm font-medium">记录</span>
               <span class="text-xs text-muted-foreground">{{ savedRecords.length }}/12</span>
@@ -3917,7 +3655,7 @@ onBeforeUnmount(() => {
             </div>
           </section>
 
-          <section class="rounded-md border bg-background p-3">
+          <section v-if="statusPanelTab === 'cloud'" class="rounded-md border bg-background p-3">
             <div class="mb-3 flex items-center justify-between gap-3">
               <div class="flex min-w-0 items-center gap-2">
                 <CloudOff
@@ -4180,7 +3918,7 @@ onBeforeUnmount(() => {
             </div>
           </section>
 
-          <section class="grid grid-cols-2 gap-3">
+          <section v-if="statusPanelTab === 'circuit'" class="grid grid-cols-2 gap-3">
             <div class="rounded-md border bg-background p-3">
               <div class="flex items-center gap-2 text-xs text-muted-foreground">
                 <Zap class="h-3.5 w-3.5" />
@@ -4208,7 +3946,7 @@ onBeforeUnmount(() => {
             </div>
           </section>
 
-          <section class="rounded-md border bg-background p-3">
+          <section v-if="statusPanelTab === 'circuit'" class="rounded-md border bg-background p-3">
             <div class="mb-3 flex items-center justify-between">
               <span class="text-sm font-medium">回路</span>
               <span
@@ -4243,7 +3981,7 @@ onBeforeUnmount(() => {
             </div>
           </section>
 
-          <section v-if="selectedPart" class="rounded-md border bg-background p-3">
+          <section v-if="statusPanelTab === 'selection' && selectedPart && !selectedWire" class="rounded-md border bg-background p-3">
             <div class="mb-3 flex items-center justify-between">
               <span class="text-sm font-medium">选中元件</span>
               <Button variant="ghost" size="icon" title="删除" @click="removeSelectedPart">
@@ -4341,7 +4079,7 @@ onBeforeUnmount(() => {
             </div>
           </section>
 
-          <section v-if="selectedWire" class="rounded-md border border-amber-300 bg-amber-50 p-3">
+          <section v-else-if="statusPanelTab === 'selection' && selectedWire" class="rounded-md border border-amber-300 bg-amber-50 p-3">
             <div class="mb-3 flex items-center justify-between">
               <span class="text-sm font-medium text-amber-950">选中导线</span>
               <Button variant="ghost" size="icon" title="断开导线" @click="removeWire(selectedWire.id)">
@@ -4379,7 +4117,11 @@ onBeforeUnmount(() => {
             </div>
           </section>
 
-          <section>
+          <section v-else-if="statusPanelTab === 'selection'" class="rounded-md border border-dashed bg-background px-3 py-6 text-center text-sm text-muted-foreground">
+            点击元器件或导线后，这里会显示可编辑属性。
+          </section>
+
+          <section v-if="statusPanelTab === 'wires'">
             <div class="mb-3 flex items-center justify-between">
               <div class="text-xs font-medium uppercase text-muted-foreground">Wires</div>
               <span class="text-xs text-muted-foreground">{{ wires.length }}</span>

@@ -171,10 +171,6 @@ function bindWorkbench(element: unknown) {
             <GitFork class="h-4 w-4" />
             <span>GitHub</span>
           </a>
-          <Button class="shrink-0" variant="ghost" size="sm" title="清空导线" @click="clearWires">
-            <Unplug class="h-4 w-4" />
-            清线
-          </Button>
           <Button class="shrink-0" size="sm" title="复位演示电路" @click="resetDemo">
             <RotateCcw class="h-4 w-4" />
             复位
@@ -315,7 +311,7 @@ function bindWorkbench(element: unknown) {
 
         <div
           :ref="bindWorkbench"
-          class="relative mx-3 mb-24 mt-3 origin-top-left overflow-hidden rounded-md border bg-[#f8faf7] shadow-panel xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:origin-center xl:-translate-x-1/2 xl:-translate-y-1/2"
+          class="relative mx-0 mb-24 mt-0 origin-top-left overflow-visible border border-transparent bg-transparent shadow-none xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:origin-center xl:-translate-x-1/2 xl:-translate-y-1/2 xl:overflow-hidden xl:rounded-md xl:border-border xl:bg-[#f8faf7] xl:shadow-panel"
           data-circuit-surface="true"
           :style="{
             width: `${workbench.width}px`,

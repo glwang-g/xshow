@@ -767,7 +767,7 @@ function mobileFitZoom() {
   const bottomControlsSpace = 112;
   const availableWidth = Math.max(280, viewport.clientWidth - horizontalPadding);
   const availableHeight = Math.max(260, viewport.clientHeight - bottomControlsSpace);
-  return Math.floor(Math.min(availableWidth / bounds.width, availableHeight / bounds.height) * 100);
+  return Math.floor(Math.min(availableWidth / bounds.width, availableHeight / bounds.height) * 92);
 }
 
 function fitMobileWorkbench(behavior: ScrollBehavior = "auto") {

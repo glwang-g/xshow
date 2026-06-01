@@ -6,8 +6,13 @@
 
 | 方向 | 位置 | 说明 |
 | --- | --- | --- |
-| 页面外壳和工作台 UI | `src/views/Home.vue` | 负责面板、工作台交互、保存动作和页面渲染编排。 |
+| 页面外壳和编排层 | `src/views/Home.vue` | 负责工作台状态、交互处理、保存动作和云端同步编排。 |
+| 工作台 UI 区域 | `src/components/workbench` | 顶部栏、元器件库、工作台画布、状态面板已经从页面中拆出。 |
 | 电路领域模型和仿真 | `src/lib/circuit.ts` | 负责元器件类型、导线类型、极性辅助函数、路径判断和电路求值。 |
+| 工作台 UI 配置 | `src/lib/workbench-ui.ts` | 负责元器件规格、元器件库配置、状态面板标签和桌面尺寸。 |
+| 工作台导出 | `src/lib/workbench-export.ts` | 负责把当前电路绘制成 PNG，不再放在页面组件里。 |
+| 工作台记录类型和编码 | `src/lib/workspace-records.ts`、`src/lib/workspace-codec.ts` | 负责工作台快照类型、记录类型、校验、分享链接编码和时间格式化。 |
+| 编辑历史 | `src/composables/useWorkbenchHistory.ts` | 负责工作台快照的撤销/重做栈。 |
 | 课程内容 | `src/data/lessons.ts` | 保存课程文案、初始工作台和检查项，避免写死在组件里。 |
 | 云端记录 | `src/lib/cloud.ts` | 封装 Supabase 登录和工作台记录接口。 |
 | 工作台共享状态 | `src/stores/board.ts` | 管理缩放和视口相关的工作台状态。 |
@@ -16,14 +21,14 @@
 ## 后续重构方向
 
 - 保持 `src/lib/circuit.ts` 不依赖 Vue，后续可以直接做单元测试。
-- 当 UI 边界稳定后，再拆出左侧元器件面板、工作台画布、右侧状态标签、记录面板、云端面板和属性面板。
+- 只在边界稳定时继续拆大 UI 区域：记录/云端/账号流程、课程进度、属性面板和导线列表。
 - 课程内容继续放在数据文件中，不回到组件里硬编码。
 - 本地存储和云端 API 继续放在模块里，避免到处直接调用浏览器存储或 Supabase。
 - 用小步拆分配合构建验证，不做一次性大重写。
 
 ## 建议的下一批拆分
 
-- `ComponentPalette.vue`：左侧元器件选择器。
-- `StatusPanel.vue`：右侧状态面板，并继续拆出课程、回路、记录、云端、属性、导线等标签内容。
-- `WorkbenchCanvas.vue`：工作台上的元器件渲染、导线渲染和指针交互。
+- 将 `StatusPanel.vue` 继续拆成课程、回路、记录、云端、属性、导线等专门标签组件。
+- 抽出云端/工作台同步 composable，让账号状态和记录持久化不再堆在 `Home.vue`。
+- 抽出导线交互 composable，收拢端点拖动、吸附和路径渲染。
 - 给 `evaluateCircuit` 增加单元测试，再推进节点/支路模型。

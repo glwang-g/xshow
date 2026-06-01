@@ -305,3 +305,5 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
     wires: wireStates,
   };
 }
+
+export type CircuitSimulation = ReturnType<typeof evaluateCircuit>;

@@ -6,8 +6,13 @@
 
 | Area | Location | Notes |
 | --- | --- | --- |
-| Page shell and workbench UI | `src/views/Home.vue` | Coordinates panels, workbench interactions, persistence actions, and rendering. |
+| Page shell and orchestration | `src/views/Home.vue` | Coordinates workbench state, interaction handlers, persistence actions, and cloud sync. |
+| Workbench UI regions | `src/components/workbench` | Header, component palette, canvas, and status panel are split from the page shell. |
 | Circuit domain model and simulation | `src/lib/circuit.ts` | Owns component types, wire types, polarity helpers, path checks, and circuit evaluation. |
+| Workbench UI configuration | `src/lib/workbench-ui.ts` | Owns reusable part specs, palette entries, status tabs, and board dimensions. |
+| Workbench export | `src/lib/workbench-export.ts` | Renders the current circuit to a PNG without living in the page component. |
+| Workspace codec and records | `src/lib/workspace-codec.ts`, `src/lib/workspace-records.ts` | Owns workspace snapshot types, record types, validation, share-link encoding, and time formatting. |
+| Editor history | `src/composables/useWorkbenchHistory.ts` | Owns undo/redo stacks for workspace snapshots. |
 | Lesson content | `src/data/lessons.ts` | Keeps lesson text, starter workspaces, and checks data-editable. |
 | Cloud records | `src/lib/cloud.ts` | Wraps Supabase auth and workspace record calls. |
 | Shared board state | `src/stores/board.ts` | Tracks zoom and viewport-related workbench state. |
@@ -16,14 +21,14 @@
 ## Refactor Direction
 
 - Keep `src/lib/circuit.ts` framework-agnostic so it can be tested without Vue.
-- Split large UI regions into components when they have stable boundaries: palette, workbench canvas, status tabs, records panel, cloud panel, and property inspector.
+- Continue splitting large UI regions only when the boundary is stable: records/cloud/account flows, lesson progress, selection inspector, and wire list.
 - Keep lesson content in data files rather than hard-coding it in Vue components.
 - Keep persistence and cloud APIs behind small modules instead of calling browser storage or Supabase directly from every component.
 - Prefer small extraction steps with passing builds over a large rewrite.
 
 ## Suggested Next Extractions
 
-- `ComponentPalette.vue` for the left component picker.
-- `StatusPanel.vue` plus focused tab components for lesson, circuit, records, cloud, selection, and wires.
-- `WorkbenchCanvas.vue` for part rendering, wire rendering, and pointer interactions.
+- Focused `StatusPanel` tab components for lesson, circuit, records, cloud, selection, and wires.
+- Cloud/workspace sync composables so account state and record persistence stop living in `Home.vue`.
+- Wire interaction composables for endpoint dragging, snapping, and route rendering.
 - Unit tests around `evaluateCircuit` before the node/branch model becomes more advanced.

@@ -1,48 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import ComponentPalette from "@/components/workbench/ComponentPalette.vue";
+import StatusPanel from "@/components/workbench/StatusPanel.vue";
+import WorkbenchCanvas from "@/components/workbench/WorkbenchCanvas.vue";
+import WorkbenchHeader from "@/components/workbench/WorkbenchHeader.vue";
+import { useWorkbenchHistory } from "@/composables/useWorkbenchHistory";
 import { lessonCatalog, type LessonCheckId, type LessonWorkspace } from "@/data/lessons";
-import {
-  BatteryCharging,
-  Cable,
-  Check,
-  CircuitBoard,
-  CircleDot,
-  CloudCheck,
-  CloudOff,
-  CloudSync,
-  CloudUpload,
-  Cog,
-  Download,
-  FileDown,
-  FileUp,
-  Gauge,
-  FolderOpen,
-  GitFork,
-  Link,
-  Lightbulb,
-  LogOut,
-  LocateFixed,
-  Mail,
-  PackagePlus,
-  Pencil,
-  RotateCcw,
-  Save,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  ToggleLeft,
-  ToggleRight,
-  Trash2,
-  TriangleAlert,
-  Trophy,
-  Unplug,
-  Volume2,
-  X,
-  Zap,
-  ZoomIn,
-  ZoomOut,
-} from "@lucide/vue";
-import Button from "@/components/ui/Button.vue";
 import {
   batteryPolarity,
   batteryPositiveTerminal,
@@ -76,6 +39,23 @@ import {
   updateCloudWorkspaceRecord,
   type CloudWorkspaceRecord,
 } from "@/lib/cloud";
+import { getSpec, workbench, type StatusPanelTab } from "@/lib/workbench-ui";
+import {
+  type CloudAuthMode,
+  type CloudSyncState,
+  type CloudSyncStatus,
+  type PersistedWorkspace,
+  type SaveCloudWorkspaceOptions,
+  type SavedWorkspaceRecord,
+} from "@/lib/workspace-records";
+import {
+  base64UrlDecode,
+  base64UrlEncode,
+  formatSavedTime,
+  isPersistedWorkspace,
+  isSavedWorkspaceRecord,
+} from "@/lib/workspace-codec";
+import { exportWorkbenchImage as exportWorkbenchImageFile } from "@/lib/workbench-export";
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
@@ -93,23 +73,7 @@ type Point = {
   y: number;
 };
 
-type PersistedWorkspace = LessonWorkspace & {
-  activeLessonId: string;
-  savedAt: string;
-  version: 1;
-};
-
-type SavedWorkspaceRecord = PersistedWorkspace & {
-  id: string;
-  title: string;
-};
-
 type CloudRecord = CloudWorkspaceRecord<PersistedWorkspace>;
-type CloudAuthMode = "reset" | "sign-in" | "sign-up" | "update-password";
-type CloudSyncState = "configured" | "failed" | "local-changes" | "signed-in" | "synced" | "syncing" | "unconfigured";
-type CloudSyncStatus = "failed" | "idle" | "local-changes" | "synced" | "syncing";
-type StatusPanelTab = "circuit" | "cloud" | "lesson" | "records" | "selection" | "wires";
-
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
 const cloudUploadSuggestionKeyPrefix = "xshow.cloud.upload-suggestion.v1";
@@ -118,14 +82,11 @@ const workspaceShareParam = "workspace";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
 const board = useBoardStore();
 const canvasViewportRef = ref<HTMLElement | null>(null);
-const workspaceImportRef = ref<HTMLInputElement | null>(null);
 const workbenchRef = ref<HTMLElement | null>(null);
 const activeLessonId = ref(lessonCatalog[0].id);
 const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
-const undoStack = ref<PersistedWorkspace[]>([]);
-const redoStack = ref<PersistedWorkspace[]>([]);
 const shareLinkState = ref<"copied" | "idle" | "manual">("idle");
 const cloudAuthBusy = ref(false);
 const cloudAuthError = ref("");
@@ -175,111 +136,13 @@ const viewportGesture = ref<
   | null
 >(null);
 
-const workbench = {
-  width: 1060,
-  height: 640,
-};
+function setCanvasViewportElement(element: HTMLElement | null) {
+  canvasViewportRef.value = element;
+}
 
-const partSpecs: Record<
-  PartType,
-  {
-    icon: unknown;
-    label: string;
-    width: number;
-    height: number;
-    terminals: Record<TerminalKey, { x: number; y: number; label: string }>;
-  }
-> = {
-  battery: {
-    icon: BatteryCharging,
-    label: "电池",
-    width: 176,
-    height: 104,
-    terminals: {
-      a: { x: 0, y: 52, label: "-" },
-      b: { x: 176, y: 52, label: "+" },
-    },
-  },
-  switch: {
-    icon: ToggleRight,
-    label: "开关",
-    width: 168,
-    height: 96,
-    terminals: {
-      a: { x: 0, y: 48, label: "A" },
-      b: { x: 168, y: 48, label: "B" },
-    },
-  },
-  bulb: {
-    icon: Lightbulb,
-    label: "灯泡",
-    width: 156,
-    height: 156,
-    terminals: {
-      a: { x: 0, y: 78, label: "A" },
-      b: { x: 156, y: 78, label: "B" },
-    },
-  },
-  resistor: {
-    icon: SlidersHorizontal,
-    label: "可变电阻",
-    width: 216,
-    height: 110,
-    terminals: {
-      a: { x: 0, y: 55, label: "A" },
-      b: { x: 216, y: 55, label: "B" },
-    },
-  },
-  led: {
-    icon: CircleDot,
-    label: "LED",
-    width: 156,
-    height: 128,
-    terminals: {
-      a: { x: 0, y: 64, label: "-" },
-      b: { x: 156, y: 64, label: "+" },
-    },
-  },
-  buzzer: {
-    icon: Volume2,
-    label: "蜂鸣器",
-    width: 156,
-    height: 128,
-    terminals: {
-      a: { x: 0, y: 64, label: "A" },
-      b: { x: 156, y: 64, label: "B" },
-    },
-  },
-  motor: {
-    icon: Cog,
-    label: "电机",
-    width: 156,
-    height: 128,
-    terminals: {
-      a: { x: 0, y: 64, label: "A" },
-      b: { x: 156, y: 64, label: "B" },
-    },
-  },
-};
-
-const palette: Array<{ type: PartType; description: string }> = [
-  { type: "battery", description: "9V 电源" },
-  { type: "switch", description: "控制通断" },
-  { type: "bulb", description: "显示亮度" },
-  { type: "buzzer", description: "闭合后响" },
-  { type: "motor", description: "闭合后转" },
-  { type: "resistor", description: "调节电流" },
-  { type: "led", description: "有正负极" },
-];
-
-const statusPanelTabs: Array<{ icon: unknown; id: StatusPanelTab; label: string }> = [
-  { icon: Trophy, id: "lesson", label: "课程" },
-  { icon: Gauge, id: "circuit", label: "回路" },
-  { icon: SlidersHorizontal, id: "selection", label: "属性" },
-  { icon: Save, id: "records", label: "记录" },
-  { icon: CloudSync, id: "cloud", label: "云端" },
-  { icon: Cable, id: "wires", label: "导线" },
-];
+function setWorkbenchElement(element: HTMLElement | null) {
+  workbenchRef.value = element;
+}
 
 const parts = ref<CircuitPart[]>([
   { id: "battery-1", name: "9V 电池", type: "battery", x: 74, y: 280 },
@@ -684,6 +547,17 @@ const savedWorkspaceLabel = computed(() => {
     minute: "2-digit",
   }).format(new Date(lastSavedAt.value))}`;
 });
+const {
+  pushHistory: pushEditorHistory,
+  redo: redoWorkspaceChange,
+  undo: undoWorkspaceChange,
+} = useWorkbenchHistory<PersistedWorkspace>({
+  maxEntries: maxEditorHistoryEntries,
+  restoreSnapshot: loadWorkspaceSnapshot,
+  saveSnapshot: saveWorkspaceToStorage,
+  snapshotKey: workspaceHistoryKey,
+  takeSnapshot: workspaceSnapshot,
+});
 
 let autosaveTimer: number | null = null;
 let cloudAuthUnsubscribe: (() => void) | null = null;
@@ -716,14 +590,6 @@ function hasTransientInteraction() {
       hoveredEndpoint.value ||
       hoveredWireId.value,
   );
-}
-
-function getSpec(part: CircuitPart | PartType) {
-  return partSpecs[typeof part === "string" ? part : part.type];
-}
-
-function partIcon(type: PartType) {
-  return partSpecs[type].icon;
 }
 
 function batteryPolarityLabel(part: CircuitPart) {
@@ -883,222 +749,20 @@ function resetMobileView() {
   fitMobileWorkbench("smooth");
 }
 
-function roundedRectPath(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius = 8) {
-  const corner = Math.min(radius, width / 2, height / 2);
-  context.beginPath();
-  context.moveTo(x + corner, y);
-  context.lineTo(x + width - corner, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + corner);
-  context.lineTo(x + width, y + height - corner);
-  context.quadraticCurveTo(x + width, y + height, x + width - corner, y + height);
-  context.lineTo(x + corner, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - corner);
-  context.lineTo(x, y + corner);
-  context.quadraticCurveTo(x, y, x + corner, y);
-  context.closePath();
-}
-
-function partExportColors(part: CircuitPart) {
-  if (part.type === "battery") {
-    return { background: "#0f172a", foreground: "#ffffff", muted: "#67e8f9" };
-  }
-
-  if (part.type === "bulb") {
-    return { background: "#fffbeb", foreground: "#78350f", muted: "#f59e0b" };
-  }
-
-  if (part.type === "resistor") {
-    return { background: "#ecfeff", foreground: "#164e63", muted: "#0e7490" };
-  }
-
-  if (part.type === "led") {
-    return { background: "#fff1f2", foreground: "#881337", muted: "#e11d48" };
-  }
-
-  if (part.type === "buzzer") {
-    return { background: "#f0f9ff", foreground: "#0c4a6e", muted: "#0284c7" };
-  }
-
-  if (part.type === "motor") {
-    return { background: "#f0fdf4", foreground: "#14532d", muted: "#16a34a" };
-  }
-
-  return { background: "#ffffff", foreground: "#0f172a", muted: part.closed ? "#10b981" : "#f43f5e" };
-}
-
-function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart) {
-  const spec = getSpec(part);
-  const colors = partExportColors(part);
-
-  context.save();
-  roundedRectPath(context, part.x, part.y, spec.width, spec.height, 8);
-  context.fillStyle = colors.background;
-  context.fill();
-  context.lineWidth = selectedPartId.value === part.id ? 4 : 2;
-  context.strokeStyle = selectedPartId.value === part.id ? "#0f172a" : "#cbd5e1";
-  context.stroke();
-
-  context.fillStyle = colors.foreground;
-  context.font = "600 18px Inter, sans-serif";
-  context.fillText(part.name, part.x + 18, part.y + 30);
-
-  context.font = "12px Inter, sans-serif";
-  context.fillStyle = colors.muted;
-
-  if (part.type === "battery") {
-    context.fillText(`9V power · ${batteryPositiveTerminal(part) === "a" ? "+ left" : "+ right"}`, part.x + 18, part.y + 52);
-    context.fillRect(part.x + 18, part.y + 70, 26, 12);
-    context.fillRect(part.x + 50, part.y + 66, 32, 20);
-  } else if (part.type === "switch") {
-    context.fillText(part.closed ? "closed" : "open", part.x + 18, part.y + 52);
-    context.strokeStyle = colors.muted;
-    context.lineWidth = 5;
-    context.beginPath();
-    context.moveTo(part.x + 24, part.y + 72);
-    context.lineTo(part.x + (part.closed ? 136 : 92), part.y + (part.closed ? 72 : 52));
-    context.stroke();
-  } else if (part.type === "bulb") {
-    const brightness = simulation.value.bulbs[part.id]?.brightness ?? 0;
-    context.fillText(`${Math.round(brightness * 100)}% brightness`, part.x + 18, part.y + spec.height - 20);
-    context.beginPath();
-    context.arc(part.x + spec.width / 2, part.y + 78, 34, 0, Math.PI * 2);
-    context.fillStyle = `rgba(245, 158, 11, ${0.18 + brightness * 0.72})`;
-    context.fill();
-    context.strokeStyle = "#f59e0b";
-    context.stroke();
-  } else if (part.type === "resistor") {
-    context.fillText(`${part.resistance ?? 0} ohm`, part.x + 18, part.y + 52);
-    context.strokeStyle = colors.muted;
-    context.lineWidth = 4;
-    context.beginPath();
-    context.moveTo(part.x + 20, part.y + 76);
-    context.lineTo(part.x + spec.width - 20, part.y + 76);
-    context.stroke();
-  } else if (part.type === "led") {
-    const state = ledStatus(part);
-    context.fillText(`${state.brightnessPercent}% LED`, part.x + 18, part.y + spec.height - 18);
-    context.beginPath();
-    context.arc(part.x + spec.width / 2, part.y + 62, 30, 0, Math.PI * 2);
-    context.fillStyle = `rgba(244, 63, 94, ${0.14 + state.brightness * 0.78})`;
-    context.fill();
-    context.strokeStyle = state.reversed ? "#64748b" : "#e11d48";
-    context.stroke();
-    context.fillStyle = colors.foreground;
-    context.fillText(state.reversed ? "reversed" : "+ to -", part.x + 18, part.y + 52);
-  } else if (part.type === "buzzer") {
-    const state = buzzerStatus(part);
-    context.fillText(state.active ? `${state.volumePercent}% buzzing` : "silent", part.x + 18, part.y + spec.height - 18);
-    context.strokeStyle = colors.muted;
-    context.lineWidth = 4;
-    context.beginPath();
-    context.arc(part.x + spec.width / 2 - 10, part.y + 64, 24, Math.PI * 0.3, Math.PI * 1.7);
-    context.stroke();
-    context.beginPath();
-    context.arc(part.x + spec.width / 2 + 8, part.y + 64, 36, Math.PI * 0.22, Math.PI * 1.78);
-    context.globalAlpha = 0.35 + state.volume * 0.55;
-    context.stroke();
-    context.globalAlpha = 1;
-  } else if (part.type === "motor") {
-    const state = motorStatus(part);
-    context.fillText(state.active ? `${state.speedPercent}% motor` : "stopped", part.x + 18, part.y + spec.height - 18);
-    context.strokeStyle = colors.muted;
-    context.lineWidth = 4;
-    context.beginPath();
-    context.arc(part.x + spec.width / 2, part.y + 64, 30, 0, Math.PI * 2);
-    context.stroke();
-    context.beginPath();
-    context.moveTo(part.x + spec.width / 2, part.y + 64);
-    context.lineTo(part.x + spec.width / 2 + 28, part.y + 64);
-    context.moveTo(part.x + spec.width / 2, part.y + 64);
-    context.lineTo(part.x + spec.width / 2 - 14, part.y + 40);
-    context.moveTo(part.x + spec.width / 2, part.y + 64);
-    context.lineTo(part.x + spec.width / 2 - 14, part.y + 88);
-    context.globalAlpha = 0.45 + state.speed * 0.45;
-    context.stroke();
-    context.globalAlpha = 1;
-  }
-
-  for (const terminal of ["a", "b"] as TerminalKey[]) {
-    const offset = spec.terminals[terminal];
-    context.beginPath();
-    context.arc(part.x + offset.x, part.y + offset.y, 9, 0, Math.PI * 2);
-    context.fillStyle = "#0f172a";
-    context.fill();
-    context.lineWidth = 3;
-    context.strokeStyle = "#ffffff";
-    context.stroke();
-  }
-
-  context.restore();
-}
-
 function exportWorkbenchImage() {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  const canvas = document.createElement("canvas");
-  const scale = 2;
-  canvas.width = workbench.width * scale;
-  canvas.height = workbench.height * scale;
-  const context = canvas.getContext("2d");
-
-  if (!context) {
-    return;
-  }
-
-  context.scale(scale, scale);
-  context.fillStyle = "#f8faf7";
-  context.fillRect(0, 0, workbench.width, workbench.height);
-
-  context.strokeStyle = "rgba(148, 163, 184, 0.45)";
-  context.lineWidth = 1;
-  for (let x = 0; x <= workbench.width; x += 28) {
-    context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, workbench.height);
-    context.stroke();
-  }
-  for (let y = 0; y <= workbench.height; y += 28) {
-    context.beginPath();
-    context.moveTo(0, y);
-    context.lineTo(workbench.width, y);
-    context.stroke();
-  }
-
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  for (const wire of wires.value) {
-    context.strokeStyle = wireStroke(wire);
-    context.lineWidth = wireStrokeWidth(wire);
-    context.stroke(new Path2D(wirePath(wire)));
-  }
-
-  for (const part of parts.value) {
-    drawExportPart(context, part);
-  }
-
-  context.fillStyle = "rgba(255, 255, 255, 0.92)";
-  roundedRectPath(context, 18, 18, 330, 72, 8);
-  context.fill();
-  context.strokeStyle = "#e2e8f0";
-  context.stroke();
-  context.fillStyle = "#0f172a";
-  context.font = "600 16px Inter, sans-serif";
-  context.fillText("xshow circuits", 34, 42);
-  context.font = "13px Inter, sans-serif";
-  context.fillStyle = "#475569";
-  context.fillText(activeLesson.value.title, 34, 62);
-  context.fillText(
-    `${simulation.value.closed ? "回路闭合" : "回路断开"} · ${simulation.value.currentMilliAmps} mA`,
-    34,
-    80,
-  );
-
-  const link = document.createElement("a");
-  link.download = `xshow-circuit-${new Date().toISOString().slice(0, 10)}.png`;
-  link.href = canvas.toDataURL("image/png");
-  link.click();
+  exportWorkbenchImageFile({
+    activeLessonTitle: activeLesson.value.title,
+    buzzerStatus,
+    ledStatus,
+    motorStatus,
+    parts: parts.value,
+    selectedPartId: selectedPartId.value,
+    simulation: simulation.value,
+    wirePath,
+    wireStroke,
+    wireStrokeWidth,
+    wires: wires.value,
+  });
 }
 
 function viewportPointerDistance() {
@@ -2092,108 +1756,12 @@ function workspaceHistoryKey(workspace: PersistedWorkspace) {
   });
 }
 
-function pushEditorHistory() {
-  const snapshot = workspaceSnapshot();
-  const previous = undoStack.value[undoStack.value.length - 1];
-
-  if (previous && workspaceHistoryKey(previous) === workspaceHistoryKey(snapshot)) {
-    return;
-  }
-
-  undoStack.value = [...undoStack.value, snapshot].slice(-maxEditorHistoryEntries);
-  redoStack.value = [];
-}
-
-function restoreEditorHistorySnapshot(snapshot: PersistedWorkspace) {
-  loadWorkspaceSnapshot(snapshot);
-  saveWorkspaceToStorage();
-}
-
-function undoWorkspaceChange() {
-  const previous = undoStack.value[undoStack.value.length - 1];
-  if (!previous) {
-    return;
-  }
-
-  undoStack.value = undoStack.value.slice(0, -1);
-  redoStack.value = [...redoStack.value, workspaceSnapshot()].slice(-maxEditorHistoryEntries);
-  restoreEditorHistorySnapshot(previous);
-}
-
-function redoWorkspaceChange() {
-  const next = redoStack.value[redoStack.value.length - 1];
-  if (!next) {
-    return;
-  }
-
-  redoStack.value = redoStack.value.slice(0, -1);
-  undoStack.value = [...undoStack.value, workspaceSnapshot()].slice(-maxEditorHistoryEntries);
-  restoreEditorHistorySnapshot(next);
-}
-
-function isPersistedWorkspace(value: unknown): value is PersistedWorkspace {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-
-  const candidate = value as Partial<PersistedWorkspace>;
-  return (
-    candidate.version === 1 &&
-    typeof candidate.activeLessonId === "string" &&
-    typeof candidate.selectedPartId === "string" &&
-    typeof candidate.savedAt === "string" &&
-    typeof candidate.zoom === "number" &&
-    Array.isArray(candidate.parts) &&
-    Array.isArray(candidate.wires)
-  );
-}
-
-function isSavedWorkspaceRecord(value: unknown): value is SavedWorkspaceRecord {
-  if (!isPersistedWorkspace(value)) {
-    return false;
-  }
-
-  const candidate = value as Partial<SavedWorkspaceRecord>;
-  return typeof candidate.id === "string" && typeof candidate.title === "string";
-}
-
-function formatSavedTime(savedAt: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    month: "2-digit",
-  }).format(new Date(savedAt));
-}
-
 function loadWorkspaceSnapshot(workspace: PersistedWorkspace) {
   activeLessonId.value = lessonCatalog.some((lesson) => lesson.id === workspace.activeLessonId)
     ? workspace.activeLessonId
     : lessonCatalog[0].id;
   loadWorkspace(workspace);
   lastSavedAt.value = workspace.savedAt;
-}
-
-function base64UrlEncode(value: string) {
-  const bytes = new TextEncoder().encode(value);
-  let binary = "";
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-
-  return window
-    .btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-function base64UrlDecode(value: string) {
-  const base64 = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
-  const binary = window.atob(padded);
-  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
 }
 
 function restoreWorkspaceFromUrl() {
@@ -2382,10 +1950,6 @@ async function copyWorkspaceShareLink() {
     showShareLinkFeedback("manual");
     window.prompt("浏览器没有允许自动复制，请手动复制这个分享链接：", shareUrl);
   }
-}
-
-function openWorkspaceImport() {
-  workspaceImportRef.value?.click();
 }
 
 async function importWorkspaceJson(event: Event) {
@@ -2588,7 +2152,7 @@ function upsertCloudRecord(record: CloudRecord) {
   cloudRecordTitle.value = record.title;
 }
 
-async function saveWorkspaceToCloud(options: { forceOverwrite?: boolean; saveAsCopy?: boolean } = {}) {
+async function saveWorkspaceToCloud(options: SaveCloudWorkspaceOptions = {}) {
   if (!cloudUserEmail.value) {
     cloudRecordsError.value = "请先登录云端同步。";
     return;
@@ -2907,67 +2471,16 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-background xl:h-screen xl:min-h-[720px]">
-    <header class="hidden h-14 items-center justify-between gap-2 border-b bg-card px-3 xl:flex">
-      <div class="flex items-center gap-3">
-        <div class="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-          <Sparkles class="h-4 w-4" />
-        </div>
-        <div class="leading-tight">
-          <div class="text-sm font-semibold">xshow circuits</div>
-          <div class="text-xs text-muted-foreground">电子积木实验台</div>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <div class="flex items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm">
-          <span
-            class="h-2.5 w-2.5 rounded-full"
-            :class="simulation.closed ? 'bg-emerald-500' : 'bg-rose-500'"
-          />
-          <span class="font-medium">{{ simulation.closed ? "回路闭合" : "回路断开" }}</span>
-          <span class="text-muted-foreground">{{ simulation.currentMilliAmps }} mA</span>
-        </div>
-        <div class="hidden items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground md:flex">
-          <Save class="h-4 w-4" />
-          <span>{{ savedWorkspaceLabel }}</span>
-        </div>
-        <div class="hidden items-center gap-1 rounded-md border bg-muted/60 p-1 md:flex">
-          <Button variant="ghost" size="icon" title="缩小" @click="board.setZoom(board.zoom - 5)">
-            <ZoomOut class="h-4 w-4" />
-          </Button>
-          <div class="min-w-14 text-center text-sm tabular-nums">{{ board.zoom }}%</div>
-          <Button variant="ghost" size="icon" title="放大" @click="board.setZoom(board.zoom + 5)">
-            <ZoomIn class="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <a
-          :href="githubRepositoryUrl"
-          target="_blank"
-          rel="noreferrer"
-          class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"
-          title="GitHub 仓库"
-          aria-label="打开 GitHub 仓库"
-        >
-          <GitFork class="h-4 w-4" />
-          <span class="hidden sm:inline">GitHub</span>
-        </a>
-        <Button variant="outline" size="sm" @click="clearWires">
-          <Unplug class="h-4 w-4" />
-          清线
-        </Button>
-        <Button variant="outline" size="sm" @click="exportWorkbenchImage">
-          <Download class="h-4 w-4" />
-          导出
-        </Button>
-        <Button size="sm" @click="resetDemo">
-          <RotateCcw class="h-4 w-4" />
-          复位
-        </Button>
-      </div>
-    </header>
+    <WorkbenchHeader
+      :clear-wires="clearWires"
+      :export-workbench-image="exportWorkbenchImage"
+      :github-repository-url="githubRepositoryUrl"
+      :reset-demo="resetDemo"
+      :saved-workspace-label="savedWorkspaceLabel"
+      :set-zoom="board.setZoom"
+      :simulation="simulation"
+      :zoom="board.zoom"
+    />
 
     <section class="relative grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[224px_minmax(700px,1fr)_340px]">
       <div
@@ -2976,1175 +2489,171 @@ onBeforeUnmount(() => {
         @click="palettePanelOpen = false; statusPanelOpen = false"
       />
 
-      <aside
-        class="fixed inset-y-0 left-0 z-40 flex w-[min(86vw,320px)] min-h-0 flex-col border-r bg-card shadow-panel transition-transform duration-200 xl:static xl:z-auto xl:w-auto xl:translate-x-0 xl:shadow-none"
-        :class="palettePanelOpen ? 'translate-x-0' : '-translate-x-full'"
-      >
-        <div class="flex items-center justify-between border-b px-3 py-2 xl:px-4 xl:py-3">
-          <div>
-            <div class="text-sm font-semibold">元器件</div>
-            <div class="text-xs text-muted-foreground">点击添加到桌面，触屏可拖动和连线</div>
-          </div>
-          <Button class="xl:hidden" variant="ghost" size="icon" title="关闭器件面板" @click="palettePanelOpen = false">
-            <X class="h-4 w-4" />
-          </Button>
-        </div>
+      <ComponentPalette
+        :open="palettePanelOpen"
+        @add-part="addPart"
+        @close="palettePanelOpen = false"
+      />
 
-        <div class="min-h-0 flex-1 overflow-y-auto p-3">
-          <section class="space-y-2">
-            <div class="grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-2">
-              <button
-                v-for="item in palette"
-                :key="item.type"
-                class="flex min-h-20 w-full flex-col items-center justify-center gap-2 rounded-md border bg-background px-2 py-2 text-center transition-colors hover:border-cyan-300 hover:bg-cyan-50"
-                @click="addPart(item.type)"
-              >
-                <span class="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-foreground">
-                  <component :is="partIcon(item.type)" class="h-4 w-4" />
-                </span>
-                <span class="min-w-0">
-                  <span class="block truncate text-xs font-medium">{{ getSpec(item.type).label }}</span>
-                  <span class="block max-w-full truncate text-[11px] text-muted-foreground">{{ item.description }}</span>
-                </span>
-              </button>
-            </div>
-          </section>
-        </div>
-      </aside>
+      <WorkbenchCanvas
+        :active-lesson="activeLesson"
+        :apply-pwa-update="applyPwaUpdate"
+        :battery-polarity-label="batteryPolarityLabel"
+        :bulb-brightness="bulbBrightness"
+        :buzzer-status="buzzerStatus"
+        :clear-canvas-selection="clearCanvasSelection"
+        :clear-endpoint-hover="clearEndpointHover"
+        :clear-wire-hover="clearWireHover"
+        :clear-wires="clearWires"
+        :close-lesson-complete-panel="closeLessonCompletePanel"
+        :current-animation-duration="currentAnimationDuration"
+        :dismiss-pwa-update="dismissPwaUpdate"
+        :end-canvas-gesture="endCanvasGesture"
+        :end-drag="endDrag"
+        :endpoint-drag="endpointDrag"
+        :endpoint-fill="endpointFill"
+        :endpoint-radius="endpointRadius"
+        :endpoint-stroke-width="endpointStrokeWidth"
+        :export-workbench-image="exportWorkbenchImage"
+        :finish-new-wire-drag="finishNewWireDrag"
+        :get-terminal-position="getTerminalPosition"
+        :handle-canvas-pointer-down="handleCanvasPointerDown"
+        :handle-canvas-pointer-move="handleCanvasPointerMove"
+        :handle-part-pointer-down="handlePartPointerDown"
+        :handle-terminal-click="handleTerminalClick"
+        :handle-workbench-pointer-move="handleWorkbenchPointerMove"
+        :is-lesson-part-target="isLessonPartTarget"
+        :is-lesson-terminal-target="isLessonTerminalTarget"
+        :is-terminal-drop-target="isTerminalDropTarget"
+        :is-terminal-selected="isTerminalSelected"
+        :is-wire-highlighted="isWireHighlighted"
+        :led-status="ledStatus"
+        :lesson-complete="lessonComplete"
+        :lesson-complete-panel-open="lessonCompletePanelOpen"
+        :lesson-progress="lessonProgress"
+        :load-next-lesson="loadNextLesson"
+        :mobile-lesson-strip-text="mobileLessonStripText"
+        :motor-status="motorStatus"
+        :new-wire-drag="newWireDrag"
+        :new-wire-drag-path="newWireDragPath"
+        :palette-panel-open="palettePanelOpen"
+        :part-style="partStyle"
+        :parts="parts"
+        :pwa-update-registration="pwaUpdateRegistration"
+        :rendered-wires="renderedWires"
+        :reset-mobile-view="resetMobileView"
+        :rewiring="rewiring"
+        :select-wire="selectWire"
+        :selected-part-id="selectedPartId"
+        :selected-terminal="selectedTerminal"
+        :selected-wire="selectedWire"
+        :set-canvas-viewport="setCanvasViewportElement"
+        :set-endpoint-hover="setEndpointHover"
+        :set-resistance="setResistance"
+        :set-wire-hover="setWireHover"
+        :set-workbench-element="setWorkbenchElement"
+        :set-zoom="board.setZoom"
+        :simulation="simulation"
+        :start-endpoint-drag="startEndpointDrag"
+        :start-new-wire-drag="startNewWireDrag"
+        :status-panel-open="statusPanelOpen"
+        :terminal-display-label="terminalDisplayLabel"
+        :terminal-label="terminalLabel"
+        :terminal-style="terminalStyle"
+        :toggle-battery-polarity="toggleBatteryPolarity"
+        :toggle-switch="toggleSwitch"
+        :update-new-wire-drag="updateNewWireDrag"
+        :wire-endpoint-position="wireEndpointPosition"
+        :wire-path="wirePath"
+        :wire-stroke="wireStroke"
+        :wire-stroke-width="wireStrokeWidth"
+        :zoom="board.zoom"
+        @open-palette="palettePanelOpen = true; statusPanelOpen = false"
+        @open-status-tab="openMobileStatusPanel"
+        @toggle-status="statusPanelOpen = !statusPanelOpen; palettePanelOpen = false"
+      />
 
-      <section
-        ref="canvasViewportRef"
-        class="relative min-h-0 touch-none overflow-auto canvas-grid xl:touch-auto xl:overflow-hidden"
-        @pointerdown="handleCanvasPointerDown"
-        @pointermove="handleCanvasPointerMove"
-        @pointerup="endCanvasGesture"
-        @pointercancel="endCanvasGesture"
-        @pointerleave="endCanvasGesture"
-      >
-        <button
-          class="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 z-20 flex h-10 items-center gap-2 overflow-hidden rounded-md border bg-card/95 px-3 text-left text-sm shadow-panel xl:hidden"
-          :class="lessonComplete ? 'border-emerald-200 text-emerald-950' : 'border-cyan-200 text-cyan-950'"
-          @click="openMobileStatusPanel('lesson')"
-        >
-          <span
-            class="flex h-6 min-w-12 shrink-0 items-center justify-center rounded-md text-xs font-medium tabular-nums"
-            :class="lessonComplete ? 'bg-emerald-100 text-emerald-800' : 'bg-cyan-100 text-cyan-800'"
-          >
-            {{ lessonProgress.completed }}/{{ lessonProgress.total }}
-          </span>
-          <span class="min-w-0 flex-1 truncate">{{ mobileLessonStripText }}</span>
-          <Gauge class="h-4 w-4 shrink-0 opacity-70" />
-        </button>
-
-        <div class="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-md border bg-card/95 p-1 shadow-panel xl:hidden">
-          <Button
-            :class="palettePanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''"
-            :aria-pressed="palettePanelOpen"
-            variant="ghost"
-            size="icon"
-            title="打开器件面板"
-            @click="palettePanelOpen = true; statusPanelOpen = false"
-          >
-            <PackagePlus class="h-4 w-4" />
-          </Button>
-          <Button
-            :class="statusPanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''"
-            :aria-pressed="statusPanelOpen"
-            variant="ghost"
-            size="icon"
-            title="显示状态面板"
-            @click="statusPanelOpen = !statusPanelOpen; palettePanelOpen = false"
-          >
-            <Gauge class="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" title="清线" @click="clearWires">
-            <Unplug class="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" title="导出图片" @click="exportWorkbenchImage">
-            <Download class="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" title="回正视图" @click="resetMobileView">
-            <LocateFixed class="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" title="缩小" @click="board.setZoom(board.zoom - 5)">
-            <ZoomOut class="h-4 w-4" />
-          </Button>
-          <div class="min-w-12 text-center text-xs tabular-nums">{{ board.zoom }}%</div>
-          <Button variant="ghost" size="icon" title="放大" @click="board.setZoom(board.zoom + 5)">
-            <ZoomIn class="h-4 w-4" />
-          </Button>
-        </div>
-
-        <section
-          v-if="lessonCompletePanelOpen"
-          class="fixed bottom-24 left-3 right-3 z-30 rounded-md border border-emerald-200 bg-card/95 p-4 shadow-panel sm:left-auto sm:w-[22rem] xl:bottom-5 xl:right-[340px]"
-        >
-          <div class="mb-3 flex items-start gap-3">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-emerald-100 text-emerald-800">
-              <Trophy class="h-5 w-5" />
-            </span>
-            <div class="min-w-0">
-              <div class="text-sm font-semibold">实验完成</div>
-              <div class="mt-1 text-xs leading-5 text-muted-foreground">
-                {{ activeLesson.title }} 的 {{ lessonProgress.total }} 个步骤已经全部完成。
-              </div>
-            </div>
-            <Button variant="ghost" size="icon" title="关闭完成提示" @click="closeLessonCompletePanel">
-              <X class="h-4 w-4" />
-            </Button>
-          </div>
-          <div class="mb-3 h-2 overflow-hidden rounded-full bg-muted">
-            <div class="h-full rounded-full bg-emerald-500" style="width: 100%" />
-          </div>
-          <div class="grid grid-cols-2 gap-2">
-            <Button variant="outline" size="sm" @click="closeLessonCompletePanel">
-              继续探索
-            </Button>
-            <Button size="sm" @click="loadNextLesson">
-              下一个实验
-            </Button>
-          </div>
-        </section>
-
-        <section
-          v-if="pwaUpdateRegistration"
-          class="fixed bottom-24 left-3 right-3 z-40 rounded-md border bg-card/95 p-3 shadow-panel sm:left-auto sm:w-[22rem] xl:bottom-5 xl:right-[340px]"
-        >
-          <div class="mb-3 flex items-start gap-3">
-            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-cyan-100 text-cyan-900">
-              <RotateCcw class="h-4 w-4" />
-            </span>
-            <div class="min-w-0 flex-1">
-              <div class="text-sm font-semibold">有新版本啦</div>
-              <div class="mt-1 text-xs leading-5 text-muted-foreground">
-                刷新一下就能用最新实验台，本地记录会继续保留。
-              </div>
-            </div>
-            <Button variant="ghost" size="icon" title="稍后" @click="dismissPwaUpdate">
-              <X class="h-4 w-4" />
-            </Button>
-          </div>
-          <Button class="w-full" size="sm" @click="applyPwaUpdate">
-            <RotateCcw class="h-4 w-4" />
-            立即刷新
-          </Button>
-        </section>
-
-        <div class="hidden w-max max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel xl:absolute xl:left-4 xl:top-4 xl:z-20 xl:flex">
-          <CircuitBoard class="h-4 w-4 text-cyan-700" />
-          <span class="text-sm font-medium">Workbench</span>
-          <span v-if="endpointDrag?.over" class="text-xs text-muted-foreground">
-            松开连接到 {{ terminalLabel(endpointDrag.over) }}
-          </span>
-          <span v-else-if="endpointDrag" class="text-xs text-muted-foreground">
-            拖到新的端子上松开
-          </span>
-          <span v-else-if="newWireDrag?.over" class="text-xs text-muted-foreground">
-            松开连接到 {{ terminalLabel(newWireDrag.over) }}
-          </span>
-          <span v-else-if="newWireDrag" class="text-xs text-muted-foreground">
-            拖到另一个端子上松开
-          </span>
-          <span v-else-if="rewiring && selectedWire" class="text-xs text-muted-foreground">
-            重接{{ rewiring.end === "from" ? "左端" : "右端" }}：点击新的端子
-          </span>
-          <span v-if="selectedTerminal" class="text-xs text-muted-foreground">
-            {{ terminalLabel(selectedTerminal) }}
-          </span>
-        </div>
-
-        <div
-          ref="workbenchRef"
-          class="relative mx-3 mb-24 mt-3 origin-top-left overflow-hidden rounded-md border bg-[#f8faf7] shadow-panel xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:origin-center xl:-translate-x-1/2 xl:-translate-y-1/2"
-          data-circuit-surface="true"
-          :style="{
-            width: `${workbench.width}px`,
-            height: `${workbench.height}px`,
-            scale: `${board.zoom / 100}`,
-          }"
-          @pointermove="handleWorkbenchPointerMove"
-          @pointerup="endDrag"
-          @pointerleave="endDrag"
-          @pointerdown.self="clearCanvasSelection"
-        >
-          <svg class="pointer-events-none absolute inset-0 z-30 h-full w-full">
-            <path
-              v-if="newWireDrag"
-              class="wire-draft"
-              :d="newWireDragPath()"
-              fill="none"
-              stroke-linecap="round"
-              stroke-width="6"
-            />
-            <circle
-              v-if="newWireDrag?.over"
-              class="wire-snap-halo"
-              :cx="getTerminalPosition(newWireDrag.over).x"
-              :cy="getTerminalPosition(newWireDrag.over).y"
-              r="18"
-            />
-            <g
-              v-for="wire in renderedWires"
-              :key="wire.id"
-            >
-              <path
-                class="pointer-events-auto cursor-pointer"
-                data-circuit-interactive="true"
-                :d="wirePath(wire)"
-                fill="none"
-                pointer-events="stroke"
-                stroke="transparent"
-                stroke-linecap="round"
-                stroke-width="22"
-                @click.stop="selectWire(wire.id)"
-                @pointerdown.stop
-                @pointerenter="setWireHover(wire.id)"
-                @pointerleave="clearWireHover(wire.id)"
-              />
-              <path
-                :class="isWireHighlighted(wire) ? 'wire-hover-glow' : ''"
-                :d="wirePath(wire)"
-                fill="none"
-                :stroke="wireStroke(wire)"
-                stroke-linecap="round"
-                :stroke-width="wireStrokeWidth(wire)"
-              />
-              <path
-                v-if="simulation.wires[wire.id]?.active"
-                class="wire-current"
-                :class="simulation.wires[wire.id]?.reverse ? 'wire-current-reverse' : ''"
-                :d="wirePath(wire)"
-                fill="none"
-                stroke="#fef3c7"
-                stroke-linecap="round"
-                stroke-width="4"
-                :style="{ '--wire-current-duration': currentAnimationDuration }"
-              />
-              <circle
-                v-if="endpointDrag?.over && endpointDrag.wireId === wire.id"
-                class="wire-snap-halo"
-                :cx="getTerminalPosition(endpointDrag.over).x"
-                :cy="getTerminalPosition(endpointDrag.over).y"
-                r="18"
-              />
-              <circle
-                class="pointer-events-auto cursor-grab touch-none active:cursor-grabbing"
-                data-circuit-interactive="true"
-                :cx="wireEndpointPosition(wire, 'from').x"
-                :cy="wireEndpointPosition(wire, 'from').y"
-                :r="endpointRadius(wire, 'from')"
-                :fill="endpointFill(wire, 'from')"
-                stroke="#fff"
-                :stroke-width="endpointStrokeWidth(wire, 'from')"
-                @click.stop="selectWire(wire.id)"
-                @pointerdown.stop="startEndpointDrag($event, wire, 'from')"
-                @pointerenter="setEndpointHover(wire.id, 'from')"
-                @pointerleave="clearEndpointHover(wire.id, 'from')"
-              />
-              <circle
-                class="pointer-events-auto cursor-grab touch-none active:cursor-grabbing"
-                data-circuit-interactive="true"
-                :cx="wireEndpointPosition(wire, 'to').x"
-                :cy="wireEndpointPosition(wire, 'to').y"
-                :r="endpointRadius(wire, 'to')"
-                :fill="endpointFill(wire, 'to')"
-                stroke="#fff"
-                :stroke-width="endpointStrokeWidth(wire, 'to')"
-                @click.stop="selectWire(wire.id)"
-                @pointerdown.stop="startEndpointDrag($event, wire, 'to')"
-                @pointerenter="setEndpointHover(wire.id, 'to')"
-                @pointerleave="clearEndpointHover(wire.id, 'to')"
-              />
-            </g>
-          </svg>
-
-          <div
-            v-for="part in parts"
-            :key="part.id"
-            class="absolute z-10 cursor-grab touch-none select-none rounded-md border bg-card shadow-sm transition-shadow active:cursor-grabbing"
-            data-circuit-interactive="true"
-            :class="[
-              selectedPartId === part.id ? 'border-primary shadow-panel' : 'border-border',
-              isLessonPartTarget(part) ? 'lesson-workbench-target z-20' : '',
-              part.type === 'battery' ? 'bg-slate-950 text-white' : '',
-              part.type === 'switch' ? 'bg-white' : '',
-              part.type === 'bulb' ? 'bg-amber-50' : '',
-              part.type === 'resistor' ? 'bg-cyan-50' : '',
-              part.type === 'led' ? 'bg-rose-50' : '',
-              part.type === 'buzzer' ? 'bg-sky-50' : '',
-              part.type === 'motor' ? 'bg-emerald-50' : '',
-            ]"
-            :style="partStyle(part)"
-            @pointerdown="handlePartPointerDown($event, part)"
-          >
-            <button
-              v-for="terminal in (['a', 'b'] as TerminalKey[])"
-              :key="terminal"
-              class="absolute z-40 flex h-8 w-8 touch-none items-center justify-center rounded-full border-2 border-card bg-foreground text-[11px] font-bold text-background shadow-sm transition-transform hover:scale-110"
-              data-circuit-interactive="true"
-              :class="[
-                isTerminalSelected(part, terminal) ? 'ring-4 ring-amber-300' : '',
-                isTerminalDropTarget(part, terminal) ? 'scale-125 bg-amber-500 text-amber-950' : '',
-                isLessonTerminalTarget(part, terminal) ? 'lesson-terminal-target' : '',
-              ]"
-              :style="terminalStyle(part, terminal)"
-              :title="terminalDisplayLabel(part, terminal)"
-              @pointerdown.stop="startNewWireDrag($event, part, terminal)"
-              @pointermove.stop="updateNewWireDrag"
-              @pointerup.stop="finishNewWireDrag"
-              @pointercancel.stop="finishNewWireDrag"
-              @click.stop="handleTerminalClick(part, terminal)"
-            >
-              {{ terminalDisplayLabel(part, terminal) }}
-            </button>
-
-            <div v-if="part.type === 'battery'" class="flex h-full flex-col justify-between p-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-xs text-white/60">Power</div>
-                  <div class="text-sm font-semibold">{{ part.name }}</div>
-                </div>
-                <BatteryCharging class="h-5 w-5 text-cyan-300" />
-              </div>
-              <div class="flex items-center gap-2">
-                <span class="h-9 w-4 rounded-sm border border-white/30 bg-white/10" />
-                <span class="h-12 w-4 rounded-sm border border-white/30 bg-white/20" />
-                <span
-                  class="h-9 flex-1 rounded-sm from-cyan-400 to-emerald-300"
-                  :class="batteryPositiveTerminal(part) === 'b' ? 'bg-gradient-to-r' : 'bg-gradient-to-l'"
-                />
-              </div>
-              <div class="flex items-center justify-between text-xs text-white/70">
-                <span>{{ batteryPolarityLabel(part) }}</span>
-                <button class="rounded border border-white/20 px-2 py-1 text-white hover:bg-white/10" @pointerdown.stop @click.stop="toggleBatteryPolarity(part)">
-                  反转
-                </button>
-              </div>
-            </div>
-
-            <div v-else-if="part.type === 'switch'" class="flex h-full flex-col justify-between p-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-xs text-muted-foreground">Switch</div>
-                  <div class="text-sm font-semibold">{{ part.name }}</div>
-                </div>
-                <component :is="part.closed ? ToggleRight : ToggleLeft" class="h-5 w-5" />
-              </div>
-              <button
-                class="relative h-8 rounded-full border bg-muted px-2"
-                :class="part.closed ? 'border-emerald-400 bg-emerald-50' : 'border-rose-200 bg-rose-50'"
-                @pointerdown.stop
-                @click.stop="toggleSwitch(part)"
-              >
-                <span
-                  class="absolute top-1 h-6 w-12 rounded-full transition-all"
-                  :class="part.closed ? 'left-[92px] bg-emerald-500' : 'left-1 bg-rose-400'"
-                />
-                <span class="relative z-10 flex h-full items-center justify-between text-xs font-medium">
-                  <span>断开</span>
-                  <span>闭合</span>
-                </span>
-              </button>
-            </div>
-
-            <div v-else-if="part.type === 'bulb'" class="flex h-full flex-col items-center justify-center gap-3 p-4">
-              <div
-                class="flex h-20 w-20 items-center justify-center rounded-full border transition-all"
-                :class="bulbBrightness(part) > 0 ? 'border-amber-400' : 'border-amber-200'"
-                :style="{
-                  backgroundColor: `rgba(251, 191, 36, ${0.16 + bulbBrightness(part) * 0.72})`,
-                  boxShadow:
-                    bulbBrightness(part) > 0
-                      ? `0 0 ${18 + bulbBrightness(part) * 42}px rgba(245, 158, 11, ${0.3 + bulbBrightness(part) * 0.5})`
-                      : 'none',
-                }"
-              >
-                <Lightbulb class="h-10 w-10 text-amber-900" />
-              </div>
-              <div class="text-center">
-                <div class="text-sm font-semibold">{{ part.name }}</div>
-                <div class="text-xs text-muted-foreground">
-                  {{ simulation.bulbs[part.id]?.brightnessPercent ?? 0 }}%
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="part.type === 'led'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
-              <div
-                class="relative flex h-16 w-16 items-center justify-center rounded-full border transition-all"
-                :class="[
-                  ledStatus(part).reversed ? 'border-slate-300 bg-slate-100' : 'border-rose-300',
-                  ledStatus(part).overCurrent ? 'ring-4 ring-rose-300' : '',
-                ]"
-                :style="{
-                  backgroundColor: `rgba(244, 63, 94, ${0.12 + ledStatus(part).brightness * 0.76})`,
-                  boxShadow:
-                    ledStatus(part).brightness > 0
-                      ? `0 0 ${14 + ledStatus(part).brightness * 36}px rgba(225, 29, 72, ${0.25 + ledStatus(part).brightness * 0.48})`
-                      : 'none',
-                }"
-              >
-                <CircleDot class="h-9 w-9 text-rose-900" />
-              </div>
-              <div class="text-center">
-                <div class="text-sm font-semibold text-rose-950">{{ part.name }}</div>
-                <div class="text-xs text-muted-foreground">
-                  {{ ledStatus(part).reversed ? "反接" : `${ledStatus(part).brightnessPercent}%` }}
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="part.type === 'buzzer'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
-              <div
-                class="relative flex h-16 w-16 items-center justify-center rounded-full border border-sky-300 bg-sky-100 transition-all"
-                :style="{
-                  boxShadow:
-                    buzzerStatus(part).active
-                      ? `0 0 ${12 + buzzerStatus(part).volume * 34}px rgba(2, 132, 199, ${0.22 + buzzerStatus(part).volume * 0.36})`
-                      : 'none',
-                }"
-              >
-                <span
-                  v-if="buzzerStatus(part).active"
-                  class="absolute h-16 w-16 animate-ping rounded-full border border-sky-400 opacity-40"
-                />
-                <Volume2 class="h-9 w-9 text-sky-900" />
-              </div>
-              <div class="text-center">
-                <div class="text-sm font-semibold text-sky-950">{{ part.name }}</div>
-                <div class="text-xs text-muted-foreground">
-                  {{ buzzerStatus(part).active ? `${buzzerStatus(part).volumePercent}% 响` : "静音" }}
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="part.type === 'motor'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
-              <div
-                class="relative flex h-16 w-16 items-center justify-center rounded-full border border-emerald-300 bg-emerald-100 transition-all"
-                :style="{
-                  boxShadow:
-                    motorStatus(part).active
-                      ? `0 0 ${10 + motorStatus(part).speed * 30}px rgba(22, 163, 74, ${0.18 + motorStatus(part).speed * 0.32})`
-                      : 'none',
-                }"
-              >
-                <Cog
-                  class="h-10 w-10 text-emerald-900"
-                  :class="motorStatus(part).active ? 'animate-spin' : ''"
-                  :style="{ animationDuration: `${Math.max(0.55, 2 - motorStatus(part).speed * 1.25)}s` }"
-                />
-              </div>
-              <div class="text-center">
-                <div class="text-sm font-semibold text-emerald-950">{{ part.name }}</div>
-                <div class="text-xs text-muted-foreground">
-                  {{ motorStatus(part).active ? `${motorStatus(part).speedPercent}% 转` : "停止" }}
-                </div>
-              </div>
-            </div>
-
-            <div v-else-if="part.type === 'resistor'" class="flex h-full flex-col justify-between p-4">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div class="text-xs text-cyan-800/70">Rheostat</div>
-                  <div class="text-sm font-semibold text-cyan-950">{{ part.name }}</div>
-                </div>
-                <SlidersHorizontal class="h-5 w-5 text-cyan-700" />
-              </div>
-              <div class="space-y-2">
-                <div class="flex items-center justify-between text-xs text-cyan-950">
-                  <span>0 Ω</span>
-                  <span class="font-semibold">{{ part.resistance ?? 0 }} Ω</span>
-                  <span>140 Ω</span>
-                </div>
-                <input
-                  class="w-full accent-cyan-700"
-                  max="140"
-                  min="0"
-                  type="range"
-                  :value="part.resistance ?? 0"
-                  @input="setResistance(part, Number(($event.target as HTMLInputElement).value))"
-                  @pointerdown.stop
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <aside
-        class="fixed inset-x-3 bottom-20 z-40 flex max-h-[70dvh] min-h-0 flex-col rounded-md border bg-card shadow-panel transition-all duration-200 xl:static xl:inset-auto xl:z-auto xl:max-h-none xl:rounded-none xl:border-l xl:border-r-0 xl:border-t-0 xl:shadow-none"
-        :class="statusPanelOpen ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0 xl:pointer-events-auto xl:translate-y-0 xl:opacity-100'"
-      >
-        <div class="flex items-center justify-between border-b px-3 py-2 xl:px-4 xl:py-3">
-          <div>
-            <div class="text-sm font-semibold">状态</div>
-            <div class="text-xs text-muted-foreground">{{ selectedWire ? "导线" : selectedPart?.name ?? "未选择" }}</div>
-          </div>
-          <Button class="xl:hidden" variant="ghost" size="icon" title="关闭状态面板" @click="statusPanelOpen = false">
-            <X class="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div class="grid grid-cols-3 gap-1 border-b bg-muted/30 p-2">
-          <button
-            v-for="tab in statusPanelTabs"
-            :key="tab.id"
-            class="flex h-11 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
-            :class="
-              statusPanelTab === tab.id
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
-            "
-            @click="statusPanelTab = tab.id"
-          >
-            <component :is="tab.icon" class="h-3.5 w-3.5 shrink-0" />
-            <span>{{ tab.label }}</span>
-          </button>
-        </div>
-
-        <div class="min-h-0 flex-1 space-y-5 overflow-y-auto p-3 xl:p-4">
-          <section v-if="statusPanelTab === 'lesson'" class="rounded-md border bg-background p-3">
-            <div class="mb-3 flex items-start justify-between gap-3">
-              <div>
-                <div class="text-xs text-muted-foreground">Lesson</div>
-                <div class="text-sm font-semibold">{{ activeLesson.title }}</div>
-              </div>
-              <div class="rounded-md bg-cyan-100 px-2 py-1 text-xs font-medium text-cyan-900">
-                {{ lessonProgress.completed }}/{{ lessonProgress.total }}
-              </div>
-            </div>
-            <p class="mb-3 text-xs leading-5 text-muted-foreground">
-              {{ activeLesson.objective }}
-            </p>
-            <div class="mb-3 grid grid-cols-1 gap-2">
-              <button
-                v-for="lesson in lessonCatalog"
-                :key="lesson.id"
-                class="rounded-md border px-3 py-2 text-left text-xs transition-colors"
-                :class="
-                  activeLessonId === lesson.id
-                    ? 'border-cyan-500 bg-cyan-50 text-cyan-950'
-                    : 'bg-card text-muted-foreground hover:bg-muted'
-                "
-                @click="activeLessonId = lesson.id"
-              >
-                <span class="block truncate font-medium">{{ lesson.title }}</span>
-              </button>
-            </div>
-            <Button class="mb-3 w-full" variant="outline" size="sm" @click="loadLessonWorkspace()">
-              <RotateCcw class="h-4 w-4" />
-              加载实验初始状态
-            </Button>
-            <div class="mb-3 h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                class="h-full rounded-full bg-cyan-600 transition-all"
-                :style="{ width: `${lessonProgress.percent}%` }"
-              />
-            </div>
-            <div
-              v-if="nextLessonStep"
-              class="mb-3 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-950"
-            >
-              <div class="mb-1 font-medium">下一步提示</div>
-              <div class="leading-5">{{ nextLessonStep.hint }}</div>
-            </div>
-            <div
-              v-else
-              class="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950"
-            >
-              <div class="font-medium">实验完成，可以切换到下一个实验。</div>
-            </div>
-            <div class="space-y-2">
-              <div
-                v-for="step in lessonStepStates"
-                :key="step.id"
-                class="flex items-start gap-2 rounded-md border px-3 py-2 text-sm"
-                :class="[
-                  step.complete ? 'border-emerald-200 bg-emerald-50 text-emerald-950' : 'bg-card',
-                  nextLessonStep?.id === step.id ? 'border-cyan-300 ring-2 ring-cyan-100' : '',
-                ]"
-              >
-                <span
-                  class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
-                  :class="
-                    step.complete
-                      ? 'border-emerald-500 bg-emerald-500 text-white'
-                      : nextLessonStep?.id === step.id
-                        ? 'border-cyan-500 bg-cyan-500 text-white'
-                        : 'border-muted-foreground/40'
-                  "
-                >
-                  <Check v-if="step.complete" class="h-3.5 w-3.5" />
-                </span>
-                <span class="leading-5">{{ step.description }}</span>
-              </div>
-            </div>
-          </section>
-
-          <section v-if="statusPanelTab === 'records'" class="rounded-md border bg-background p-3">
-            <div class="mb-3 flex items-center justify-between">
-              <span class="text-sm font-medium">记录</span>
-              <span class="text-xs text-muted-foreground">{{ savedRecords.length }}/12</span>
-            </div>
-            <input
-              ref="workspaceImportRef"
-              accept="application/json,.json"
-              class="hidden"
-              type="file"
-              @change="importWorkspaceJson"
-            />
-            <div class="mb-3 flex gap-2">
-              <input
-                v-model="recordTitle"
-                class="h-9 min-w-0 flex-1 rounded-md border bg-card px-3 text-sm"
-                placeholder="记录名称"
-                @keydown.enter="saveWorkspaceRecord"
-              />
-              <Button variant="outline" size="icon" title="暂存当前记录" @click="saveWorkspaceRecord">
-                <Save class="h-4 w-4" />
-              </Button>
-            </div>
-            <div class="mb-3 grid grid-cols-2 gap-2">
-              <Button variant="outline" size="sm" @click="openWorkspaceImport">
-                <FileUp class="h-4 w-4" />
-                导入 JSON
-              </Button>
-              <Button variant="outline" size="sm" @click="exportWorkspaceJson">
-                <FileDown class="h-4 w-4" />
-                导出 JSON
-              </Button>
-            </div>
-            <Button class="mb-3 w-full" variant="outline" size="sm" @click="copyWorkspaceShareLink">
-              <Link class="h-4 w-4" />
-              {{
-                shareLinkState === "copied"
-                  ? "链接已复制"
-                  : shareLinkState === "manual"
-                    ? "请手动复制"
-                    : "复制分享链接"
-              }}
-            </Button>
-            <div
-              v-if="shareLinkState === 'manual'"
-              class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950"
-            >
-              浏览器没有允许自动复制，已弹出分享链接，请手动复制。
-            </div>
-            <div v-if="savedRecords.length" class="space-y-2">
-              <div
-                v-for="record in savedRecords"
-                :key="record.id"
-                class="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-sm"
-              >
-                <div class="min-w-0">
-                  <div class="truncate font-medium">{{ record.title }}</div>
-                  <div class="text-xs text-muted-foreground">{{ formatSavedTime(record.savedAt) }}</div>
-                </div>
-                <div class="flex shrink-0 items-center gap-1">
-                  <Button variant="ghost" size="icon" title="加载记录" @click="loadSavedRecord(record)">
-                    <FolderOpen class="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" title="删除记录" @click="removeSavedRecord(record.id)">
-                    <Trash2 class="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-            <div v-else class="rounded-md border border-dashed px-3 py-3 text-xs text-muted-foreground">
-              暂无暂存记录
-            </div>
-          </section>
-
-          <section v-if="statusPanelTab === 'cloud'" class="rounded-md border bg-background p-3">
-            <div class="mb-3 flex items-center justify-between gap-3">
-              <div class="flex min-w-0 items-center gap-2">
-                <CloudOff
-                  v-if="cloudSyncState === 'unconfigured' || cloudSyncState === 'configured'"
-                  class="h-4 w-4 shrink-0 text-muted-foreground"
-                />
-                <TriangleAlert v-else-if="cloudSyncState === 'failed'" class="h-4 w-4 shrink-0 text-rose-700" />
-                <CloudSync
-                  v-else-if="cloudSyncState === 'local-changes' || cloudSyncState === 'syncing'"
-                  class="h-4 w-4 shrink-0 text-amber-700"
-                />
-                <CloudCheck v-else class="h-4 w-4 shrink-0 text-emerald-700" />
-                <span class="text-sm font-medium">云端同步</span>
-              </div>
-              <span class="rounded-md px-2 py-1 text-xs font-medium" :class="cloudSyncBadgeClass">
-                {{ cloudSyncLabel }}
-              </span>
-            </div>
-            <p class="mb-3 text-xs leading-5 text-muted-foreground">
-              {{ cloudSyncDescription }}
-            </p>
-            <div
-              v-if="!cloudConfig.configured"
-              class="rounded-md border border-dashed px-3 py-3 text-xs leading-5 text-muted-foreground"
-            >
-              在 `.env.local` 中配置 `VITE_SUPABASE_URL` 和 `VITE_SUPABASE_ANON_KEY` 后，可启用登录入口。
-            </div>
-            <div v-else-if="cloudUserEmail" class="space-y-2">
-              <form
-                v-if="cloudAuthMode === 'update-password'"
-                class="space-y-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-3 text-xs text-cyan-950"
-                @submit.prevent="requestCloudAuth"
-              >
-                <div class="font-medium">{{ cloudAuthTitle }}</div>
-                <div class="leading-5">{{ cloudAuthHelpText }}</div>
-                <input
-                  v-model="cloudPassword"
-                  autocomplete="new-password"
-                  class="h-9 w-full rounded-md border bg-card px-3 text-sm text-foreground"
-                  placeholder="新密码"
-                  type="password"
-                />
-                <input
-                  v-model="cloudPasswordConfirm"
-                  autocomplete="new-password"
-                  class="h-9 w-full rounded-md border bg-card px-3 text-sm text-foreground"
-                  placeholder="再次输入新密码"
-                  type="password"
-                />
-                <div class="grid grid-cols-2 gap-2">
-                  <Button size="sm" :disabled="cloudAuthBusy" type="submit">
-                    <ShieldCheck class="h-4 w-4" />
-                    {{ cloudAuthSubmitLabel }}
-                  </Button>
-                  <Button variant="outline" size="sm" :disabled="cloudAuthBusy" type="button" @click="setCloudAuthMode('sign-in')">
-                    稍后
-                  </Button>
-                </div>
-              </form>
-              <div class="rounded-md border bg-card px-3 py-2 text-xs">
-                <div class="text-muted-foreground">当前账号</div>
-                <div class="truncate font-medium">{{ cloudUserEmail }}</div>
-              </div>
-              <div
-                v-if="sharedWorkspaceLoaded"
-                class="space-y-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-950"
-              >
-                <div class="font-medium">这是从分享链接打开的工作台</div>
-                <div class="leading-5">保存为云端副本后，就会进入你的个人记录列表。</div>
-                <Button class="w-full" size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud({ saveAsCopy: true })">
-                  <CloudUpload class="h-4 w-4" />
-                  复制到我的记录
-                </Button>
-              </div>
-              <div
-                v-else-if="cloudShouldSuggestInitialUpload"
-                class="space-y-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 py-2 text-xs text-cyan-950"
-              >
-                <div class="font-medium">要把当前工作台保存到云端吗？</div>
-                <div class="leading-5">保存后，换设备登录也可以继续这个实验。</div>
-                <div class="grid grid-cols-2 gap-2">
-                  <Button size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud()">
-                    现在上传
-                  </Button>
-                  <Button variant="outline" size="sm" :disabled="cloudRecordsBusy" @click="dismissCloudInitialUploadSuggestion">
-                    稍后
-                  </Button>
-                </div>
-              </div>
-              <div class="space-y-2">
-                <input
-                  v-model="cloudRecordTitle"
-                  class="h-9 w-full rounded-md border bg-card px-3 text-sm"
-                  placeholder="云端记录名称"
-                  type="text"
-                />
-                <div class="grid grid-cols-2 gap-2">
-                  <Button size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud()">
-                    <CloudUpload class="h-4 w-4" />
-                    {{ cloudSaveLabel }}
-                  </Button>
-                  <Button variant="outline" size="sm" :disabled="cloudRecordsBusy" @click="loadCloudRecords">
-                    <RotateCcw class="h-4 w-4" />
-                    刷新
-                  </Button>
-                </div>
-                <Button
-                  v-if="cloudActiveRecordId"
-                  class="w-full"
-                  variant="outline"
-                  size="sm"
-                  :disabled="cloudRecordsBusy"
-                  @click="saveWorkspaceToCloud({ saveAsCopy: true })"
-                >
-                  <CloudUpload class="h-4 w-4" />
-                  另存云端副本
-                </Button>
-              </div>
-              <div
-                v-if="cloudPendingSnapshot"
-                class="space-y-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950"
-              >
-                <div class="font-medium">云端记录可能已经被更新</div>
-                <div class="leading-5">可以覆盖云端记录，也可以把当前工作台另存为新的云端副本。</div>
-                <div class="grid grid-cols-2 gap-2">
-                  <Button size="sm" :disabled="cloudRecordsBusy" @click="saveWorkspaceToCloud({ forceOverwrite: true })">
-                    覆盖云端
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    :disabled="cloudRecordsBusy"
-                    @click="saveWorkspaceToCloud({ saveAsCopy: true })"
-                  >
-                    另存副本
-                  </Button>
-                </div>
-              </div>
-              <div v-if="cloudRecords.length" class="space-y-2">
-                <div
-                  v-for="record in cloudRecords"
-                  :key="record.id"
-                  class="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2 text-xs"
-                >
-                  <div class="min-w-0">
-                    <div class="truncate font-medium">{{ record.title }}</div>
-                    <div class="text-xs text-muted-foreground">{{ formatSavedTime(record.updated_at) }}</div>
-                  </div>
-                  <div class="flex shrink-0 items-center gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="加载云端记录"
-                      :disabled="cloudRecordsBusy"
-                      @click="loadCloudRecord(record)"
-                    >
-                      <FolderOpen class="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="重命名云端记录"
-                      :disabled="cloudRecordsBusy"
-                      @click="renameCloudRecord(record)"
-                    >
-                      <Pencil class="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="删除云端记录"
-                      :disabled="cloudRecordsBusy"
-                      @click="removeCloudRecord(record.id)"
-                    >
-                      <Trash2 class="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="rounded-md border border-dashed px-3 py-3 text-xs text-muted-foreground">
-                暂无云端记录
-              </div>
-              <Button class="w-full" variant="outline" size="sm" :disabled="cloudAuthBusy" @click="handleCloudSignOut">
-                <LogOut class="h-4 w-4" />
-                退出云端同步
-              </Button>
-            </div>
-            <form v-else class="space-y-2" @submit.prevent="requestCloudAuth">
-              <div>
-                <div class="text-sm font-medium">{{ cloudAuthTitle }}</div>
-                <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ cloudAuthHelpText }}</p>
-              </div>
-              <input
-                v-model="cloudEmail"
-                autocomplete="email"
-                class="h-9 w-full rounded-md border bg-card px-3 text-sm"
-                inputmode="email"
-                placeholder="邮箱地址"
-                type="email"
-              />
-              <input
-                v-if="cloudAuthMode !== 'reset'"
-                v-model="cloudPassword"
-                :autocomplete="cloudAuthMode === 'sign-in' ? 'current-password' : 'new-password'"
-                class="h-9 w-full rounded-md border bg-card px-3 text-sm"
-                placeholder="密码"
-                type="password"
-              />
-              <input
-                v-if="cloudAuthMode === 'sign-up'"
-                v-model="cloudPasswordConfirm"
-                autocomplete="new-password"
-                class="h-9 w-full rounded-md border bg-card px-3 text-sm"
-                placeholder="再次输入密码"
-                type="password"
-              />
-              <Button class="w-full" size="sm" :disabled="cloudAuthBusy" type="submit">
-                <Mail v-if="cloudAuthMode === 'reset'" class="h-4 w-4" />
-                <ShieldCheck v-else class="h-4 w-4" />
-                {{ cloudAuthSubmitLabel }}
-              </Button>
-              <div class="flex flex-wrap items-center justify-center gap-2 text-xs">
-                <button
-                  v-if="cloudAuthMode === 'sign-in'"
-                  class="text-cyan-700 hover:underline"
-                  type="button"
-                  @click="setCloudAuthMode('sign-up')"
-                >
-                  创建账号
-                </button>
-                <button
-                  v-if="cloudAuthMode === 'sign-in'"
-                  class="text-muted-foreground hover:text-foreground hover:underline"
-                  type="button"
-                  @click="setCloudAuthMode('reset')"
-                >
-                  忘记密码
-                </button>
-                <button
-                  v-if="cloudAuthMode !== 'sign-in'"
-                  class="text-muted-foreground hover:text-foreground hover:underline"
-                  type="button"
-                  @click="setCloudAuthMode('sign-in')"
-                >
-                  返回登录
-                </button>
-              </div>
-            </form>
-            <div v-if="cloudAuthMessage" class="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950">
-              {{ cloudAuthMessage }}
-            </div>
-            <div v-if="cloudAuthError" class="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-950">
-              {{ cloudAuthError }}
-            </div>
-            <div v-if="cloudRecordsMessage" class="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950">
-              {{ cloudRecordsMessage }}
-            </div>
-            <div v-if="cloudRecordsError" class="mt-3 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-950">
-              {{ cloudRecordsError }}
-            </div>
-          </section>
-
-          <section v-if="statusPanelTab === 'circuit'" class="grid grid-cols-2 gap-3">
-            <div class="rounded-md border bg-background p-3">
-              <div class="flex items-center gap-2 text-xs text-muted-foreground">
-                <Zap class="h-3.5 w-3.5" />
-                电流
-              </div>
-              <div class="mt-2 text-2xl font-semibold tabular-nums">{{ simulation.currentMilliAmps }}</div>
-              <div class="text-xs text-muted-foreground">mA</div>
-            </div>
-            <div class="rounded-md border bg-background p-3">
-              <div class="text-xs text-muted-foreground">灯泡</div>
-              <div class="mt-2 text-2xl font-semibold tabular-nums">
-                {{ Math.round(mainBulbBrightness * 100) }}
-              </div>
-              <div class="text-xs text-muted-foreground">brightness</div>
-            </div>
-            <div v-if="hasBuzzerParts" class="rounded-md border bg-background p-3">
-              <div class="text-xs text-muted-foreground">蜂鸣器</div>
-              <div class="mt-2 text-2xl font-semibold tabular-nums">{{ activeBuzzerCount }}</div>
-              <div class="text-xs text-muted-foreground">active</div>
-            </div>
-            <div v-if="hasMotorParts" class="rounded-md border bg-background p-3">
-              <div class="text-xs text-muted-foreground">电机</div>
-              <div class="mt-2 text-2xl font-semibold tabular-nums">{{ activeMotorCount }}</div>
-              <div class="text-xs text-muted-foreground">active</div>
-            </div>
-          </section>
-
-          <section v-if="statusPanelTab === 'circuit'" class="rounded-md border bg-background p-3">
-            <div class="mb-3 flex items-center justify-between">
-              <span class="text-sm font-medium">回路</span>
-              <span
-                class="rounded-md px-2 py-1 text-xs font-medium"
-                :class="simulation.closed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
-              >
-                {{ simulation.closed ? "闭合" : "断开" }}
-              </span>
-            </div>
-            <div class="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <div class="text-xs text-muted-foreground">电源</div>
-                <div class="font-medium">9 V</div>
-                <div v-if="primaryBattery" class="text-xs text-muted-foreground">
-                  {{ batteryPolarityLabel(primaryBattery) }}
-                </div>
-              </div>
-              <div>
-                <div class="text-xs text-muted-foreground">等效电阻</div>
-                <div class="font-medium tabular-nums">{{ simulation.equivalentResistance }} Ω</div>
-              </div>
-            </div>
-            <div v-if="ledWarnings.length" class="mt-3 space-y-2">
-              <div
-                v-for="(warning, index) in ledWarnings"
-                :key="index"
-                class="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-950"
-              >
-                <TriangleAlert class="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                <span>{{ warning.reversed ? "有 LED 反接，当前不会导通。" : "LED 电流偏大，请调高限流电阻。" }}</span>
-              </div>
-            </div>
-          </section>
-
-          <section v-if="statusPanelTab === 'selection' && selectedPart && !selectedWire" class="rounded-md border bg-background p-3">
-            <div class="mb-3 flex items-center justify-between">
-              <span class="text-sm font-medium">选中元件</span>
-              <Button variant="ghost" size="icon" title="删除" @click="removeSelectedPart">
-                <Trash2 class="h-4 w-4" />
-              </Button>
-            </div>
-            <div class="space-y-3 text-sm">
-              <div class="flex items-center justify-between">
-                <span class="text-muted-foreground">类型</span>
-                <span class="font-medium">{{ getSpec(selectedPart).label }}</span>
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <label class="space-y-1">
-                  <span class="text-xs text-muted-foreground">X</span>
-                  <input
-                    class="h-9 w-full rounded-md border bg-card px-3 text-sm"
-                    type="number"
-                    v-model.number="selectedPart.x"
-                  />
-                </label>
-                <label class="space-y-1">
-                  <span class="text-xs text-muted-foreground">Y</span>
-                  <input
-                    class="h-9 w-full rounded-md border bg-card px-3 text-sm"
-                    type="number"
-                    v-model.number="selectedPart.y"
-                  />
-                </label>
-              </div>
-              <Button
-                v-if="selectedPart.type === 'switch'"
-                class="w-full"
-                :variant="selectedPart.closed ? 'default' : 'outline'"
-                @click="toggleSwitch(selectedPart)"
-              >
-                <component :is="selectedPart.closed ? ToggleRight : ToggleLeft" class="h-4 w-4" />
-                {{ selectedPart.closed ? "开关已闭合" : "开关已断开" }}
-              </Button>
-              <Button
-                v-if="selectedPart.type === 'battery'"
-                class="w-full"
-                variant="outline"
-                @click="toggleBatteryPolarity(selectedPart)"
-              >
-                <RotateCcw class="h-4 w-4" />
-                {{ batteryPolarityLabel(selectedPart) }}
-              </Button>
-              <label v-if="selectedPart.type === 'resistor'" class="block space-y-2">
-                <span class="text-xs text-muted-foreground">阻值 {{ selectedPart.resistance ?? 0 }} Ω</span>
-                <input
-                  class="w-full accent-cyan-700"
-                  max="140"
-                  min="0"
-                  type="range"
-                  :value="selectedPart.resistance ?? 0"
-                  @input="setResistance(selectedPart, Number(($event.target as HTMLInputElement).value))"
-                />
-              </label>
-              <div v-if="selectedPart.type === 'led'" class="rounded-md border bg-card px-3 py-2 text-xs">
-                <div class="mb-2 flex items-center justify-between">
-                  <span class="text-muted-foreground">方向</span>
-                  <span class="font-medium" :class="ledStatus(selectedPart).reversed ? 'text-rose-700' : 'text-emerald-700'">
-                    {{ ledStatus(selectedPart).reversed ? "反接" : ledStatus(selectedPart).forward ? "正接" : "未接入" }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-muted-foreground">亮度</span>
-                  <span class="font-medium tabular-nums">{{ ledStatus(selectedPart).brightnessPercent }}%</span>
-                </div>
-              </div>
-              <div v-if="selectedPart.type === 'buzzer'" class="rounded-md border bg-card px-3 py-2 text-xs">
-                <div class="mb-2 flex items-center justify-between">
-                  <span class="text-muted-foreground">状态</span>
-                  <span class="font-medium" :class="buzzerStatus(selectedPart).active ? 'text-sky-700' : 'text-muted-foreground'">
-                    {{ buzzerStatus(selectedPart).active ? "响铃" : "静音" }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-muted-foreground">强度</span>
-                  <span class="font-medium tabular-nums">{{ buzzerStatus(selectedPart).volumePercent }}%</span>
-                </div>
-              </div>
-              <div v-if="selectedPart.type === 'motor'" class="rounded-md border bg-card px-3 py-2 text-xs">
-                <div class="mb-2 flex items-center justify-between">
-                  <span class="text-muted-foreground">状态</span>
-                  <span class="font-medium" :class="motorStatus(selectedPart).active ? 'text-emerald-700' : 'text-muted-foreground'">
-                    {{ motorStatus(selectedPart).active ? "转动" : "停止" }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-muted-foreground">速度</span>
-                  <span class="font-medium tabular-nums">{{ motorStatus(selectedPart).speedPercent }}%</span>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section v-else-if="statusPanelTab === 'selection' && selectedWire" class="rounded-md border border-amber-300 bg-amber-50 p-3">
-            <div class="mb-3 flex items-center justify-between">
-              <span class="text-sm font-medium text-amber-950">选中导线</span>
-              <Button variant="ghost" size="icon" title="断开导线" @click="removeWire(selectedWire.id)">
-                <Trash2 class="h-4 w-4" />
-              </Button>
-            </div>
-            <div class="space-y-3 text-sm">
-              <div class="rounded-md border border-amber-200 bg-white/70 px-3 py-2 text-amber-950">
-                {{ wireLabel(selectedWire) }}
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  @click="startRewire(selectedWire.id, 'from')"
-                >
-                  <Cable class="h-4 w-4" />
-                  重接左端
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  @click="startRewire(selectedWire.id, 'to')"
-                >
-                  <Cable class="h-4 w-4" />
-                  重接右端
-                </Button>
-              </div>
-              <div v-if="rewiring" class="text-xs text-amber-800">
-                正在重接{{ rewiring.end === "from" ? "左端" : "右端" }}，请点击新的端子。
-              </div>
-              <div v-else class="text-xs text-amber-800">
-                拖动画布上这条线两端的圆点可重接；按住 Alt 拖动端点可从同一端子新建导线。
-              </div>
-            </div>
-          </section>
-
-          <section v-else-if="statusPanelTab === 'selection'" class="rounded-md border border-dashed bg-background px-3 py-6 text-center text-sm text-muted-foreground">
-            点击元器件或导线后，这里会显示可编辑属性。
-          </section>
-
-          <section v-if="statusPanelTab === 'wires'">
-            <div class="mb-3 flex items-center justify-between">
-              <div class="text-xs font-medium uppercase text-muted-foreground">Wires</div>
-              <span class="text-xs text-muted-foreground">{{ wires.length }}</span>
-            </div>
-            <div class="space-y-2">
-              <div
-                v-for="wire in wires"
-                :key="wire.id"
-                class="flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
-                :class="selectedWireId === wire.id ? 'border-amber-300 bg-amber-50' : 'bg-background hover:bg-muted'"
-                @click="selectWire(wire.id)"
-              >
-                <span class="truncate">
-                  {{ wireLabel(wire) }}
-                </span>
-                <button class="ml-2 text-muted-foreground hover:text-foreground" @click.stop="removeWire(wire.id)">
-                  <Trash2 class="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </section>
-        </div>
-      </aside>
+      <StatusPanel
+        v-model:active-lesson-id="activeLessonId"
+        v-model:cloud-email="cloudEmail"
+        v-model:cloud-password="cloudPassword"
+        v-model:cloud-password-confirm="cloudPasswordConfirm"
+        v-model:cloud-record-title="cloudRecordTitle"
+        v-model:record-title="recordTitle"
+        v-model:tab="statusPanelTab"
+        :active-buzzer-count="activeBuzzerCount"
+        :active-lesson="activeLesson"
+        :active-motor-count="activeMotorCount"
+        :battery-polarity-label="batteryPolarityLabel"
+        :buzzer-status="buzzerStatus"
+        :cloud-active-record-id="cloudActiveRecordId"
+        :cloud-auth-busy="cloudAuthBusy"
+        :cloud-auth-error="cloudAuthError"
+        :cloud-auth-help-text="cloudAuthHelpText"
+        :cloud-auth-message="cloudAuthMessage"
+        :cloud-auth-mode="cloudAuthMode"
+        :cloud-auth-submit-label="cloudAuthSubmitLabel"
+        :cloud-auth-title="cloudAuthTitle"
+        :cloud-config="cloudConfig"
+        :cloud-pending-snapshot="cloudPendingSnapshot"
+        :cloud-records="cloudRecords"
+        :cloud-records-busy="cloudRecordsBusy"
+        :cloud-records-error="cloudRecordsError"
+        :cloud-records-message="cloudRecordsMessage"
+        :cloud-save-label="cloudSaveLabel"
+        :cloud-should-suggest-initial-upload="cloudShouldSuggestInitialUpload"
+        :cloud-sync-badge-class="cloudSyncBadgeClass"
+        :cloud-sync-description="cloudSyncDescription"
+        :cloud-sync-label="cloudSyncLabel"
+        :cloud-sync-state="cloudSyncState"
+        :cloud-user-email="cloudUserEmail"
+        :dismiss-cloud-initial-upload-suggestion="dismissCloudInitialUploadSuggestion"
+        :format-saved-time="formatSavedTime"
+        :handle-cloud-sign-out="handleCloudSignOut"
+        :has-buzzer-parts="hasBuzzerParts"
+        :has-motor-parts="hasMotorParts"
+        :import-workspace-json="importWorkspaceJson"
+        :led-status="ledStatus"
+        :led-warnings="ledWarnings"
+        :lesson-progress="lessonProgress"
+        :lesson-step-states="lessonStepStates"
+        :load-cloud-record="loadCloudRecord"
+        :load-cloud-records="loadCloudRecords"
+        :load-lesson-workspace="loadLessonWorkspace"
+        :load-saved-record="loadSavedRecord"
+        :main-bulb-brightness="mainBulbBrightness"
+        :motor-status="motorStatus"
+        :next-lesson-step="nextLessonStep"
+        :open="statusPanelOpen"
+        :primary-battery="primaryBattery"
+        :remove-cloud-record="removeCloudRecord"
+        :remove-saved-record="removeSavedRecord"
+        :remove-selected-part="removeSelectedPart"
+        :remove-wire="removeWire"
+        :rename-cloud-record="renameCloudRecord"
+        :request-cloud-auth="requestCloudAuth"
+        :rewiring="rewiring"
+        :save-workspace-record="saveWorkspaceRecord"
+        :save-workspace-to-cloud="saveWorkspaceToCloud"
+        :saved-records="savedRecords"
+        :select-wire="selectWire"
+        :selected-part="selectedPart"
+        :selected-wire="selectedWire"
+        :selected-wire-id="selectedWireId"
+        :set-cloud-auth-mode="setCloudAuthMode"
+        :set-resistance="setResistance"
+        :share-link-state="shareLinkState"
+        :shared-workspace-loaded="sharedWorkspaceLoaded"
+        :simulation="simulation"
+        :start-rewire="startRewire"
+        :toggle-battery-polarity="toggleBatteryPolarity"
+        :toggle-switch="toggleSwitch"
+        :wire-label="wireLabel"
+        :wires="wires"
+        @close="statusPanelOpen = false"
+        @copy-workspace-share-link="copyWorkspaceShareLink"
+        @export-workspace-json="exportWorkspaceJson"
+      />
     </section>
   </main>
 </template>

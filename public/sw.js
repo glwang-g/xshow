@@ -1,4 +1,4 @@
-const CACHE_NAME = "xshow-circuits-v4";
+const CACHE_NAME = "xshow-circuits-v5";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -41,6 +41,11 @@ self.addEventListener("fetch", (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  if (url.searchParams.has("_xshow_update_probe")) {
+    event.respondWith(fetch(request));
     return;
   }
 

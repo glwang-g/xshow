@@ -1,6 +1,15 @@
 export const pwaUpdateAvailableEvent = "xshow:pwa-update-available";
 
+const updateProbeParam = "_xshow_update_probe";
+let updatePrompted = false;
+let lastShellProbeAt = 0;
+
 function notifyUpdateAvailable(registration: ServiceWorkerRegistration) {
+  if (updatePrompted) {
+    return;
+  }
+
+  updatePrompted = true;
   window.dispatchEvent(
     new CustomEvent(pwaUpdateAvailableEvent, {
       detail: { registration },
@@ -8,10 +17,78 @@ function notifyUpdateAvailable(registration: ServiceWorkerRegistration) {
   );
 }
 
+function currentShellAssets() {
+  return new Set(
+    [
+      ...Array.from(document.querySelectorAll<HTMLScriptElement>("script[src]")).map((item) => item.src),
+      ...Array.from(document.querySelectorAll<HTMLLinkElement>("link[rel='stylesheet'][href]")).map((item) => item.href),
+    ].filter((url) => url.includes("/assets/")),
+  );
+}
+
+function shellAssetsFromHtml(html: string) {
+  const documentFromNetwork = new DOMParser().parseFromString(html, "text/html");
+  return new Set(
+    [
+      ...Array.from(documentFromNetwork.querySelectorAll<HTMLScriptElement>("script[src]")).map((item) =>
+        new URL(item.getAttribute("src") ?? "", window.location.href).href,
+      ),
+      ...Array.from(documentFromNetwork.querySelectorAll<HTMLLinkElement>("link[rel='stylesheet'][href]")).map((item) =>
+        new URL(item.getAttribute("href") ?? "", window.location.href).href,
+      ),
+    ].filter((url) => url.includes("/assets/")),
+  );
+}
+
+function haveDifferentAssets(currentAssets: Set<string>, latestAssets: Set<string>) {
+  if (currentAssets.size === 0 || latestAssets.size === 0) {
+    return false;
+  }
+
+  if (currentAssets.size !== latestAssets.size) {
+    return true;
+  }
+
+  return Array.from(latestAssets).some((url) => !currentAssets.has(url));
+}
+
+async function checkShellAssetsForUpdate(registration: ServiceWorkerRegistration) {
+  const now = Date.now();
+  if (updatePrompted || now - lastShellProbeAt < 30_000) {
+    return;
+  }
+
+  lastShellProbeAt = now;
+  const probeUrl = new URL("./index.html", window.location.href);
+  probeUrl.searchParams.set(updateProbeParam, String(now));
+
+  try {
+    const response = await fetch(probeUrl, {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    if (haveDifferentAssets(currentShellAssets(), shellAssetsFromHtml(await response.text()))) {
+      notifyUpdateAvailable(registration);
+    }
+  } catch {
+    // Update probing should never interrupt the workbench.
+  }
+}
+
 function watchForUpdates(registration: ServiceWorkerRegistration) {
   if (registration.waiting && navigator.serviceWorker.controller) {
     notifyUpdateAvailable(registration);
   }
+
+  void registration.update().catch(() => {
+    // Manual update checks are best-effort.
+  });
+  void checkShellAssetsForUpdate(registration);
 
   registration.addEventListener("updatefound", () => {
     const worker = registration.installing;
@@ -24,6 +101,22 @@ function watchForUpdates(registration: ServiceWorkerRegistration) {
         notifyUpdateAvailable(registration);
       }
     });
+  });
+
+  window.addEventListener("focus", () => {
+    void registration.update().catch(() => {
+      // Manual update checks are best-effort.
+    });
+    void checkShellAssetsForUpdate(registration);
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void registration.update().catch(() => {
+        // Manual update checks are best-effort.
+      });
+      void checkShellAssetsForUpdate(registration);
+    }
   });
 }
 

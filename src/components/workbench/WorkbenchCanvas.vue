@@ -8,6 +8,7 @@ import {
   Cog,
   Download,
   Gauge,
+  GitFork,
   Lightbulb,
   LocateFixed,
   PackagePlus,
@@ -71,6 +72,7 @@ const props = defineProps<{
   endpointRadius: (wire: Wire, end: WireEnd) => number;
   endpointStrokeWidth: (wire: Wire, end: WireEnd) => number;
   exportWorkbenchImage: () => void;
+  githubRepositoryUrl: string;
   finishNewWireDrag: () => void;
   getTerminalPosition: (ref: TerminalRef) => Point;
   handleCanvasPointerDown: (event: PointerEvent) => void;
@@ -98,6 +100,7 @@ const props = defineProps<{
   parts: CircuitPart[];
   pwaUpdateRegistration: ServiceWorkerRegistration | null;
   renderedWires: Wire[];
+  resetDemo: () => void;
   resetMobileView: () => void;
   rewiring: { wireId: string; end: WireEnd } | null;
   selectWire: (wireId: string) => void;
@@ -153,6 +156,31 @@ function bindWorkbench(element: unknown) {
         @pointercancel="endCanvasGesture"
         @pointerleave="endCanvasGesture"
       >
+        <div
+          class="fixed left-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-20 flex w-max max-w-[calc(100vw-1.5rem)] items-center gap-1 rounded-md border bg-card/95 p-1 shadow-panel xl:hidden"
+        >
+          <a
+            :href="githubRepositoryUrl"
+            target="_blank"
+            rel="noreferrer"
+            class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors hover:bg-muted"
+            title="GitHub 仓库"
+            aria-label="打开 GitHub 仓库"
+            data-circuit-interactive="true"
+          >
+            <GitFork class="h-4 w-4" />
+            <span>GitHub</span>
+          </a>
+          <Button class="shrink-0" variant="ghost" size="sm" title="清空导线" @click="clearWires">
+            <Unplug class="h-4 w-4" />
+            清线
+          </Button>
+          <Button class="shrink-0" size="sm" title="复位演示电路" @click="resetDemo">
+            <RotateCcw class="h-4 w-4" />
+            复位
+          </Button>
+        </div>
+
         <button
           class="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 z-20 flex h-10 items-center gap-2 overflow-hidden rounded-md border bg-card/95 px-3 text-left text-sm shadow-panel xl:hidden"
           :class="lessonComplete ? 'border-emerald-200 text-emerald-950' : 'border-cyan-200 text-cyan-950'"

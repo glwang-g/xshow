@@ -34,6 +34,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Show contextual hints for the next unfinished lesson step
 - Highlight the relevant workbench parts and terminals for the active lesson step
 - Use a canvas-first mobile HUD with a component drawer and floating status panel
+- Keep GitHub, clear-wires, and reset actions visible on small-screen/PWA layouts
 - Pan and zoom the workbench on touch devices with larger terminal and wire hit targets
 - Add the app to the home screen as a PWA and cache core static assets for offline relaunch
 - Automatically restore the last workspace in the same browser

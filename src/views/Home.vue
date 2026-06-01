@@ -13,13 +13,17 @@ import {
   hasPath,
   sameTerminal,
   terminalId,
+  type AmmeterState,
   type BuzzerState,
+  type CapacitorState,
   type CircuitPart,
+  type DiodeState,
   type LedState,
   type MotorState,
   type PartType,
   type TerminalKey,
   type TerminalRef,
+  type VoltmeterState,
   type Wire,
   type WireEnd,
 } from "@/lib/circuit";
@@ -195,10 +199,16 @@ const mainBulbBrightness = computed(() =>
 const ledWarnings = computed(() =>
   Object.values(simulation.value.leds).filter((state) => state.overCurrent || state.reversed),
 );
+const diodeWarnings = computed(() =>
+  Object.values(simulation.value.diodes).filter((state) => state.overCurrent || state.reversed),
+);
 const hasBuzzerParts = computed(() => parts.value.some((part) => part.type === "buzzer"));
 const activeBuzzerCount = computed(() => Object.values(simulation.value.buzzers).filter((state) => state.active).length);
 const hasMotorParts = computed(() => parts.value.some((part) => part.type === "motor"));
 const activeMotorCount = computed(() => Object.values(simulation.value.motors).filter((state) => state.active).length);
+const activeAmmeterCount = computed(() => Object.values(simulation.value.ammeters).filter((state) => state.active).length);
+const activeVoltmeterCount = computed(() => Object.values(simulation.value.voltmeters).filter((state) => state.active).length);
+const currentVisualStrength = computed(() => Math.min(1, simulation.value.currentMilliAmps / 180));
 const cloudSyncState = computed<CloudSyncState>(() => {
   if (!cloudConfig.configured) {
     return "unconfigured";
@@ -385,6 +395,46 @@ function ledStatus(part: CircuitPart): LedState {
       forward: false,
       overCurrent: false,
       reversed: false,
+    }
+  );
+}
+
+function diodeStatus(part: CircuitPart): DiodeState {
+  return (
+    simulation.value.diodes[part.id] ?? {
+      conducting: false,
+      forward: false,
+      overCurrent: false,
+      reversed: false,
+    }
+  );
+}
+
+function capacitorStatus(part: CircuitPart): CapacitorState {
+  return (
+    simulation.value.capacitors[part.id] ?? {
+      chargePercent: 0,
+      charging: false,
+      connected: false,
+      voltage: 0,
+    }
+  );
+}
+
+function ammeterStatus(part: CircuitPart): AmmeterState {
+  return (
+    simulation.value.ammeters[part.id] ?? {
+      active: false,
+      currentMilliAmps: 0,
+    }
+  );
+}
+
+function voltmeterStatus(part: CircuitPart): VoltmeterState {
+  return (
+    simulation.value.voltmeters[part.id] ?? {
+      active: false,
+      voltage: 0,
     }
   );
 }
@@ -752,12 +802,16 @@ function resetMobileView() {
 function exportWorkbenchImage() {
   exportWorkbenchImageFile({
     activeLessonTitle: activeLesson.value.title,
+    ammeterStatus,
     buzzerStatus,
+    capacitorStatus,
+    diodeStatus,
     ledStatus,
     motorStatus,
     parts: parts.value,
     selectedPartId: selectedPartId.value,
     simulation: simulation.value,
+    voltmeterStatus,
     wirePath,
     wireStroke,
     wireStrokeWidth,
@@ -981,7 +1035,7 @@ function wireStroke(wire: Wire) {
     return "#0e7490";
   }
 
-  return simulation.value.closed ? "#0891b2" : "#64748b";
+  return simulation.value.wires[wire.id]?.active ? "#0891b2" : "#64748b";
 }
 
 function wireStrokeWidth(wire: Wire) {
@@ -989,7 +1043,11 @@ function wireStrokeWidth(wire: Wire) {
     return 7;
   }
 
-  return hoveredWireId.value === wire.id ? 6 : 5;
+  if (hoveredWireId.value === wire.id) {
+    return 6;
+  }
+
+  return simulation.value.wires[wire.id]?.active ? 5 + currentVisualStrength.value * 2 : 5;
 }
 
 function isEndpointHovered(wire: Wire, end: WireEnd) {
@@ -2501,6 +2559,7 @@ onBeforeUnmount(() => {
         :battery-polarity-label="batteryPolarityLabel"
         :bulb-brightness="bulbBrightness"
         :buzzer-status="buzzerStatus"
+        :capacitor-status="capacitorStatus"
         :clear-canvas-selection="clearCanvasSelection"
         :clear-endpoint-hover="clearEndpointHover"
         :clear-wire-hover="clearWireHover"
@@ -2527,6 +2586,8 @@ onBeforeUnmount(() => {
         :is-terminal-drop-target="isTerminalDropTarget"
         :is-terminal-selected="isTerminalSelected"
         :is-wire-highlighted="isWireHighlighted"
+        :ammeter-status="ammeterStatus"
+        :diode-status="diodeStatus"
         :led-status="ledStatus"
         :lesson-complete="lessonComplete"
         :lesson-complete-panel-open="lessonCompletePanelOpen"
@@ -2563,6 +2624,7 @@ onBeforeUnmount(() => {
         :toggle-battery-polarity="toggleBatteryPolarity"
         :toggle-switch="toggleSwitch"
         :update-new-wire-drag="updateNewWireDrag"
+        :voltmeter-status="voltmeterStatus"
         :wire-endpoint-position="wireEndpointPosition"
         :wire-path="wirePath"
         :wire-stroke="wireStroke"
@@ -2582,10 +2644,14 @@ onBeforeUnmount(() => {
         v-model:record-title="recordTitle"
         v-model:tab="statusPanelTab"
         :active-buzzer-count="activeBuzzerCount"
+        :active-ammeter-count="activeAmmeterCount"
         :active-lesson="activeLesson"
         :active-motor-count="activeMotorCount"
+        :active-voltmeter-count="activeVoltmeterCount"
+        :ammeter-status="ammeterStatus"
         :battery-polarity-label="batteryPolarityLabel"
         :buzzer-status="buzzerStatus"
+        :capacitor-status="capacitorStatus"
         :cloud-active-record-id="cloudActiveRecordId"
         :cloud-auth-busy="cloudAuthBusy"
         :cloud-auth-error="cloudAuthError"
@@ -2613,6 +2679,8 @@ onBeforeUnmount(() => {
         :has-buzzer-parts="hasBuzzerParts"
         :has-motor-parts="hasMotorParts"
         :import-workspace-json="importWorkspaceJson"
+        :diode-status="diodeStatus"
+        :diode-warnings="diodeWarnings"
         :led-status="ledStatus"
         :led-warnings="ledWarnings"
         :lesson-progress="lessonProgress"
@@ -2648,6 +2716,7 @@ onBeforeUnmount(() => {
         :start-rewire="startRewire"
         :toggle-battery-polarity="toggleBatteryPolarity"
         :toggle-switch="toggleSwitch"
+        :voltmeter-status="voltmeterStatus"
         :wire-label="wireLabel"
         :wires="wires"
         @close="statusPanelOpen = false"

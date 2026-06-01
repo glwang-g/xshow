@@ -8,16 +8,16 @@ The project should stay visual, approachable, and immediate: users should be abl
 
 ## Progress
 
-Current focus: **v0.4 more components and better simulation rules**.
+Current focus: **v0.4 simulation calibration and lessons for new components**.
 
 | Area | Status | Notes |
 | --- | --- | --- |
-| Interactive circuit playground | Done | Battery, switch, bulb, resistor, LED, buzzer, motor, wires, brightness, polarity, and circuit state are working. |
+| Interactive circuit playground | Done | Battery, switch, bulb, resistor, LED, buzzer, motor, diode, capacitor, ammeter, voltmeter, wires, brightness, polarity, and circuit state are working. |
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
 | Workspace records | v0.3 feature complete | The browser automatically restores local workspaces; v0.3 adds Supabase email/password auth, explicit cloud records, renaming, conflict handling, and visible sync states. |
-| More components | v0.4 first slice | Buzzer and motor components are available and become active in powered closed loops. |
+| More components | v0.4 first slice | Buzzer, motor, diode, capacitor, ammeter, and voltmeter components are available with first-pass educational feedback driven by the node/branch model. |
 | Mobile responsive experience | Released in v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |
@@ -49,7 +49,7 @@ Status: **Done for v0.1, polish later**
 - [x] Pause current animation when the circuit is open
 - [x] Make animation speed reflect simulated current strength
 - [x] Reverse animation direction when polarity changes
-- [ ] Make brightness and current feedback feel more visually connected
+- [x] Make brightness and current feedback feel more visually connected
 
 ### Guided lesson mode
 
@@ -130,11 +130,11 @@ Status: **First slice done**
 - [x] Add a polarity-sensitive LED component
 - [x] Add a buzzer component
 - [x] Add a motor component
-- [ ] More components: diode, capacitor, ammeter, voltmeter
+- [x] More components: diode, capacitor, ammeter, voltmeter
 - [x] Save and load circuit workspaces
 - [x] Export circuits as images
 - [x] Circuit state sharing by URL
-- [ ] More realistic simulation rules without turning the app into a full SPICE clone
+- [x] More realistic simulation rules without turning the app into a full SPICE clone
 
 ## Product Principles
 

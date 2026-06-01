@@ -152,12 +152,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep Englis
 
 Near-term priorities:
 
-- Current focus: v0.4 more components and better simulation rules
+- Current focus: v0.4 simulation calibration and lessons for new components
 - Done for v0.1: current direction animation
 - Done for v0.1: guided lesson mode first slice
 - Done for v0.1: multiple guided lesson experiments
 - Done for v0.2: polarity-sensitive LED component and guided lesson
-- First slice for v0.4: buzzer and motor components with powered-state feedback
+- First slice for v0.4: buzzer, motor, diode, capacitor, ammeter, and voltmeter components with powered-state feedback
+- First slice for v0.4: node/branch simulation with branch currents, equivalent resistance, and meter readings
 - Done for v0.1: one-click lesson starter workspaces
 - Done for v0.1: contextual hints for incomplete lesson steps
 - Done for v0.1: workbench highlights for active lesson steps

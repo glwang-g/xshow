@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | Page shell and orchestration | `src/views/Home.vue` | Coordinates workbench state, interaction handlers, persistence actions, and cloud sync. |
 | Workbench UI regions | `src/components/workbench` | Header, component palette, canvas, and status panel are split from the page shell. |
-| Circuit domain model and simulation | `src/lib/circuit.ts` | Owns component types, wire types, polarity helpers, path checks, and circuit evaluation. |
+| Circuit domain model and simulation | `src/lib/circuit.ts` | Owns component types, wire types, polarity helpers, wire-node merging, branch solving, and circuit evaluation. |
 | Workbench UI configuration | `src/lib/workbench-ui.ts` | Owns reusable part specs, palette entries, status tabs, and board dimensions. |
 | Workbench export | `src/lib/workbench-export.ts` | Renders the current circuit to a PNG without living in the page component. |
 | Workspace codec and records | `src/lib/workspace-codec.ts`, `src/lib/workspace-records.ts` | Owns workspace snapshot types, record types, validation, share-link encoding, and time formatting. |
@@ -31,4 +31,4 @@
 - Focused `StatusPanel` tab components for lesson, circuit, records, cloud, selection, and wires.
 - Cloud/workspace sync composables so account state and record persistence stop living in `Home.vue`.
 - Wire interaction composables for endpoint dragging, snapping, and route rendering.
-- Unit tests around `evaluateCircuit` before the node/branch model becomes more advanced.
+- Unit tests around the node/branch solver covering series, parallel, reversed LEDs, blocked diodes, meter readings, and reversed battery polarity.

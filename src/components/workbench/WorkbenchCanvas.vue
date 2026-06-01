@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
+  Activity,
   BatteryCharging,
+  BatteryMedium,
   CircuitBoard,
   CircleDot,
   Cog,
@@ -13,6 +15,7 @@ import {
   SlidersHorizontal,
   ToggleLeft,
   ToggleRight,
+  TriangleRight,
   Trophy,
   Unplug,
   Volume2,
@@ -23,13 +26,17 @@ import {
 import Button from "@/components/ui/Button.vue";
 import {
   batteryPositiveTerminal,
+  type AmmeterState,
   type BuzzerState,
+  type CapacitorState,
   type CircuitPart,
   type CircuitSimulation,
+  type DiodeState,
   type LedState,
   type MotorState,
   type TerminalKey,
   type TerminalRef,
+  type VoltmeterState,
   type Wire,
   type WireEnd,
 } from "@/lib/circuit";
@@ -46,8 +53,10 @@ const props = defineProps<{
   activeLesson: { title: string };
   applyPwaUpdate: () => void;
   batteryPolarityLabel: (part: CircuitPart) => string;
+  ammeterStatus: (part: CircuitPart) => AmmeterState;
   bulbBrightness: (part: CircuitPart) => number;
   buzzerStatus: (part: CircuitPart) => BuzzerState;
+  capacitorStatus: (part: CircuitPart) => CapacitorState;
   clearCanvasSelection: () => void;
   clearEndpointHover: (wireId: string, end: WireEnd) => void;
   clearWireHover: (wireId: string) => void;
@@ -74,6 +83,7 @@ const props = defineProps<{
   isTerminalDropTarget: (part: CircuitPart, terminal: TerminalKey) => boolean;
   isTerminalSelected: (part: CircuitPart, terminal: TerminalKey) => boolean;
   isWireHighlighted: (wire: Wire) => boolean;
+  diodeStatus: (part: CircuitPart) => DiodeState;
   ledStatus: (part: CircuitPart) => LedState;
   lessonComplete: boolean;
   lessonCompletePanelOpen: boolean;
@@ -110,6 +120,7 @@ const props = defineProps<{
   toggleBatteryPolarity: (part: CircuitPart) => void;
   toggleSwitch: (part: CircuitPart) => void;
   updateNewWireDrag: (event: PointerEvent) => void;
+  voltmeterStatus: (part: CircuitPart) => VoltmeterState;
   wireEndpointPosition: (wire: Wire, end: WireEnd) => Point;
   wirePath: (wire: Wire) => string;
   wireStroke: (wire: Wire) => string;
@@ -392,6 +403,10 @@ function bindWorkbench(element: unknown) {
               part.type === 'bulb' ? 'bg-amber-50' : '',
               part.type === 'resistor' ? 'bg-cyan-50' : '',
               part.type === 'led' ? 'bg-rose-50' : '',
+              part.type === 'diode' ? 'bg-fuchsia-50' : '',
+              part.type === 'capacitor' ? 'bg-violet-50' : '',
+              part.type === 'ammeter' ? 'bg-orange-50' : '',
+              part.type === 'voltmeter' ? 'bg-indigo-50' : '',
               part.type === 'buzzer' ? 'bg-sky-50' : '',
               part.type === 'motor' ? 'bg-emerald-50' : '',
             ]"
@@ -512,6 +527,58 @@ function bindWorkbench(element: unknown) {
                 <div class="text-xs text-muted-foreground">
                   {{ ledStatus(part).reversed ? "反接" : `${ledStatus(part).brightnessPercent}%` }}
                 </div>
+              </div>
+            </div>
+
+            <div v-else-if="part.type === 'diode'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
+              <div
+                class="relative flex h-14 w-20 items-center justify-center rounded-md border transition-all"
+                :class="[
+                  diodeStatus(part).reversed ? 'border-slate-300 bg-slate-100' : 'border-fuchsia-300 bg-fuchsia-100',
+                  diodeStatus(part).overCurrent ? 'ring-4 ring-fuchsia-300' : '',
+                ]"
+              >
+                <TriangleRight class="h-9 w-9 text-fuchsia-900" />
+                <span class="h-10 w-1 rounded-full bg-fuchsia-900" />
+              </div>
+              <div class="text-center">
+                <div class="text-sm font-semibold text-fuchsia-950">{{ part.name }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ diodeStatus(part).reversed ? "反向截止" : diodeStatus(part).conducting ? "正向导通" : "未导通" }}
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="part.type === 'capacitor'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
+              <div class="flex h-14 w-20 items-center justify-center gap-3 rounded-md border border-violet-300 bg-violet-100">
+                <span class="h-10 w-1.5 rounded-full bg-violet-900" />
+                <span class="h-10 w-1.5 rounded-full bg-violet-900" />
+              </div>
+              <div class="text-center">
+                <div class="text-sm font-semibold text-violet-950">{{ part.name }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ capacitorStatus(part).connected ? `${capacitorStatus(part).chargePercent}% 充电` : "未接入" }}
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="part.type === 'ammeter'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
+              <div class="flex h-16 w-16 items-center justify-center rounded-full border border-orange-300 bg-orange-100">
+                <Activity class="h-9 w-9 text-orange-900" />
+              </div>
+              <div class="text-center">
+                <div class="text-sm font-semibold text-orange-950">{{ part.name }}</div>
+                <div class="text-xs text-muted-foreground">{{ ammeterStatus(part).currentMilliAmps }} mA</div>
+              </div>
+            </div>
+
+            <div v-else-if="part.type === 'voltmeter'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
+              <div class="flex h-16 w-16 items-center justify-center rounded-full border border-indigo-300 bg-indigo-100">
+                <BatteryMedium class="h-9 w-9 text-indigo-900" />
+              </div>
+              <div class="text-center">
+                <div class="text-sm font-semibold text-indigo-950">{{ part.name }}</div>
+                <div class="text-xs text-muted-foreground">{{ voltmeterStatus(part).voltage.toFixed(1) }} V</div>
               </div>
             </div>
 

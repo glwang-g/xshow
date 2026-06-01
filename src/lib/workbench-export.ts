@@ -1,20 +1,28 @@
 import {
   batteryPositiveTerminal,
+  type AmmeterState,
   type BuzzerState,
+  type CapacitorState,
   type CircuitPart,
   type CircuitSimulation,
+  type DiodeState,
   type LedState,
   type MotorState,
   type TerminalKey,
+  type VoltmeterState,
   type Wire,
 } from "@/lib/circuit";
 import { getSpec, workbench } from "@/lib/workbench-ui";
 
 type ExportWorkbenchImageOptions = {
   activeLessonTitle: string;
+  ammeterStatus: (part: CircuitPart) => AmmeterState;
   buzzerStatus: (part: CircuitPart) => BuzzerState;
+  capacitorStatus: (part: CircuitPart) => CapacitorState;
+  diodeStatus: (part: CircuitPart) => DiodeState;
   ledStatus: (part: CircuitPart) => LedState;
   motorStatus: (part: CircuitPart) => MotorState;
+  voltmeterStatus: (part: CircuitPart) => VoltmeterState;
   parts: CircuitPart[];
   selectedPartId: string;
   simulation: CircuitSimulation;
@@ -56,6 +64,22 @@ function partExportColors(part: CircuitPart) {
 
   if (part.type === "led") {
     return { background: "#fff1f2", foreground: "#881337", muted: "#e11d48" };
+  }
+
+  if (part.type === "diode") {
+    return { background: "#fdf4ff", foreground: "#701a75", muted: "#c026d3" };
+  }
+
+  if (part.type === "capacitor") {
+    return { background: "#f5f3ff", foreground: "#4c1d95", muted: "#7c3aed" };
+  }
+
+  if (part.type === "ammeter") {
+    return { background: "#fff7ed", foreground: "#7c2d12", muted: "#ea580c" };
+  }
+
+  if (part.type === "voltmeter") {
+    return { background: "#eef2ff", foreground: "#312e81", muted: "#4f46e5" };
   }
 
   if (part.type === "buzzer") {
@@ -128,6 +152,50 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart, op
     context.stroke();
     context.fillStyle = colors.foreground;
     context.fillText(state.reversed ? "reversed" : "+ to -", part.x + 18, part.y + 52);
+  } else if (part.type === "diode") {
+    const state = options.diodeStatus(part);
+    context.fillText(state.reversed ? "blocked" : state.conducting ? "conducting" : "idle", part.x + 18, part.y + spec.height - 18);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 5;
+    context.beginPath();
+    context.moveTo(part.x + 44, part.y + 58);
+    context.lineTo(part.x + 96, part.y + 58);
+    context.moveTo(part.x + 78, part.y + 36);
+    context.lineTo(part.x + 112, part.y + 58);
+    context.lineTo(part.x + 78, part.y + 80);
+    context.closePath();
+    context.stroke();
+  } else if (part.type === "capacitor") {
+    const state = options.capacitorStatus(part);
+    context.fillText(`${state.chargePercent}% charge`, part.x + 18, part.y + spec.height - 18);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 5;
+    context.beginPath();
+    context.moveTo(part.x + 68, part.y + 36);
+    context.lineTo(part.x + 68, part.y + 80);
+    context.moveTo(part.x + 88, part.y + 36);
+    context.lineTo(part.x + 88, part.y + 80);
+    context.stroke();
+  } else if (part.type === "ammeter") {
+    const state = options.ammeterStatus(part);
+    context.fillText(`${state.currentMilliAmps} mA`, part.x + 18, part.y + spec.height - 18);
+    context.beginPath();
+    context.arc(part.x + spec.width / 2, part.y + 58, 30, 0, Math.PI * 2);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 4;
+    context.stroke();
+    context.fillStyle = colors.foreground;
+    context.fillText("A", part.x + spec.width / 2 - 6, part.y + 64);
+  } else if (part.type === "voltmeter") {
+    const state = options.voltmeterStatus(part);
+    context.fillText(`${state.voltage.toFixed(1)} V`, part.x + 18, part.y + spec.height - 18);
+    context.beginPath();
+    context.arc(part.x + spec.width / 2, part.y + 58, 30, 0, Math.PI * 2);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 4;
+    context.stroke();
+    context.fillStyle = colors.foreground;
+    context.fillText("V", part.x + spec.width / 2 - 6, part.y + 64);
   } else if (part.type === "buzzer") {
     const state = options.buzzerStatus(part);
     context.fillText(state.active ? `${state.volumePercent}% buzzing` : "silent", part.x + 18, part.y + spec.height - 18);

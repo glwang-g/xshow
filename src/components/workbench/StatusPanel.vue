@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import {
+  Activity,
+  BatteryMedium,
   Cable,
   Check,
   CloudCheck,
@@ -18,6 +20,7 @@ import {
   Save,
   ShieldCheck,
   Trash2,
+  TriangleRight,
   TriangleAlert,
   X,
   Zap,
@@ -26,10 +29,14 @@ import Button from "@/components/ui/Button.vue";
 import { lessonCatalog, type Lesson, type LessonStep } from "@/data/lessons";
 import type {
   BuzzerState,
+  AmmeterState,
+  CapacitorState,
   CircuitPart,
   CircuitSimulation,
+  DiodeState,
   LedState,
   MotorState,
+  VoltmeterState,
   Wire,
   WireEnd,
 } from "@/lib/circuit";
@@ -48,12 +55,16 @@ type LessonStepState = LessonStep & { complete: boolean };
 type LessonProgress = { completed: number; percent: number; total: number };
 
 defineProps<{
+  activeAmmeterCount: number;
   activeBuzzerCount: number;
   activeLesson: Lesson;
   activeLessonId: string;
   activeMotorCount: number;
+  activeVoltmeterCount: number;
+  ammeterStatus: (part: CircuitPart) => AmmeterState;
   batteryPolarityLabel: (part: CircuitPart) => string;
   buzzerStatus: (part: CircuitPart) => BuzzerState;
+  capacitorStatus: (part: CircuitPart) => CapacitorState;
   cloudActiveRecordId: string | null;
   cloudAuthBusy: boolean;
   cloudAuthError: string;
@@ -85,6 +96,8 @@ defineProps<{
   hasBuzzerParts: boolean;
   hasMotorParts: boolean;
   importWorkspaceJson: (event: Event) => void | Promise<void>;
+  diodeStatus: (part: CircuitPart) => DiodeState;
+  diodeWarnings: DiodeState[];
   ledStatus: (part: CircuitPart) => LedState;
   ledWarnings: LedState[];
   lessonProgress: LessonProgress;
@@ -122,6 +135,7 @@ defineProps<{
   tab: StatusPanelTab;
   toggleBatteryPolarity: (part: CircuitPart) => void;
   toggleSwitch: (part: CircuitPart) => void;
+  voltmeterStatus: (part: CircuitPart) => VoltmeterState;
   wireLabel: (wire: Wire) => string;
   wires: Wire[];
 }>();
@@ -161,15 +175,15 @@ function updateInput(event: Event) {
       </Button>
     </div>
 
-    <div class="grid grid-cols-3 gap-1 border-b bg-muted/30 p-2">
+    <div class="grid grid-cols-3 gap-1.5 border-b bg-muted/25 p-2 xl:grid-cols-2">
       <button
         v-for="item in statusPanelTabs"
         :key="item.id"
-        class="flex h-11 items-center justify-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors"
+        class="flex h-10 items-center justify-start gap-1.5 rounded-md border px-2 text-xs font-medium transition-colors"
         :class="
           tab === item.id
-            ? 'bg-background text-foreground shadow-sm'
-            : 'text-muted-foreground hover:bg-background/70 hover:text-foreground'
+            ? 'border-cyan-200 bg-background text-foreground shadow-sm'
+            : 'border-transparent text-muted-foreground hover:border-border hover:bg-background/70 hover:text-foreground'
         "
         @click="emit('update:tab', item.id)"
       >
@@ -609,6 +623,12 @@ function updateInput(event: Event) {
           </div>
           <div class="mt-2 text-2xl font-semibold tabular-nums">{{ simulation.currentMilliAmps }}</div>
           <div class="text-xs text-muted-foreground">mA</div>
+          <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              class="h-full rounded-full bg-amber-500 transition-all"
+              :style="{ width: `${Math.min(100, simulation.currentMilliAmps / 1.8)}%` }"
+            />
+          </div>
         </div>
         <div class="rounded-md border bg-background p-3">
           <div class="text-xs text-muted-foreground">灯泡</div>
@@ -616,6 +636,12 @@ function updateInput(event: Event) {
             {{ Math.round(mainBulbBrightness * 100) }}
           </div>
           <div class="text-xs text-muted-foreground">brightness</div>
+          <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              class="h-full rounded-full bg-amber-400 transition-all"
+              :style="{ width: `${Math.round(mainBulbBrightness * 100)}%` }"
+            />
+          </div>
         </div>
         <div v-if="hasBuzzerParts" class="rounded-md border bg-background p-3">
           <div class="text-xs text-muted-foreground">蜂鸣器</div>
@@ -625,6 +651,16 @@ function updateInput(event: Event) {
         <div v-if="hasMotorParts" class="rounded-md border bg-background p-3">
           <div class="text-xs text-muted-foreground">电机</div>
           <div class="mt-2 text-2xl font-semibold tabular-nums">{{ activeMotorCount }}</div>
+          <div class="text-xs text-muted-foreground">active</div>
+        </div>
+        <div v-if="activeAmmeterCount > 0" class="rounded-md border bg-background p-3">
+          <div class="text-xs text-muted-foreground">电流表</div>
+          <div class="mt-2 text-2xl font-semibold tabular-nums">{{ activeAmmeterCount }}</div>
+          <div class="text-xs text-muted-foreground">active</div>
+        </div>
+        <div v-if="activeVoltmeterCount > 0" class="rounded-md border bg-background p-3">
+          <div class="text-xs text-muted-foreground">电压表</div>
+          <div class="mt-2 text-2xl font-semibold tabular-nums">{{ activeVoltmeterCount }}</div>
           <div class="text-xs text-muted-foreground">active</div>
         </div>
       </section>
@@ -660,6 +696,16 @@ function updateInput(event: Event) {
           >
             <TriangleAlert class="mt-0.5 h-3.5 w-3.5 shrink-0" />
             <span>{{ warning.reversed ? "有 LED 反接，当前不会导通。" : "LED 电流偏大，请调高限流电阻。" }}</span>
+          </div>
+        </div>
+        <div v-if="diodeWarnings.length" class="mt-3 space-y-2">
+          <div
+            v-for="(warning, index) in diodeWarnings"
+            :key="index"
+            class="flex items-start gap-2 rounded-md border border-fuchsia-200 bg-fuchsia-50 px-3 py-2 text-xs text-fuchsia-950"
+          >
+            <TriangleAlert class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>{{ warning.reversed ? "有二极管反向截止，当前不会导通。" : "二极管电流偏大，请增加限流元件。" }}</span>
           </div>
         </div>
       </section>
@@ -732,6 +778,57 @@ function updateInput(event: Event) {
             <div class="flex items-center justify-between">
               <span class="text-muted-foreground">亮度</span>
               <span class="font-medium tabular-nums">{{ ledStatus(selectedPart).brightnessPercent }}%</span>
+            </div>
+          </div>
+          <div v-if="selectedPart.type === 'diode'" class="rounded-md border bg-card px-3 py-2 text-xs">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="flex items-center gap-1 text-muted-foreground">
+                <TriangleRight class="h-3.5 w-3.5" />
+                方向
+              </span>
+              <span class="font-medium" :class="diodeStatus(selectedPart).reversed ? 'text-rose-700' : 'text-emerald-700'">
+                {{ diodeStatus(selectedPart).reversed ? "反向截止" : diodeStatus(selectedPart).forward ? "正向" : "未接入" }}
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-muted-foreground">状态</span>
+              <span class="font-medium">{{ diodeStatus(selectedPart).conducting ? "导通" : "截止" }}</span>
+            </div>
+          </div>
+          <div v-if="selectedPart.type === 'capacitor'" class="rounded-md border bg-card px-3 py-2 text-xs">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="flex items-center gap-1 text-muted-foreground">
+                <BatteryMedium class="h-3.5 w-3.5" />
+                电压
+              </span>
+              <span class="font-medium tabular-nums">{{ capacitorStatus(selectedPart).voltage.toFixed(1) }} V</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-muted-foreground">电荷</span>
+              <span class="font-medium tabular-nums">{{ capacitorStatus(selectedPart).chargePercent }}%</span>
+            </div>
+          </div>
+          <div v-if="selectedPart.type === 'ammeter'" class="rounded-md border bg-card px-3 py-2 text-xs">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="flex items-center gap-1 text-muted-foreground">
+                <Activity class="h-3.5 w-3.5" />
+                电流
+              </span>
+              <span class="font-medium tabular-nums">{{ ammeterStatus(selectedPart).currentMilliAmps }} mA</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-muted-foreground">接入方式</span>
+              <span class="font-medium">{{ ammeterStatus(selectedPart).active ? "串联测量" : "未导通" }}</span>
+            </div>
+          </div>
+          <div v-if="selectedPart.type === 'voltmeter'" class="rounded-md border bg-card px-3 py-2 text-xs">
+            <div class="mb-2 flex items-center justify-between">
+              <span class="text-muted-foreground">电压</span>
+              <span class="font-medium tabular-nums">{{ voltmeterStatus(selectedPart).voltage.toFixed(1) }} V</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-muted-foreground">接入方式</span>
+              <span class="font-medium">{{ voltmeterStatus(selectedPart).active ? "并联测量" : "未接入" }}</span>
             </div>
           </div>
           <div v-if="selectedPart.type === 'buzzer'" class="rounded-md border bg-card px-3 py-2 text-xs">

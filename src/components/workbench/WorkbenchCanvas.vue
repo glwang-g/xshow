@@ -92,6 +92,8 @@ const props = defineProps<{
   lessonProgress: LessonProgress;
   loadNextLesson: () => void;
   mobileLessonStripText: string;
+  effectiveWorkbenchHeight: number;
+  effectiveWorkbenchWidth: number;
   motorStatus: (part: CircuitPart) => MotorState;
   newWireDrag: NewWireDrag | null;
   newWireDragPath: () => string;
@@ -149,7 +151,7 @@ function bindWorkbench(element: unknown) {
 <template>
       <section
         :ref="bindCanvasViewport"
-        class="relative min-h-0 touch-none overflow-auto canvas-grid xl:touch-auto xl:overflow-hidden"
+        class="relative min-h-0 touch-none overflow-auto bg-[#f8faf7] xl:touch-auto xl:overflow-hidden xl:canvas-grid"
         @pointerdown="handleCanvasPointerDown"
         @pointermove="handleCanvasPointerMove"
         @pointerup="endCanvasGesture"
@@ -314,8 +316,8 @@ function bindWorkbench(element: unknown) {
           class="relative mx-0 mb-24 mt-0 origin-top-left overflow-visible border border-transparent bg-transparent shadow-none xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:origin-center xl:-translate-x-1/2 xl:-translate-y-1/2 xl:overflow-hidden xl:rounded-md xl:border-border xl:bg-[#f8faf7] xl:shadow-panel"
           data-circuit-surface="true"
           :style="{
-            width: `${workbench.width}px`,
-            height: `${workbench.height}px`,
+            width: `${effectiveWorkbenchWidth}px`,
+            height: `${effectiveWorkbenchHeight}px`,
             scale: `${zoom / 100}`,
           }"
           @pointermove="handleWorkbenchPointerMove"

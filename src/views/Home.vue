@@ -88,6 +88,10 @@ const cloudUploadSuggestionKeyPrefix = "xshow.cloud.upload-suggestion.v1";
 const maxEditorHistoryEntries = 40;
 const workspaceShareParam = "workspace";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
+const mobileWorkbench = {
+  width: 1600,
+  height: 1200,
+};
 const board = useBoardStore();
 const canvasViewportRef = ref<HTMLElement | null>(null);
 const workbenchRef = ref<HTMLElement | null>(null);
@@ -144,9 +148,22 @@ const viewportGesture = ref<
   | { distance: number; mode: "pinch"; zoom: number }
   | null
 >(null);
+const canvasViewportSize = ref({ height: workbench.height, width: workbench.width });
+
+function updateCanvasViewportSize() {
+  if (!canvasViewportRef.value) {
+    return;
+  }
+
+  canvasViewportSize.value = {
+    height: canvasViewportRef.value.clientHeight,
+    width: canvasViewportRef.value.clientWidth,
+  };
+}
 
 function setCanvasViewportElement(element: HTMLElement | null) {
   canvasViewportRef.value = element;
+  updateCanvasViewportSize();
 }
 
 function setWorkbenchElement(element: HTMLElement | null) {
@@ -182,6 +199,18 @@ const wires = ref<Wire[]>([
     to: { partId: "battery-1", terminal: "a" },
   },
 ]);
+
+const effectiveWorkbenchSize = computed(() => {
+  if (isDesktopViewport()) {
+    return { height: workbench.height, width: workbench.width };
+  }
+
+  const scale = board.zoom / 100;
+  return {
+    height: Math.ceil(Math.max(mobileWorkbench.height, canvasViewportSize.value.height / scale)),
+    width: Math.ceil(Math.max(mobileWorkbench.width, canvasViewportSize.value.width / scale)),
+  };
+});
 
 const selectedPart = computed(() => parts.value.find((part) => part.id === selectedPartId.value));
 const selectedWire = computed(() => wires.value.find((wire) => wire.id === selectedWireId.value));
@@ -711,49 +740,16 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function isDesktopViewport() {
-  return typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches;
+function workbenchLimitWidth() {
+  return effectiveWorkbenchSize.value.width;
 }
 
-function mobileContentBounds() {
-  const margin = 56;
-  let minX = workbench.width;
-  let minY = workbench.height;
-  let maxX = 0;
-  let maxY = 0;
+function workbenchLimitHeight() {
+  return effectiveWorkbenchSize.value.height;
+}
 
-  for (const part of parts.value) {
-    const spec = getSpec(part);
-    minX = Math.min(minX, part.x - margin);
-    minY = Math.min(minY, part.y - margin);
-    maxX = Math.max(maxX, part.x + spec.width + margin);
-    maxY = Math.max(maxY, part.y + spec.height + margin);
-  }
-
-  for (const wire of wires.value) {
-    for (const point of wireRoutePoints(wire)) {
-      minX = Math.min(minX, point.x - margin);
-      minY = Math.min(minY, point.y - margin);
-      maxX = Math.max(maxX, point.x + margin);
-      maxY = Math.max(maxY, point.y + margin);
-    }
-  }
-
-  if (minX >= maxX || minY >= maxY) {
-    return { height: workbench.height, minX: 0, minY: 0, width: workbench.width };
-  }
-
-  minX = clamp(minX, 0, workbench.width);
-  minY = clamp(minY, 0, workbench.height);
-  maxX = clamp(maxX, 0, workbench.width);
-  maxY = clamp(maxY, 0, workbench.height);
-
-  return {
-    height: Math.max(1, maxY - minY),
-    minX,
-    minY,
-    width: Math.max(1, maxX - minX),
-  };
+function isDesktopViewport() {
+  return typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches;
 }
 
 function mobileFitZoom() {
@@ -762,12 +758,11 @@ function mobileFitZoom() {
     return 72;
   }
 
-  const bounds = mobileContentBounds();
   const horizontalPadding = 24;
   const bottomControlsSpace = 112;
   const availableWidth = Math.max(280, viewport.clientWidth - horizontalPadding);
   const availableHeight = Math.max(260, viewport.clientHeight - bottomControlsSpace);
-  return Math.floor(Math.min(availableWidth / bounds.width, availableHeight / bounds.height) * 92);
+  return Math.floor(Math.min(availableWidth / workbench.width, availableHeight / workbench.height) * 92);
 }
 
 function fitMobileWorkbench(behavior: ScrollBehavior = "auto") {
@@ -775,14 +770,13 @@ function fitMobileWorkbench(behavior: ScrollBehavior = "auto") {
     return;
   }
 
-  const bounds = mobileContentBounds();
+  updateCanvasViewportSize();
   board.setZoom(mobileFitZoom());
   window.requestAnimationFrame(() => {
-    const scale = board.zoom / 100;
     canvasViewportRef.value?.scrollTo({
       behavior,
-      left: Math.max(0, bounds.minX * scale - 12),
-      top: Math.max(0, bounds.minY * scale - 12),
+      left: 0,
+      top: 0,
     });
   });
 }
@@ -936,12 +930,13 @@ function wireRoutePoints(wire: Wire) {
   const endSide = terminalSide(wire.to);
   const lead = 44;
   const margin = 28;
+  const limitWidth = workbenchLimitWidth();
   const startLead = {
-    x: clamp(start.x + startSide * lead, margin, workbench.width - margin),
+    x: clamp(start.x + startSide * lead, margin, limitWidth - margin),
     y: start.y,
   };
   const endLead = {
-    x: clamp(end.x + endSide * lead, margin, workbench.width - margin),
+    x: clamp(end.x + endSide * lead, margin, limitWidth - margin),
     y: end.y,
   };
   const route: Point[] = [start, startLead];
@@ -949,8 +944,8 @@ function wireRoutePoints(wire: Wire) {
   if (startSide === endSide) {
     const outsideX =
       startSide > 0
-        ? clamp(Math.max(startLead.x, endLead.x) + 72, margin, workbench.width - margin)
-        : clamp(Math.min(startLead.x, endLead.x) - 72, margin, workbench.width - margin);
+        ? clamp(Math.max(startLead.x, endLead.x) + 72, margin, limitWidth - margin)
+        : clamp(Math.min(startLead.x, endLead.x) - 72, margin, limitWidth - margin);
 
     route.push({ x: outsideX, y: startLead.y }, { x: outsideX, y: endLead.y });
   } else {
@@ -1206,8 +1201,8 @@ function handleWorkbenchPointerMove(event: PointerEvent) {
     const otherEnd = wire ? (endpointDrag.value.end === "from" ? wire.to : wire.from) : undefined;
     const hit = closestTerminal(point, otherEnd);
     const nextPoint = hit?.position ?? point;
-    endpointDrag.value.x = Math.min(workbench.width, Math.max(0, nextPoint.x));
-    endpointDrag.value.y = Math.min(workbench.height, Math.max(0, nextPoint.y));
+    endpointDrag.value.x = Math.min(workbenchLimitWidth(), Math.max(0, nextPoint.x));
+    endpointDrag.value.y = Math.min(workbenchLimitHeight(), Math.max(0, nextPoint.y));
     endpointDrag.value.over = hit?.ref ?? null;
     return;
   }
@@ -1423,8 +1418,8 @@ function updateNewWireDrag(event: PointerEvent) {
   const nextPoint = hit?.position ?? point;
   newWireDrag.value.moved =
     newWireDrag.value.moved || Math.hypot(point.x - start.x, point.y - start.y) > 6;
-  newWireDrag.value.x = Math.min(workbench.width, Math.max(0, nextPoint.x));
-  newWireDrag.value.y = Math.min(workbench.height, Math.max(0, nextPoint.y));
+  newWireDrag.value.x = Math.min(workbenchLimitWidth(), Math.max(0, nextPoint.x));
+  newWireDrag.value.y = Math.min(workbenchLimitHeight(), Math.max(0, nextPoint.y));
   newWireDrag.value.over = hit?.ref ?? null;
 }
 
@@ -1534,8 +1529,8 @@ function isLessonPartTarget(part: CircuitPart) {
 function clampPartPosition(part: CircuitPart, x: number, y: number) {
   const spec = getSpec(part);
   return {
-    x: Math.round(Math.min(workbench.width - spec.width - 16, Math.max(16, x))),
-    y: Math.round(Math.min(workbench.height - spec.height - 16, Math.max(16, y))),
+    x: Math.round(Math.min(workbenchLimitWidth() - spec.width - 16, Math.max(16, x))),
+    y: Math.round(Math.min(workbenchLimitHeight() - spec.height - 16, Math.max(16, y))),
   };
 }
 
@@ -2499,6 +2494,7 @@ watch(
 );
 
 function handleMobileViewportChange() {
+  updateCanvasViewportSize();
   fitMobileWorkbenchAfterRender();
 }
 
@@ -2648,6 +2644,8 @@ onBeforeUnmount(() => {
         :lesson-progress="lessonProgress"
         :load-next-lesson="loadNextLesson"
         :mobile-lesson-strip-text="mobileLessonStripText"
+        :effective-workbench-height="effectiveWorkbenchSize.height"
+        :effective-workbench-width="effectiveWorkbenchSize.width"
         :motor-status="motorStatus"
         :new-wire-drag="newWireDrag"
         :new-wire-drag-path="newWireDragPath"

@@ -312,20 +312,27 @@ function bindWorkbench(element: unknown) {
         </div>
 
         <div
-          :ref="bindWorkbench"
-          class="relative mx-0 mb-24 mt-0 origin-top-left overflow-visible border border-transparent bg-transparent shadow-none xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:origin-center xl:-translate-x-1/2 xl:-translate-y-1/2 xl:overflow-hidden xl:rounded-md xl:border-border xl:bg-[#f8faf7] xl:shadow-panel"
-          data-circuit-surface="true"
+          class="relative mx-0 mb-24 mt-0 xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:-translate-x-1/2 xl:-translate-y-1/2"
           :style="{
-            width: `${effectiveWorkbenchWidth}px`,
-            height: `${effectiveWorkbenchHeight}px`,
-            scale: `${zoom / 100}`,
+            width: `${effectiveWorkbenchWidth * (zoom / 100)}px`,
+            height: `${effectiveWorkbenchHeight * (zoom / 100)}px`,
           }"
-          @pointermove="handleWorkbenchPointerMove"
-          @pointerup="endDrag"
-          @pointerleave="endDrag"
-          @pointerdown.self="clearCanvasSelection"
         >
-          <svg class="pointer-events-none absolute inset-0 z-30 h-full w-full">
+          <div
+            :ref="bindWorkbench"
+            class="absolute left-0 top-0 origin-top-left overflow-visible border border-transparent bg-transparent shadow-none xl:overflow-hidden xl:rounded-md xl:border-border xl:bg-[#f8faf7] xl:shadow-panel"
+            data-circuit-surface="true"
+            :style="{
+              width: `${effectiveWorkbenchWidth}px`,
+              height: `${effectiveWorkbenchHeight}px`,
+              transform: `scale(${zoom / 100})`,
+            }"
+            @pointermove="handleWorkbenchPointerMove"
+            @pointerup="endDrag"
+            @pointercancel="endDrag"
+            @pointerdown.self="clearCanvasSelection"
+          >
+            <svg class="pointer-events-none absolute inset-0 z-30 h-full w-full">
             <path
               v-if="newWireDrag"
               class="wire-draft"
@@ -682,6 +689,7 @@ function bindWorkbench(element: unknown) {
               </div>
             </div>
           </div>
+        </div>
         </div>
       </section>
 </template>

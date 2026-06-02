@@ -88,9 +88,9 @@ const cloudUploadSuggestionKeyPrefix = "xshow.cloud.upload-suggestion.v1";
 const maxEditorHistoryEntries = 40;
 const workspaceShareParam = "workspace";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
-const mobileWorkbench = {
-  width: 1600,
-  height: 1200,
+const mobileWorkbenchMin = {
+  width: 2400,
+  height: 1800,
 };
 const board = useBoardStore();
 const canvasViewportRef = ref<HTMLElement | null>(null);
@@ -149,6 +149,7 @@ const viewportGesture = ref<
   | null
 >(null);
 const canvasViewportSize = ref({ height: workbench.height, width: workbench.width });
+const mobileWorkbenchSize = ref({ ...mobileWorkbenchMin });
 
 function updateCanvasViewportSize() {
   if (!canvasViewportRef.value) {
@@ -206,9 +207,25 @@ const effectiveWorkbenchSize = computed(() => {
   }
 
   const scale = board.zoom / 100;
+  const contentPadding = 280;
+  const contentSize = parts.value.reduce(
+    (size, part) => {
+      const spec = getSpec(part);
+      return {
+        height: Math.max(size.height, part.y + spec.height + contentPadding),
+        width: Math.max(size.width, part.x + spec.width + contentPadding),
+      };
+    },
+    { height: mobileWorkbenchMin.height, width: mobileWorkbenchMin.width },
+  );
+
   return {
-    height: Math.ceil(Math.max(mobileWorkbench.height, canvasViewportSize.value.height / scale)),
-    width: Math.ceil(Math.max(mobileWorkbench.width, canvasViewportSize.value.width / scale)),
+    height: Math.ceil(
+      Math.max(mobileWorkbenchSize.value.height, contentSize.height, canvasViewportSize.value.height / scale),
+    ),
+    width: Math.ceil(
+      Math.max(mobileWorkbenchSize.value.width, contentSize.width, canvasViewportSize.value.width / scale),
+    ),
   };
 });
 
@@ -748,6 +765,29 @@ function workbenchLimitHeight() {
   return effectiveWorkbenchSize.value.height;
 }
 
+function expandMobileWorkbenchTo(x: number, y: number, padding = 280) {
+  if (isDesktopViewport()) {
+    return;
+  }
+
+  const chunk = 400;
+  const nextWidth = Math.max(
+    mobileWorkbenchSize.value.width,
+    Math.ceil((x + padding) / chunk) * chunk,
+  );
+  const nextHeight = Math.max(
+    mobileWorkbenchSize.value.height,
+    Math.ceil((y + padding) / chunk) * chunk,
+  );
+
+  if (nextWidth !== mobileWorkbenchSize.value.width || nextHeight !== mobileWorkbenchSize.value.height) {
+    mobileWorkbenchSize.value = {
+      height: nextHeight,
+      width: nextWidth,
+    };
+  }
+}
+
 function isDesktopViewport() {
   return typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches;
 }
@@ -1201,6 +1241,7 @@ function handleWorkbenchPointerMove(event: PointerEvent) {
     const otherEnd = wire ? (endpointDrag.value.end === "from" ? wire.to : wire.from) : undefined;
     const hit = closestTerminal(point, otherEnd);
     const nextPoint = hit?.position ?? point;
+    expandMobileWorkbenchTo(nextPoint.x, nextPoint.y);
     endpointDrag.value.x = Math.min(workbenchLimitWidth(), Math.max(0, nextPoint.x));
     endpointDrag.value.y = Math.min(workbenchLimitHeight(), Math.max(0, nextPoint.y));
     endpointDrag.value.over = hit?.ref ?? null;
@@ -1418,6 +1459,7 @@ function updateNewWireDrag(event: PointerEvent) {
   const nextPoint = hit?.position ?? point;
   newWireDrag.value.moved =
     newWireDrag.value.moved || Math.hypot(point.x - start.x, point.y - start.y) > 6;
+  expandMobileWorkbenchTo(nextPoint.x, nextPoint.y);
   newWireDrag.value.x = Math.min(workbenchLimitWidth(), Math.max(0, nextPoint.x));
   newWireDrag.value.y = Math.min(workbenchLimitHeight(), Math.max(0, nextPoint.y));
   newWireDrag.value.over = hit?.ref ?? null;
@@ -1528,6 +1570,8 @@ function isLessonPartTarget(part: CircuitPart) {
 
 function clampPartPosition(part: CircuitPart, x: number, y: number) {
   const spec = getSpec(part);
+  expandMobileWorkbenchTo(x + spec.width, y + spec.height);
+
   return {
     x: Math.round(Math.min(workbenchLimitWidth() - spec.width - 16, Math.max(16, x))),
     y: Math.round(Math.min(workbenchLimitHeight() - spec.height - 16, Math.max(16, y))),

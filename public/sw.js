@@ -1,16 +1,18 @@
-const CACHE_NAME = "xshow-circuits-v6";
+const BUILD_ID = "__XSHOW_BUILD_ID__";
+const CACHE_NAME = `xshow-circuits-${BUILD_ID}`;
+const versioned = (url) => `${url}?v=${BUILD_ID}`;
 const APP_SHELL = [
   "/",
   "/index.html",
   "/offline.html",
-  "/manifest.webmanifest",
-  "/favicon.ico",
-  "/img/icons/app-icon.svg",
-  "/img/icons/android-chrome-192x192.png",
-  "/img/icons/android-chrome-512x512.png",
-  "/img/icons/android-chrome-maskable-192x192.png",
-  "/img/icons/android-chrome-maskable-512x512.png",
-  "/img/icons/apple-touch-icon.png"
+  versioned("/manifest.webmanifest"),
+  versioned("/favicon.ico"),
+  versioned("/img/icons/app-icon.svg"),
+  versioned("/img/icons/android-chrome-192x192.png"),
+  versioned("/img/icons/android-chrome-512x512.png"),
+  versioned("/img/icons/android-chrome-maskable-192x192.png"),
+  versioned("/img/icons/android-chrome-maskable-512x512.png"),
+  versioned("/img/icons/apple-touch-icon.png")
 ];
 
 self.addEventListener("install", (event) => {

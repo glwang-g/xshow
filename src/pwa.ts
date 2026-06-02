@@ -1,6 +1,7 @@
 export const pwaUpdateAvailableEvent = "xshow:pwa-update-available";
 
 const updateProbeParam = "_xshow_update_probe";
+const currentBuildId = import.meta.env.VITE_XSHOW_BUILD_ID ?? "dev";
 let updatePrompted = false;
 let lastShellProbeAt = 0;
 
@@ -40,6 +41,11 @@ function shellAssetsFromHtml(html: string) {
   );
 }
 
+function shellBuildIdFromHtml(html: string) {
+  const documentFromNetwork = new DOMParser().parseFromString(html, "text/html");
+  return documentFromNetwork.querySelector<HTMLMetaElement>("meta[name='xshow-build-id']")?.content ?? "";
+}
+
 function haveDifferentAssets(currentAssets: Set<string>, latestAssets: Set<string>) {
   if (currentAssets.size === 0 || latestAssets.size === 0) {
     return false;
@@ -72,7 +78,12 @@ async function checkShellAssetsForUpdate(registration: ServiceWorkerRegistration
       return;
     }
 
-    if (haveDifferentAssets(currentShellAssets(), shellAssetsFromHtml(await response.text()))) {
+    const latestHtml = await response.text();
+
+    if (
+      shellBuildIdFromHtml(latestHtml) !== currentBuildId ||
+      haveDifferentAssets(currentShellAssets(), shellAssetsFromHtml(latestHtml))
+    ) {
       notifyUpdateAvailable(registration);
     }
   } catch {
@@ -127,7 +138,7 @@ export function registerServiceWorker() {
 
   window.addEventListener("load", () => {
     navigator.serviceWorker
-      .register("/sw.js")
+      .register("/sw.js", { updateViaCache: "none" })
       .then(watchForUpdates)
       .catch(() => {
         // PWA support should never block the circuit workbench.

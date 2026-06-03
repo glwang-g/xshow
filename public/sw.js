@@ -17,7 +17,7 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(precacheAppShell().then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
@@ -34,6 +34,23 @@ self.addEventListener("message", (event) => {
     self.skipWaiting();
   }
 });
+
+async function precacheAppShell() {
+  const cache = await caches.open(CACHE_NAME);
+
+  await Promise.all(
+    APP_SHELL.map(async (url) => {
+      try {
+        const response = await fetchWithTimeout(new Request(url), NAVIGATION_TIMEOUT_MS);
+        if (response.ok) {
+          await cache.put(url, response);
+        }
+      } catch {
+        // A single slow shell asset should not keep an old worker in control.
+      }
+    })
+  );
+}
 
 async function fetchWithTimeout(request, timeoutMs) {
   const controller = new AbortController();

@@ -1,5 +1,6 @@
 const BUILD_ID = "__XSHOW_BUILD_ID__";
 const CACHE_NAME = `xshow-circuits-${BUILD_ID}`;
+const NAVIGATION_TIMEOUT_MS = 4000;
 const versioned = (url) => `${url}?v=${BUILD_ID}`;
 const APP_SHELL = [
   "/",
@@ -34,6 +35,38 @@ self.addEventListener("message", (event) => {
   }
 });
 
+async function fetchWithTimeout(request, timeoutMs) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(request, { signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function cacheIndexResponse(response) {
+  if (!response.ok) {
+    return Promise.resolve();
+  }
+
+  const copy = response.clone();
+  return caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
+}
+
+async function navigationResponse(request) {
+  try {
+    const response = await fetchWithTimeout(request, NAVIGATION_TIMEOUT_MS);
+    cacheIndexResponse(response).catch(() => {
+      // Cache refreshes should never block navigation.
+    });
+    return response;
+  } catch {
+    return (await caches.match("/index.html")) || (await caches.match("/offline.html")) || Response.error();
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
 
@@ -52,15 +85,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put("/index.html", copy));
-          return response;
-        })
-        .catch(() => caches.match("/index.html").then((response) => response || caches.match("/offline.html")))
-    );
+    event.respondWith(navigationResponse(request));
     return;
   }
 

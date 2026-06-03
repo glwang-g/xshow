@@ -150,16 +150,25 @@ const viewportGesture = ref<
 >(null);
 const canvasViewportSize = ref({ height: workbench.height, width: workbench.width });
 const mobileWorkbenchSize = ref({ ...mobileWorkbenchMin });
+let mobileFitFrame: number | null = null;
+let mobileScrollFrame: number | null = null;
+let cloudStartupTimer: number | null = null;
 
 function updateCanvasViewportSize() {
   if (!canvasViewportRef.value) {
     return;
   }
 
-  canvasViewportSize.value = {
+  const nextSize = {
     height: canvasViewportRef.value.clientHeight,
     width: canvasViewportRef.value.clientWidth,
   };
+
+  if (nextSize.height === canvasViewportSize.value.height && nextSize.width === canvasViewportSize.value.width) {
+    return;
+  }
+
+  canvasViewportSize.value = nextSize;
 }
 
 function setCanvasViewportElement(element: HTMLElement | null) {
@@ -811,8 +820,17 @@ function fitMobileWorkbench(behavior: ScrollBehavior = "auto") {
   }
 
   updateCanvasViewportSize();
-  board.setZoom(mobileFitZoom());
-  window.requestAnimationFrame(() => {
+  const nextZoom = mobileFitZoom();
+  if (nextZoom !== board.zoom) {
+    board.setZoom(nextZoom);
+  }
+
+  if (mobileScrollFrame !== null) {
+    window.cancelAnimationFrame(mobileScrollFrame);
+  }
+
+  mobileScrollFrame = window.requestAnimationFrame(() => {
+    mobileScrollFrame = null;
     canvasViewportRef.value?.scrollTo({
       behavior,
       left: 0,
@@ -827,7 +845,14 @@ function fitMobileWorkbenchAfterRender(behavior: ScrollBehavior = "auto") {
   }
 
   nextTick(() => {
-    window.requestAnimationFrame(() => fitMobileWorkbench(behavior));
+    if (mobileFitFrame !== null) {
+      window.cancelAnimationFrame(mobileFitFrame);
+    }
+
+    mobileFitFrame = window.requestAnimationFrame(() => {
+      mobileFitFrame = null;
+      fitMobileWorkbench(behavior);
+    });
   });
 }
 
@@ -2570,7 +2595,11 @@ function openMobileStatusPanel(tab: StatusPanelTab = statusPanelTab.value) {
   palettePanelOpen.value = false;
 }
 
-onMounted(() => {
+function startCloudAuthSession() {
+  if (!cloudConfig.configured) {
+    return;
+  }
+
   void refreshCloudUser();
   cloudAuthUnsubscribe = onCloudAuthStateChange((user, event) => {
     cloudUserEmail.value = user?.email ?? null;
@@ -2593,15 +2622,40 @@ onMounted(() => {
       cloudSyncStatus.value = "idle";
     }
   });
+}
+
+onMounted(() => {
   fitMobileWorkbenchAfterRender();
   window.addEventListener("keydown", handleWorkbenchKeydown);
   window.addEventListener("resize", handleMobileViewportChange);
   window.addEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
   window.visualViewport?.addEventListener("resize", handleMobileViewportChange);
   window.screen.orientation?.addEventListener("change", handleMobileViewportChange);
+
+  if (cloudConfig.configured) {
+    cloudStartupTimer = window.setTimeout(() => {
+      cloudStartupTimer = null;
+      startCloudAuthSession();
+    }, 500);
+  }
 });
 
 onBeforeUnmount(() => {
+  if (mobileFitFrame !== null) {
+    window.cancelAnimationFrame(mobileFitFrame);
+    mobileFitFrame = null;
+  }
+
+  if (mobileScrollFrame !== null) {
+    window.cancelAnimationFrame(mobileScrollFrame);
+    mobileScrollFrame = null;
+  }
+
+  if (cloudStartupTimer !== null) {
+    window.clearTimeout(cloudStartupTimer);
+    cloudStartupTimer = null;
+  }
+
   cloudAuthUnsubscribe?.();
   cloudAuthUnsubscribe = null;
   window.removeEventListener("keydown", handleWorkbenchKeydown);

@@ -196,7 +196,10 @@ function bindWorkbench(element: unknown) {
               <Gauge class="h-4 w-4" />
             </Button>
             <Button class="h-8 w-8" variant="ghost" size="icon" title="清线" @click="clearWires">
-              <Unplug class="h-4 w-4" />
+              <span class="relative h-4 w-4">
+                <Unplug class="h-4 w-4" />
+                <X class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-card text-rose-600" />
+              </span>
             </Button>
             <Button class="h-8 w-8" variant="ghost" size="icon" title="导出图片" @click="exportWorkbenchImage">
               <Download class="h-4 w-4" />
@@ -222,7 +225,7 @@ function bindWorkbench(element: unknown) {
             <Button class="h-8 w-8" variant="ghost" size="icon" title="缩小" @click="setZoom(zoom - 5)">
               <ZoomOut class="h-4 w-4" />
             </Button>
-            <div class="min-w-9 text-center text-xs font-medium tabular-nums text-muted-foreground">{{ zoom }}</div>
+            <div class="min-w-11 text-center text-xs font-medium tabular-nums text-muted-foreground">{{ zoom }}%</div>
             <Button class="h-8 w-8" variant="ghost" size="icon" title="放大" @click="setZoom(zoom + 5)">
               <ZoomIn class="h-4 w-4" />
             </Button>

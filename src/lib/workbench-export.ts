@@ -143,9 +143,9 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart, op
     context.fillText(`${Math.round(brightness * 100)}% brightness`, part.x + 18, part.y + spec.height - 20);
     context.beginPath();
     context.arc(part.x + spec.width / 2, part.y + 78, 34, 0, Math.PI * 2);
-    context.fillStyle = `rgba(245, 158, 11, ${0.18 + brightness * 0.72})`;
+    context.fillStyle = brightness > 0 ? `rgba(245, 158, 11, ${0.2 + brightness * 0.7})` : "rgba(148, 163, 184, 0.28)";
     context.fill();
-    context.strokeStyle = "#f59e0b";
+    context.strokeStyle = brightness > 0 ? "#f59e0b" : "#94a3b8";
     context.stroke();
   } else if (part.type === "resistor") {
     context.fillText(`${part.resistance ?? 0} ohm`, part.x + 18, part.y + 52);

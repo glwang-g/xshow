@@ -429,7 +429,7 @@ function bindWorkbench(element: unknown) {
               isLessonPartTarget(part) ? 'lesson-workbench-target z-20' : '',
               part.type === 'battery' ? 'bg-slate-950 text-white' : '',
               part.type === 'switch' ? 'bg-white' : '',
-              part.type === 'bulb' ? 'bg-amber-50' : '',
+              part.type === 'bulb' ? (bulbBrightness(part) > 0 ? 'bg-amber-50' : 'bg-slate-100') : '',
               part.type === 'resistor' ? 'bg-cyan-50' : '',
               part.type === 'led' ? 'bg-rose-50' : '',
               part.type === 'diode' ? 'bg-fuchsia-50' : '',
@@ -515,16 +515,19 @@ function bindWorkbench(element: unknown) {
             <div v-else-if="part.type === 'bulb'" class="flex h-full flex-col items-center justify-center gap-3 p-4">
               <div
                 class="flex h-20 w-20 items-center justify-center rounded-full border transition-all"
-                :class="bulbBrightness(part) > 0 ? 'border-amber-400' : 'border-amber-200'"
+                :class="bulbBrightness(part) > 0 ? 'border-amber-400' : 'border-slate-300'"
                 :style="{
-                  backgroundColor: `rgba(251, 191, 36, ${0.16 + bulbBrightness(part) * 0.72})`,
+                  backgroundColor:
+                    bulbBrightness(part) > 0
+                      ? `rgba(251, 191, 36, ${0.18 + bulbBrightness(part) * 0.7})`
+                      : 'rgba(148, 163, 184, 0.24)',
                   boxShadow:
                     bulbBrightness(part) > 0
                       ? `0 0 ${18 + bulbBrightness(part) * 42}px rgba(245, 158, 11, ${0.3 + bulbBrightness(part) * 0.5})`
                       : 'none',
                 }"
               >
-                <Lightbulb class="h-10 w-10 text-amber-900" />
+                <Lightbulb class="h-10 w-10" :class="bulbBrightness(part) > 0 ? 'text-amber-900' : 'text-slate-500'" />
               </div>
               <div class="text-center">
                 <div class="text-sm font-semibold">{{ part.name }}</div>

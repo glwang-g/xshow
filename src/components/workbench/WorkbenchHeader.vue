@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, GitFork, RotateCcw, Save, Sparkles, Unplug, ZoomIn, ZoomOut } from "@lucide/vue";
+import { Download, GitFork, RotateCcw, Save, Sparkles, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
 import Button from "@/components/ui/Button.vue";
 import type { CircuitSimulation } from "@/lib/circuit";
 
@@ -64,7 +64,10 @@ defineProps<{
         <span class="hidden sm:inline">GitHub</span>
       </a>
       <Button variant="outline" size="sm" @click="clearWires">
-        <Unplug class="h-4 w-4" />
+        <span class="relative h-4 w-4">
+          <Unplug class="h-4 w-4" />
+          <X class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-card text-rose-600" />
+        </span>
         清线
       </Button>
       <Button variant="outline" size="sm" @click="exportWorkbenchImage">

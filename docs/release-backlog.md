@@ -2,6 +2,30 @@
 
 This backlog turns the current roadmap into releasable versions so `xshow circuits` can move from "keep adding features" to "close, verify, and ship".
 
+## Public Beta: Release Hardening
+
+Status: **in hardening; freeze large features and accept only blocking fixes, verification notes, and release-documentation updates**.
+
+The current main branch has enough product surface for a public beta: mobile/PWA layout, free dragging and arbitrary part rotation, guided workspaces, more components, node/branch simulation, physical build plans, local records, share links, and cloud records. The remaining work is mostly reducing unknowns rather than adding scope.
+
+### Must Finish
+
+- [x] Local automated checks pass: `pnpm test` and `pnpm build`.
+- [ ] Run the [mobile QA checklist](mobile-qa.md) on phone portrait, phone landscape, iPad landscape, and desktop.
+- [ ] Recheck the small-screen bottom HUD, default recenter layout, arbitrary rotation, rotated terminal wiring, and PNG export.
+- [ ] Confirm the deployed PWA manifest, service worker, offline relaunch, and manual update-check button work in production.
+- [ ] Confirm deployed share links restore the current workbench in a fresh browser and on mobile.
+- [ ] Verify Supabase sign-in, save, load, rename, delete, and conflict handling in production; if cloud records stay closed for beta, label that state in the UI and docs.
+- [x] Draft the [public beta release note](releases/public-beta-candidate.md) with intended audience, known limits, and feedback path.
+- [ ] After verification, decide the version number, tag, and public entry point.
+
+### Ship Gate
+
+- No known blocker prevents basic circuit building, saving, sharing, PWA launch, or lesson completion.
+- Signed-out users can complete the local workflow; cloud unavailability does not block the workbench.
+- Small-screen default layout keeps core actions visible and usable after recentering.
+- The new-version prompt or manual update check is visible in the deployed browser/PWA experience.
+
 ## v0.2: Mobile And Sharing Release
 
 Status: **Released as v0.2.0**.
@@ -74,6 +98,7 @@ Status: **first slice implemented, pending regression QA**.
 - [x] Make bulb, LED, wire animation, and current values feel visually consistent.
 - [x] Move from single-path approximations to a clearer node/branch model.
 - [x] Add regression tests for the node/branch solver and physical build-plan output.
+- [x] Support arbitrary part rotation and keep terminal positions, wire endpoints, and PNG export aligned with the rotated parts.
 
 ### Physical Build Bridge
 

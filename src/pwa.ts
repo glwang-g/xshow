@@ -2,8 +2,19 @@ export const pwaUpdateAvailableEvent = "xshow:pwa-update-available";
 
 const updateProbeParam = "_xshow_update_probe";
 const currentBuildId = import.meta.env.VITE_XSHOW_BUILD_ID ?? "dev";
+const updateProbeTimeoutMs = 4000;
 let updatePrompted = false;
 let lastShellProbeAt = 0;
+let shellProbeInFlight = false;
+
+function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => {
+    window.clearTimeout(timeoutId);
+  });
+}
 
 function notifyUpdateAvailable(registration: ServiceWorkerRegistration) {
   if (updatePrompted) {
@@ -64,22 +75,31 @@ async function checkShellAssetsForUpdate(registration: ServiceWorkerRegistration
     return true;
   }
 
+  if (shellProbeInFlight) {
+    return false;
+  }
+
   if (!force && now - lastShellProbeAt < 30_000) {
     return false;
   }
 
   lastShellProbeAt = now;
+  shellProbeInFlight = true;
   const probeUrl = new URL("./index.html", window.location.href);
   probeUrl.searchParams.set(updateProbeParam, String(now));
 
   try {
-    const response = await fetch(probeUrl, {
-      cache: "no-store",
-      credentials: "same-origin",
-    });
+    const response = await fetchWithTimeout(
+      probeUrl,
+      {
+        cache: "no-store",
+        credentials: "same-origin",
+      },
+      updateProbeTimeoutMs,
+    );
 
     if (!response.ok) {
-      return;
+      return false;
     }
 
     const latestHtml = await response.text();
@@ -93,6 +113,8 @@ async function checkShellAssetsForUpdate(registration: ServiceWorkerRegistration
     }
   } catch {
     // Update probing should never interrupt the workbench.
+  } finally {
+    shellProbeInFlight = false;
   }
 
   return false;

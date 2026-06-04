@@ -12,7 +12,6 @@ import {
   Lightbulb,
   LocateFixed,
   PackagePlus,
-  RefreshCw,
   RotateCcw,
   SlidersHorizontal,
   ToggleLeft,
@@ -64,7 +63,6 @@ const props = defineProps<{
   clearWireHover: (wireId: string) => void;
   clearWires: () => void;
   closeLessonCompletePanel: () => void;
-  checkPwaUpdate: () => void | Promise<void>;
   currentAnimationDuration: string;
   dismissPwaUpdate: () => void;
   endCanvasGesture: (event: PointerEvent) => void;
@@ -103,7 +101,6 @@ const props = defineProps<{
   partStyle: (part: CircuitPart) => Record<string, string>;
   parts: CircuitPart[];
   pwaUpdateRegistration: ServiceWorkerRegistration | null;
-  pwaUpdateCheckState: "checking" | "idle" | "latest";
   renderedWires: Wire[];
   resetDemo: () => void;
   resetMobileView: () => void;
@@ -204,16 +201,6 @@ function bindWorkbench(element: unknown) {
             <Button class="h-8 w-8" variant="ghost" size="icon" title="导出图片" @click="exportWorkbenchImage">
               <Download class="h-4 w-4" />
             </Button>
-            <Button
-              class="h-8 w-8"
-              :class="pwaUpdateCheckState === 'latest' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' : ''"
-              variant="ghost"
-              size="icon"
-              :title="pwaUpdateCheckState === 'latest' ? '已是最新版本' : '检查更新'"
-              @click="checkPwaUpdate"
-            >
-              <RefreshCw class="h-4 w-4" :class="pwaUpdateCheckState === 'checking' ? 'animate-spin' : ''" />
-            </Button>
             <a
               :href="githubRepositoryUrl"
               target="_blank"
@@ -235,6 +222,7 @@ function bindWorkbench(element: unknown) {
             <Button class="h-8 w-8" variant="ghost" size="icon" title="缩小" @click="setZoom(zoom - 5)">
               <ZoomOut class="h-4 w-4" />
             </Button>
+            <div class="min-w-9 text-center text-xs font-medium tabular-nums text-muted-foreground">{{ zoom }}</div>
             <Button class="h-8 w-8" variant="ghost" size="icon" title="放大" @click="setZoom(zoom + 5)">
               <ZoomIn class="h-4 w-4" />
             </Button>

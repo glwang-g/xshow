@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { Download, GitFork, RefreshCw, RotateCcw, Save, Sparkles, Unplug, ZoomIn, ZoomOut } from "@lucide/vue";
+import { Download, GitFork, RotateCcw, Save, Sparkles, Unplug, ZoomIn, ZoomOut } from "@lucide/vue";
 import Button from "@/components/ui/Button.vue";
 import type { CircuitSimulation } from "@/lib/circuit";
 
 defineProps<{
-  checkPwaUpdate: () => void | Promise<void>;
   clearWires: () => void;
   exportWorkbenchImage: () => void;
   githubRepositoryUrl: string;
-  pwaUpdateCheckState: "checking" | "idle" | "latest";
   resetDemo: () => void;
   savedWorkspaceLabel: string;
   setZoom: (value: number) => void;
@@ -54,14 +52,6 @@ defineProps<{
     </div>
 
     <div class="flex items-center gap-2">
-      <Button
-        variant="outline"
-        size="icon"
-        :title="pwaUpdateCheckState === 'latest' ? '已是最新版本' : '检查更新'"
-        @click="checkPwaUpdate"
-      >
-        <RefreshCw class="h-4 w-4" :class="pwaUpdateCheckState === 'checking' ? 'animate-spin' : ''" />
-      </Button>
       <a
         :href="githubRepositoryUrl"
         target="_blank"

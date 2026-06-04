@@ -138,7 +138,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (url.searchParams.has("_xshow_update_probe")) {
-    event.respondWith(fetch(request));
+    event.respondWith(fetchWithTimeout(request, NAVIGATION_TIMEOUT_MS));
     return;
   }
 

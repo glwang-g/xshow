@@ -12,6 +12,7 @@ import {
   Lightbulb,
   LocateFixed,
   PackagePlus,
+  RefreshCw,
   RotateCcw,
   SlidersHorizontal,
   ToggleLeft,
@@ -63,6 +64,7 @@ const props = defineProps<{
   clearWireHover: (wireId: string) => void;
   clearWires: () => void;
   closeLessonCompletePanel: () => void;
+  checkPwaUpdate: () => void | Promise<void>;
   currentAnimationDuration: string;
   dismissPwaUpdate: () => void;
   endCanvasGesture: (event: PointerEvent) => void;
@@ -101,6 +103,7 @@ const props = defineProps<{
   partStyle: (part: CircuitPart) => Record<string, string>;
   parts: CircuitPart[];
   pwaUpdateRegistration: ServiceWorkerRegistration | null;
+  pwaUpdateCheckState: "checking" | "idle" | "latest";
   renderedWires: Wire[];
   resetDemo: () => void;
   resetMobileView: () => void;
@@ -158,27 +161,6 @@ function bindWorkbench(element: unknown) {
         @pointercancel="endCanvasGesture"
         @pointerleave="endCanvasGesture"
       >
-        <div
-          class="fixed left-3 top-[calc(0.75rem+env(safe-area-inset-top))] z-20 flex w-max max-w-[calc(100vw-1.5rem)] items-center gap-1 rounded-md border bg-card/95 p-1 shadow-panel xl:hidden"
-        >
-          <a
-            :href="githubRepositoryUrl"
-            target="_blank"
-            rel="noreferrer"
-            class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors hover:bg-muted"
-            title="GitHub 仓库"
-            aria-label="打开 GitHub 仓库"
-            data-circuit-interactive="true"
-          >
-            <GitFork class="h-4 w-4" />
-            <span>GitHub</span>
-          </a>
-          <Button class="shrink-0" size="sm" title="复位演示电路" @click="resetDemo">
-            <RotateCcw class="h-4 w-4" />
-            复位
-          </Button>
-        </div>
-
         <button
           class="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-3 right-3 z-20 flex h-10 items-center gap-2 overflow-hidden rounded-md border bg-card/95 px-3 text-left text-sm shadow-panel xl:hidden"
           :class="lessonComplete ? 'border-emerald-200 text-emerald-950' : 'border-cyan-200 text-cyan-950'"
@@ -194,43 +176,69 @@ function bindWorkbench(element: unknown) {
           <Gauge class="h-4 w-4 shrink-0 opacity-70" />
         </button>
 
-        <div class="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 z-20 flex max-w-[calc(100vw-1rem)] -translate-x-1/2 items-center gap-1 overflow-x-auto rounded-md border bg-card/95 p-1 shadow-panel xl:hidden">
-          <Button
-            :class="palettePanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''"
-            :aria-pressed="palettePanelOpen"
-            variant="ghost"
-            size="icon"
-            title="打开器件面板"
-            @click="emit('open-palette')"
-          >
-            <PackagePlus class="h-4 w-4" />
-          </Button>
-          <Button
-            :class="statusPanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''"
-            :aria-pressed="statusPanelOpen"
-            variant="ghost"
-            size="icon"
-            title="显示状态面板"
-            @click="emit('toggle-status')"
-          >
-            <Gauge class="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" title="清线" @click="clearWires">
-            <Unplug class="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" title="导出图片" @click="exportWorkbenchImage">
-            <Download class="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" title="回正视图" @click="resetMobileView">
-            <LocateFixed class="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" title="缩小" @click="setZoom(zoom - 5)">
-            <ZoomOut class="h-4 w-4" />
-          </Button>
-          <div class="min-w-12 text-center text-xs tabular-nums">{{ zoom }}%</div>
-          <Button variant="ghost" size="icon" title="放大" @click="setZoom(zoom + 5)">
-            <ZoomIn class="h-4 w-4" />
-          </Button>
+        <div class="fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-3 right-3 z-20 overflow-hidden rounded-md border bg-card/95 p-1 shadow-panel xl:hidden">
+          <div class="flex w-full items-center justify-between gap-0.5">
+            <Button
+              :class="`h-8 w-8 ${palettePanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''}`"
+              :aria-pressed="palettePanelOpen"
+              variant="ghost"
+              size="icon"
+              title="打开器件面板"
+              @click="emit('open-palette')"
+            >
+              <PackagePlus class="h-4 w-4" />
+            </Button>
+            <Button
+              :class="`h-8 w-8 ${statusPanelOpen ? 'bg-cyan-100 text-cyan-950 hover:bg-cyan-100' : ''}`"
+              :aria-pressed="statusPanelOpen"
+              variant="ghost"
+              size="icon"
+              title="显示状态面板"
+              @click="emit('toggle-status')"
+            >
+              <Gauge class="h-4 w-4" />
+            </Button>
+            <Button class="h-8 w-8" variant="ghost" size="icon" title="清线" @click="clearWires">
+              <Unplug class="h-4 w-4" />
+            </Button>
+            <Button class="h-8 w-8" variant="ghost" size="icon" title="导出图片" @click="exportWorkbenchImage">
+              <Download class="h-4 w-4" />
+            </Button>
+            <Button
+              class="h-8 w-8"
+              :class="pwaUpdateCheckState === 'latest' ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100' : ''"
+              variant="ghost"
+              size="icon"
+              :title="pwaUpdateCheckState === 'latest' ? '已是最新版本' : '检查更新'"
+              @click="checkPwaUpdate"
+            >
+              <RefreshCw class="h-4 w-4" :class="pwaUpdateCheckState === 'checking' ? 'animate-spin' : ''" />
+            </Button>
+            <a
+              :href="githubRepositoryUrl"
+              target="_blank"
+              rel="noreferrer"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-muted"
+              title="GitHub 仓库"
+              aria-label="打开 GitHub 仓库"
+              data-circuit-interactive="true"
+            >
+              <GitFork class="h-4 w-4" />
+              <span class="sr-only">GitHub</span>
+            </a>
+            <Button class="h-8 w-8" variant="ghost" size="icon" title="复位演示电路" @click="resetDemo">
+              <RotateCcw class="h-4 w-4" />
+            </Button>
+            <Button class="h-8 w-8" variant="ghost" size="icon" title="回正视图" @click="resetMobileView">
+              <LocateFixed class="h-4 w-4" />
+            </Button>
+            <Button class="h-8 w-8" variant="ghost" size="icon" title="缩小" @click="setZoom(zoom - 5)">
+              <ZoomOut class="h-4 w-4" />
+            </Button>
+            <Button class="h-8 w-8" variant="ghost" size="icon" title="放大" @click="setZoom(zoom + 5)">
+              <ZoomIn class="h-4 w-4" />
+            </Button>
+          </div>
         </div>
 
         <section

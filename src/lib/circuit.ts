@@ -23,6 +23,7 @@ export type CircuitPart = {
   name: string;
   polarity?: "normal" | "reversed";
   resistance?: number;
+  rotation?: number;
   type: PartType;
   x: number;
   y: number;

@@ -64,7 +64,7 @@ import {
   formatPhysicalBuildPlanMarkdown,
 } from "@/lib/physical-build";
 import { exportWorkbenchImage as exportWorkbenchImageFile } from "@/lib/workbench-export";
-import { pwaUpdateAvailableEvent } from "@/pwa";
+import { pwaUpdateAvailableEvent, requestPwaUpdateCheck } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
 type TerminalHit = {
@@ -81,6 +81,20 @@ type Point = {
   y: number;
 };
 
+type LoadWorkspaceOptions = {
+  adaptMobileStarterLayout?: boolean;
+  resetMobileLayout?: boolean;
+};
+
+type WorkbenchBounds = {
+  bottom: number;
+  height: number;
+  left: number;
+  right: number;
+  top: number;
+  width: number;
+};
+
 type CloudRecord = CloudWorkspaceRecord<PersistedWorkspace>;
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
@@ -88,9 +102,13 @@ const cloudUploadSuggestionKeyPrefix = "xshow.cloud.upload-suggestion.v1";
 const maxEditorHistoryEntries = 40;
 const workspaceShareParam = "workspace";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
-const mobileWorkbenchMin = {
-  width: 2400,
-  height: 1800,
+const mobileWorkbenchBase = {
+  width: workbench.width,
+  height: workbench.height,
+};
+const mobileFitPadding = {
+  bottomControls: 112,
+  horizontal: 24,
 };
 const board = useBoardStore();
 const canvasViewportRef = ref<HTMLElement | null>(null);
@@ -123,6 +141,7 @@ const cloudUserEmail = ref<string | null>(null);
 const sharedWorkspaceLoaded = ref(false);
 const suppressCloudDirtyMark = ref(false);
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
+const pwaUpdateCheckState = ref<"checking" | "idle" | "latest">("idle");
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
 const statusPanelTab = ref<StatusPanelTab>("lesson");
@@ -149,7 +168,7 @@ const viewportGesture = ref<
   | null
 >(null);
 const canvasViewportSize = ref({ height: workbench.height, width: workbench.width });
-const mobileWorkbenchSize = ref({ ...mobileWorkbenchMin });
+const mobileWorkbenchSize = ref({ ...mobileWorkbenchBase });
 let mobileFitFrame: number | null = null;
 let mobileScrollFrame: number | null = null;
 let cloudStartupTimer: number | null = null;
@@ -225,7 +244,7 @@ const effectiveWorkbenchSize = computed(() => {
         width: Math.max(size.width, part.x + spec.width + contentPadding),
       };
     },
-    { height: mobileWorkbenchMin.height, width: mobileWorkbenchMin.width },
+    { height: mobileWorkbenchBase.height, width: mobileWorkbenchBase.width },
   );
 
   return {
@@ -673,6 +692,7 @@ const {
 let autosaveTimer: number | null = null;
 let buildPlanCopyFeedbackTimer: number | null = null;
 let cloudAuthUnsubscribe: (() => void) | null = null;
+let pwaUpdateCheckFeedbackTimer: number | null = null;
 let shareLinkFeedbackTimer: number | null = null;
 
 function clearInteractionState() {
@@ -716,6 +736,38 @@ function terminalDisplayLabel(part: CircuitPart, terminal: TerminalKey) {
   return getSpec(part).terminals[terminal].label;
 }
 
+function normalizeRotation(value: number) {
+  const rotation = Math.round(value) % 360;
+  return rotation < 0 ? rotation + 360 : rotation;
+}
+
+function partRotation(part: CircuitPart) {
+  return normalizeRotation(part.rotation ?? 0);
+}
+
+function rotateLocalPoint(point: Point, center: Point, degrees: number): Point {
+  if (degrees === 0) {
+    return point;
+  }
+
+  const radians = (degrees * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+
+  return {
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos,
+  };
+}
+
+function rotatedTerminalOffset(part: CircuitPart, terminal: TerminalKey) {
+  const spec = getSpec(part);
+  const offset = spec.terminals[terminal];
+  return rotateLocalPoint(offset, { x: spec.width / 2, y: spec.height / 2 }, partRotation(part));
+}
+
 function getPart(partId: string) {
   return parts.value.find((part) => part.id === partId);
 }
@@ -726,7 +778,7 @@ function getTerminalPosition(ref: TerminalRef) {
     return { x: 0, y: 0 };
   }
 
-  const offset = getSpec(part).terminals[ref.terminal];
+  const offset = rotatedTerminalOffset(part, ref.terminal);
   return {
     x: part.x + offset.x,
     y: part.y + offset.y,
@@ -748,6 +800,8 @@ function partStyle(part: CircuitPart) {
     top: `${part.y}px`,
     width: `${spec.width}px`,
     height: `${spec.height}px`,
+    transform: `rotate(${partRotation(part)}deg)`,
+    transformOrigin: "center",
   };
 }
 
@@ -801,25 +855,189 @@ function isDesktopViewport() {
   return typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches;
 }
 
-function mobileFitZoom() {
-  const viewport = canvasViewportRef.value;
-  if (!viewport) {
-    return 72;
+function isMobilePortraitViewport() {
+  if (typeof window === "undefined" || isDesktopViewport()) {
+    return false;
   }
 
-  const horizontalPadding = 24;
-  const bottomControlsSpace = 112;
-  const availableWidth = Math.max(280, viewport.clientWidth - horizontalPadding);
-  const availableHeight = Math.max(260, viewport.clientHeight - bottomControlsSpace);
-  return Math.floor(Math.min(availableWidth / workbench.width, availableHeight / workbench.height) * 92);
+  const viewport = canvasViewportRef.value;
+  const width = viewport?.clientWidth ?? window.innerWidth;
+  const height = viewport?.clientHeight ?? window.innerHeight;
+  return height > width * 1.12;
 }
 
-function fitMobileWorkbench(behavior: ScrollBehavior = "auto") {
+function centeredMobilePartX(partType: PartType, centerX = 360) {
+  return Math.round(centerX - getSpec(partType).width / 2);
+}
+
+function mobilePortraitLayoutFromRows(
+  workspace: LessonWorkspace,
+  rows: Record<string, { centerX?: number; y: number }>,
+) {
+  const layout: Record<string, Point> = {};
+
+  for (const part of workspace.parts) {
+    const row = rows[part.id];
+    if (!row) {
+      continue;
+    }
+
+    layout[part.id] = {
+      x: centeredMobilePartX(part.type, row.centerX),
+      y: row.y,
+    };
+  }
+
+  return layout;
+}
+
+function mobilePortraitStarterLayout(workspace: LessonWorkspace) {
+  const hasPart = (partId: string) => workspace.parts.some((part) => part.id === partId);
+  const hasParallelWires = workspace.wires.some((wire) => wire.id.includes("parallel"));
+
+  if (hasPart("led-1")) {
+    return mobilePortraitLayoutFromRows(workspace, {
+      "battery-1": { y: 80 },
+      "switch-1": { y: 245 },
+      "resistor-1": { y: 420 },
+      "led-1": { y: 625 },
+    });
+  }
+
+  if (hasPart("bulb-2") && hasParallelWires) {
+    return mobilePortraitLayoutFromRows(workspace, {
+      "battery-1": { y: 70 },
+      "switch-1": { y: 226 },
+      "bulb-1": { centerX: 230, y: 420 },
+      "bulb-2": { centerX: 500, y: 420 },
+      "resistor-1": { y: 682 },
+    });
+  }
+
+  if (hasPart("bulb-2")) {
+    return mobilePortraitLayoutFromRows(workspace, {
+      "battery-1": { y: 64 },
+      "switch-1": { y: 220 },
+      "bulb-1": { y: 382 },
+      "bulb-2": { y: 590 },
+      "resistor-1": { y: 812 },
+    });
+  }
+
+  return mobilePortraitLayoutFromRows(workspace, {
+    "battery-1": { y: 80 },
+    "switch-1": { y: 245 },
+    "bulb-1": { y: 430 },
+    "resistor-1": { y: 650 },
+  });
+}
+
+function mobileStarterWorkspace(workspace: LessonWorkspace) {
+  if (!isMobilePortraitViewport()) {
+    return workspace;
+  }
+
+  const layout = mobilePortraitStarterLayout(workspace);
+  return {
+    ...workspace,
+    parts: workspace.parts.map((part) => ({
+      ...part,
+      ...(layout[part.id] ?? {}),
+    })),
+  };
+}
+
+function mobileContentBounds(padding = isMobilePortraitViewport() ? 160 : 72): WorkbenchBounds {
+  if (parts.value.length === 0) {
+    return {
+      bottom: workbench.height,
+      height: workbench.height,
+      left: 0,
+      right: workbench.width,
+      top: 0,
+      width: workbench.width,
+    };
+  }
+
+  const bounds = parts.value.reduce(
+    (nextBounds, part) => {
+      const spec = getSpec(part);
+      return {
+        bottom: Math.max(nextBounds.bottom, part.y + spec.height),
+        left: Math.min(nextBounds.left, part.x),
+        right: Math.max(nextBounds.right, part.x + spec.width),
+        top: Math.min(nextBounds.top, part.y),
+      };
+    },
+    {
+      bottom: Number.NEGATIVE_INFINITY,
+      left: Number.POSITIVE_INFINITY,
+      right: Number.NEGATIVE_INFINITY,
+      top: Number.POSITIVE_INFINITY,
+    },
+  );
+  const left = Math.max(0, bounds.left - padding);
+  const top = Math.max(0, bounds.top - padding);
+  const right = bounds.right + padding;
+  const bottom = bounds.bottom + padding;
+
+  return {
+    bottom,
+    height: Math.max(240, bottom - top),
+    left,
+    right,
+    top,
+    width: Math.max(240, right - left),
+  };
+}
+
+function mobileVisibleWorkbenchSize() {
+  const viewport = canvasViewportRef.value;
+  if (!viewport) {
+    return { height: workbench.height, width: workbench.width };
+  }
+
+  return {
+    height: Math.max(260, viewport.clientHeight - mobileFitPadding.bottomControls),
+    width: Math.max(280, viewport.clientWidth - mobileFitPadding.horizontal),
+  };
+}
+
+function mobileFitZoom() {
+  const visibleSize = mobileVisibleWorkbenchSize();
+  const contentBounds = mobileContentBounds();
+  return Math.floor(Math.min(visibleSize.width / contentBounds.width, visibleSize.height / contentBounds.height) * 92);
+}
+
+function mobileDefaultWorkbenchSize() {
+  const visibleSize = mobileVisibleWorkbenchSize();
+  const contentBounds = mobileContentBounds();
+  const fitScale = clamp(mobileFitZoom(), 25, 160) / 100;
+
+  return {
+    height: Math.ceil(Math.max(mobileWorkbenchBase.height, contentBounds.bottom, visibleSize.height / fitScale)),
+    width: Math.ceil(Math.max(mobileWorkbenchBase.width, contentBounds.right, visibleSize.width / fitScale)),
+  };
+}
+
+function resetMobileWorkbenchSize() {
+  if (isDesktopViewport()) {
+    return;
+  }
+
+  mobileWorkbenchSize.value = mobileDefaultWorkbenchSize();
+}
+
+function fitMobileWorkbench(behavior: ScrollBehavior = "auto", resetLayout = false) {
   if (typeof window === "undefined" || isDesktopViewport() || !canvasViewportRef.value) {
     return;
   }
 
   updateCanvasViewportSize();
+  if (resetLayout) {
+    resetMobileWorkbenchSize();
+  }
+
   const nextZoom = mobileFitZoom();
   if (nextZoom !== board.zoom) {
     board.setZoom(nextZoom);
@@ -831,15 +1049,28 @@ function fitMobileWorkbench(behavior: ScrollBehavior = "auto") {
 
   mobileScrollFrame = window.requestAnimationFrame(() => {
     mobileScrollFrame = null;
+    const viewport = canvasViewportRef.value;
+    if (!viewport) {
+      return;
+    }
+
+    const visibleSize = mobileVisibleWorkbenchSize();
+    const contentBounds = mobileContentBounds();
+    const scale = board.zoom / 100;
+    const centeredLeft =
+      contentBounds.left * scale - Math.max(0, (viewport.clientWidth - contentBounds.width * scale) / 2);
+    const centeredTop =
+      contentBounds.top * scale - Math.max(16, (visibleSize.height - contentBounds.height * scale) / 2);
+
     canvasViewportRef.value?.scrollTo({
       behavior,
-      left: 0,
-      top: 0,
+      left: Math.max(0, centeredLeft),
+      top: Math.max(0, centeredTop),
     });
   });
 }
 
-function fitMobileWorkbenchAfterRender(behavior: ScrollBehavior = "auto") {
+function fitMobileWorkbenchAfterRender(behavior: ScrollBehavior = "auto", resetLayout = false) {
   if (typeof window === "undefined" || isDesktopViewport()) {
     return;
   }
@@ -851,7 +1082,7 @@ function fitMobileWorkbenchAfterRender(behavior: ScrollBehavior = "auto") {
 
     mobileFitFrame = window.requestAnimationFrame(() => {
       mobileFitFrame = null;
-      fitMobileWorkbench(behavior);
+      fitMobileWorkbench(behavior, resetLayout);
     });
   });
 }
@@ -862,7 +1093,7 @@ function resetMobileView() {
     return;
   }
 
-  fitMobileWorkbench("smooth");
+  fitMobileWorkbench("smooth", true);
 }
 
 function exportWorkbenchImage() {
@@ -977,8 +1208,13 @@ function terminalSide(ref: TerminalRef) {
   }
 
   const spec = getSpec(part);
-  const offset = spec.terminals[ref.terminal];
-  return offset.x <= spec.width / 2 ? -1 : 1;
+  const offset = rotatedTerminalOffset(part, ref.terminal);
+  const dx = offset.x - spec.width / 2;
+  if (Math.abs(dx) < 1) {
+    return ref.terminal === "a" ? -1 : 1;
+  }
+
+  return dx < 0 ? -1 : 1;
 }
 
 function compactRoutePoints(points: Point[]) {
@@ -1006,9 +1242,21 @@ function wireRoutePoints(wire: Wire) {
   };
   const route: Point[] = [start, startLead];
 
-  if (startSide === endSide) {
+  const verticalMobileRoute = !isDesktopViewport() && Math.abs(startLead.y - endLead.y) > 96;
+  if (verticalMobileRoute && startSide !== endSide) {
+    const routeDirection = endLead.y > startLead.y ? 1 : -1;
+    const bridgeY = routeDirection > 0
+      ? Math.min(endLead.y - 44, startLead.y + 72)
+      : Math.max(endLead.y + 44, startLead.y - 72);
+
+    route.push(
+      { x: startLead.x, y: bridgeY },
+      { x: endLead.x, y: bridgeY },
+    );
+  } else if (startSide === endSide) {
+    const routeSide = startSide;
     const outsideX =
-      startSide > 0
+      routeSide > 0
         ? clamp(Math.max(startLead.x, endLead.x) + 72, margin, limitWidth - margin)
         : clamp(Math.min(startLead.x, endLead.x) - 72, margin, limitWidth - margin);
 
@@ -1846,17 +2094,19 @@ function handleWorkbenchKeydown(event: KeyboardEvent) {
   }
 }
 
-function loadWorkspace(workspace: LessonWorkspace) {
-  parts.value = workspace.parts.map((part) => ({ ...part }));
-  wires.value = workspace.wires.map((wire) => ({
+function loadWorkspace(workspace: LessonWorkspace, options: LoadWorkspaceOptions = {}) {
+  const nextWorkspace = options.adaptMobileStarterLayout ? mobileStarterWorkspace(workspace) : workspace;
+
+  parts.value = nextWorkspace.parts.map((part) => ({ ...part }));
+  wires.value = nextWorkspace.wires.map((wire) => ({
     ...wire,
     from: { ...wire.from },
     to: { ...wire.to },
   }));
-  selectedPartId.value = workspace.selectedPartId;
+  selectedPartId.value = nextWorkspace.selectedPartId;
   clearInteractionState();
-  board.setZoom(workspace.zoom);
-  fitMobileWorkbenchAfterRender();
+  board.setZoom(nextWorkspace.zoom);
+  fitMobileWorkbenchAfterRender("auto", options.resetMobileLayout ?? true);
 }
 
 function workspaceSnapshot(savedAt = new Date().toISOString()): PersistedWorkspace {
@@ -1920,22 +2170,25 @@ function restoreWorkspaceFromUrl() {
 
 function restoreAutoSavedWorkspace() {
   if (typeof window === "undefined") {
-    return;
+    return false;
   }
 
   const rawWorkspace = window.localStorage.getItem(savedWorkspaceKey);
   if (!rawWorkspace) {
-    return;
+    return false;
   }
 
   try {
     const workspace = JSON.parse(rawWorkspace) as unknown;
     if (isPersistedWorkspace(workspace)) {
       loadWorkspaceSnapshot(workspace);
+      return true;
     }
   } catch {
     window.localStorage.removeItem(savedWorkspaceKey);
   }
+
+  return false;
 }
 
 function saveWorkspaceToStorage() {
@@ -2493,7 +2746,7 @@ function loadLessonWorkspace(lessonId = activeLesson.value.id) {
   const lesson = lessonCatalog.find((item) => item.id === lessonId) ?? activeLesson.value;
   pushEditorHistory();
   activeLessonId.value = lesson.id;
-  loadWorkspace(lesson.starterWorkspace);
+  loadWorkspace(lesson.starterWorkspace, { adaptMobileStarterLayout: true });
 }
 
 function closeLessonCompletePanel() {
@@ -2512,10 +2765,13 @@ function loadNextLesson() {
 function resetDemo() {
   const demoLesson = lessonCatalog.find((lesson) => lesson.id === "open-the-circuit") ?? lessonCatalog[0];
   pushEditorHistory();
-  loadWorkspace({
-    ...demoLesson.starterWorkspace,
-    selectedPartId: "bulb-1",
-  });
+  loadWorkspace(
+    {
+      ...demoLesson.starterWorkspace,
+      selectedPartId: "bulb-1",
+    },
+    { adaptMobileStarterLayout: true },
+  );
 }
 
 function toggleSwitch(part: CircuitPart) {
@@ -2538,9 +2794,22 @@ function setResistance(part: CircuitPart, value: number) {
   part.resistance = Math.round(value);
 }
 
+function setPartRotation(part: CircuitPart, value: number) {
+  part.rotation = normalizeRotation(value);
+}
+
 loadSavedRecords();
-if (!restoreWorkspaceFromUrl()) {
-  restoreAutoSavedWorkspace();
+const restoredStartupWorkspace = restoreWorkspaceFromUrl() || restoreAutoSavedWorkspace();
+if (!restoredStartupWorkspace) {
+  loadWorkspace(
+    {
+      parts: parts.value,
+      selectedPartId: selectedPartId.value,
+      wires: wires.value,
+      zoom: board.zoom,
+    },
+    { adaptMobileStarterLayout: true },
+  );
 }
 watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], scheduleWorkspaceSave, {
   deep: true,
@@ -2564,7 +2833,7 @@ watch(
 
 function handleMobileViewportChange() {
   updateCanvasViewportSize();
-  fitMobileWorkbenchAfterRender();
+  fitMobileWorkbenchAfterRender("auto", true);
 }
 
 function handlePwaUpdateAvailable(event: Event) {
@@ -2574,6 +2843,31 @@ function handlePwaUpdateAvailable(event: Event) {
 
 function dismissPwaUpdate() {
   pwaUpdateRegistration.value = null;
+}
+
+async function checkPwaUpdate() {
+  if (pwaUpdateCheckState.value === "checking") {
+    return;
+  }
+
+  if (pwaUpdateCheckFeedbackTimer !== null) {
+    window.clearTimeout(pwaUpdateCheckFeedbackTimer);
+    pwaUpdateCheckFeedbackTimer = null;
+  }
+
+  pwaUpdateCheckState.value = "checking";
+  const updateFound = await requestPwaUpdateCheck();
+
+  if (updateFound || pwaUpdateRegistration.value) {
+    pwaUpdateCheckState.value = "idle";
+    return;
+  }
+
+  pwaUpdateCheckState.value = "latest";
+  pwaUpdateCheckFeedbackTimer = window.setTimeout(() => {
+    pwaUpdateCheckFeedbackTimer = null;
+    pwaUpdateCheckState.value = "idle";
+  }, 1800);
 }
 
 function applyPwaUpdate() {
@@ -2671,15 +2965,21 @@ onBeforeUnmount(() => {
   if (buildPlanCopyFeedbackTimer) {
     window.clearTimeout(buildPlanCopyFeedbackTimer);
   }
+
+  if (pwaUpdateCheckFeedbackTimer !== null) {
+    window.clearTimeout(pwaUpdateCheckFeedbackTimer);
+  }
 });
 </script>
 
 <template>
   <main class="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-background xl:h-screen xl:min-h-[720px]">
     <WorkbenchHeader
+      :check-pwa-update="checkPwaUpdate"
       :clear-wires="clearWires"
       :export-workbench-image="exportWorkbenchImage"
       :github-repository-url="githubRepositoryUrl"
+      :pwa-update-check-state="pwaUpdateCheckState"
       :reset-demo="resetDemo"
       :saved-workspace-label="savedWorkspaceLabel"
       :set-zoom="board.setZoom"
@@ -2751,6 +3051,8 @@ onBeforeUnmount(() => {
         :part-style="partStyle"
         :parts="parts"
         :pwa-update-registration="pwaUpdateRegistration"
+        :check-pwa-update="checkPwaUpdate"
+        :pwa-update-check-state="pwaUpdateCheckState"
         :rendered-wires="renderedWires"
         :reset-demo="resetDemo"
         :reset-mobile-view="resetMobileView"
@@ -2862,6 +3164,7 @@ onBeforeUnmount(() => {
         :selected-wire="selectedWire"
         :selected-wire-id="selectedWireId"
         :set-cloud-auth-mode="setCloudAuthMode"
+        :set-part-rotation="setPartRotation"
         :set-resistance="setResistance"
         :share-link-state="shareLinkState"
         :shared-workspace-loaded="sharedWorkspaceLoaded"

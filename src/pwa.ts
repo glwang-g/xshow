@@ -58,10 +58,14 @@ function haveDifferentAssets(currentAssets: Set<string>, latestAssets: Set<strin
   return Array.from(latestAssets).some((url) => !currentAssets.has(url));
 }
 
-async function checkShellAssetsForUpdate(registration: ServiceWorkerRegistration) {
+async function checkShellAssetsForUpdate(registration: ServiceWorkerRegistration, force = false) {
   const now = Date.now();
-  if (updatePrompted || now - lastShellProbeAt < 30_000) {
-    return;
+  if (updatePrompted) {
+    return true;
+  }
+
+  if (!force && now - lastShellProbeAt < 30_000) {
+    return false;
   }
 
   lastShellProbeAt = now;
@@ -85,10 +89,13 @@ async function checkShellAssetsForUpdate(registration: ServiceWorkerRegistration
       haveDifferentAssets(currentShellAssets(), shellAssetsFromHtml(latestHtml))
     ) {
       notifyUpdateAvailable(registration);
+      return true;
     }
   } catch {
     // Update probing should never interrupt the workbench.
   }
+
+  return false;
 }
 
 function watchForUpdates(registration: ServiceWorkerRegistration) {
@@ -131,10 +138,44 @@ function watchForUpdates(registration: ServiceWorkerRegistration) {
   });
 }
 
+export async function requestPwaUpdateCheck() {
+  if (!import.meta.env.PROD || !("serviceWorker" in navigator)) {
+    return false;
+  }
+
+  const registration = await navigator.serviceWorker.getRegistration();
+  if (!registration) {
+    return false;
+  }
+
+  await registration.update().catch(() => {
+    // Manual update checks are best-effort.
+  });
+
+  if (registration.waiting && navigator.serviceWorker.controller) {
+    notifyUpdateAvailable(registration);
+    return true;
+  }
+
+  return checkShellAssetsForUpdate(registration, true);
+}
+
 export function registerServiceWorker() {
   if (!import.meta.env.PROD || !("serviceWorker" in navigator)) {
     return;
   }
+
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    if (event.data?.type !== "XSHOW_UPDATE_READY") {
+      return;
+    }
+
+    void navigator.serviceWorker.getRegistration().then((registration) => {
+      if (registration) {
+        notifyUpdateAvailable(registration);
+      }
+    });
+  });
 
   window.addEventListener("load", () => {
     navigator.serviceWorker

@@ -22,10 +22,18 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim())
+    caches.keys().then(async (keys) => {
+      const staleKeys = keys.filter((key) => key !== CACHE_NAME);
+      const hadPreviousAppCache = staleKeys.some((key) => key.startsWith("xshow-circuits-"));
+
+      await Promise.all(staleKeys.map((key) => caches.delete(key)));
+      await self.clients.claim();
+
+      if (hadPreviousAppCache) {
+        await notifyWindowClientsUpdateReady();
+        await reloadWindowClients();
+      }
+    })
   );
 });
 
@@ -61,6 +69,39 @@ async function fetchWithTimeout(request, timeoutMs) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function reloadWindowClients() {
+  const clients = await self.clients.matchAll({
+    includeUncontrolled: true,
+    type: "window"
+  });
+
+  await Promise.all(
+    clients.map((client) => {
+      if (!client.url || !("navigate" in client)) {
+        return Promise.resolve();
+      }
+
+      return client.navigate(client.url).catch(() => {
+        // If a client cannot be navigated, the next normal navigation will still use the new worker.
+      });
+    })
+  );
+}
+
+async function notifyWindowClientsUpdateReady() {
+  const clients = await self.clients.matchAll({
+    includeUncontrolled: true,
+    type: "window"
+  });
+
+  clients.forEach((client) => {
+    client.postMessage({
+      type: "XSHOW_UPDATE_READY",
+      buildId: BUILD_ID
+    });
+  });
 }
 
 function cacheIndexResponse(response) {

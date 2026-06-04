@@ -15,6 +15,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 ## Features
 
 - Drag electronic components around the workbench
+- Rotate components to arbitrary angles for freer workbench layouts
 - Drag from a terminal to another terminal to create a wire
 - Drag an existing wire endpoint to reconnect it
 - Hold Alt while dragging an existing endpoint to branch a new wire from that terminal
@@ -34,7 +35,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Show contextual hints for the next unfinished lesson step
 - Highlight the relevant workbench parts and terminals for the active lesson step
 - Use a canvas-first mobile HUD with a component drawer and floating status panel
-- Keep GitHub and reset visible as top actions, with clear-wires in the bottom HUD on small-screen/PWA layouts
+- Keep GitHub, reset, clear-wires, export, and zoom controls together in the bottom HUD on small-screen/PWA layouts
 - Use a full-screen canvas feel on small-screen/PWA layouts instead of a framed board
 - Pan and zoom the workbench on touch devices with larger terminal and wire hit targets
 - Add the app to the home screen as a PWA and cache core static assets for offline relaunch

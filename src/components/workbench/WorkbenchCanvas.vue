@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import {
   Activity,
   BatteryCharging,
@@ -6,6 +7,7 @@ import {
   CircuitBoard,
   CircleDot,
   Cog,
+  Copy,
   Download,
   Gauge,
   GitFork,
@@ -13,9 +15,11 @@ import {
   LocateFixed,
   PackagePlus,
   RotateCcw,
+  RotateCw,
   SlidersHorizontal,
   ToggleLeft,
   ToggleRight,
+  Trash2,
   TriangleRight,
   Trophy,
   Unplug,
@@ -41,7 +45,7 @@ import {
   type Wire,
   type WireEnd,
 } from "@/lib/circuit";
-import { type StatusPanelTab } from "@/lib/workbench-ui";
+import { getSpec, type StatusPanelTab } from "@/lib/workbench-ui";
 
 type LessonProgress = { completed: number; percent: number; total: number };
 type Point = { x: number; y: number };
@@ -65,6 +69,7 @@ const props = defineProps<{
   closeLessonCompletePanel: () => void;
   currentAnimationDuration: string;
   dismissPwaUpdate: () => void;
+  duplicateSelectedPart: () => void;
   endCanvasGesture: (event: PointerEvent) => void;
   endDrag: () => void;
   endpointDrag: EndpointDrag | null;
@@ -104,6 +109,7 @@ const props = defineProps<{
   renderedWires: Wire[];
   resetDemo: () => void;
   resetMobileView: () => void;
+  removeSelectedPart: () => void;
   rewiring: { wireId: string; end: WireEnd } | null;
   selectWire: (wireId: string) => void;
   selectedPartId: string;
@@ -114,6 +120,7 @@ const props = defineProps<{
   setResistance: (part: CircuitPart, value: number) => void;
   setWireHover: (wireId: string) => void;
   setWorkbenchElement: (element: HTMLElement | null) => void;
+  setPartRotation: (part: CircuitPart, value: number) => void;
   setZoom: (value: number) => void;
   simulation: CircuitSimulation;
   startEndpointDrag: (event: PointerEvent, wire: Wire, end: WireEnd) => void;
@@ -145,6 +152,29 @@ function bindCanvasViewport(element: unknown) {
 
 function bindWorkbench(element: unknown) {
   props.setWorkbenchElement(element instanceof HTMLElement ? element : null);
+}
+
+const selectedPart = computed(() => props.parts.find((part) => part.id === props.selectedPartId));
+
+const selectedPartToolbarStyle = computed(() => {
+  if (!selectedPart.value) {
+    return {};
+  }
+
+  const spec = getSpec(selectedPart.value);
+  return {
+    left: `${selectedPart.value.x + spec.width / 2}px`,
+    top: `${Math.max(12, selectedPart.value.y - 48)}px`,
+    transform: "translateX(-50%)",
+  };
+});
+
+function rotateSelectedPart(delta: number) {
+  if (!selectedPart.value) {
+    return;
+  }
+
+  props.setPartRotation(selectedPart.value, (selectedPart.value.rotation ?? 0) + delta);
 }
 </script>
 
@@ -311,6 +341,56 @@ function bindWorkbench(element: unknown) {
         </div>
 
         <div
+          v-if="selectedPart && !selectedWire && !palettePanelOpen && !statusPanelOpen && !lessonCompletePanelOpen && !pwaUpdateRegistration"
+          class="fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] left-3 right-3 z-30 flex items-center justify-center xl:hidden"
+        >
+          <div class="flex max-w-full items-center gap-1 overflow-x-auto rounded-md border bg-card/95 p-1 shadow-panel" data-circuit-interactive="true">
+            <Button class="h-8 w-8" variant="ghost" size="icon" title="逆时针旋转 15 度" @pointerdown.stop @click.stop="rotateSelectedPart(-15)">
+              <RotateCcw class="h-4 w-4" />
+            </Button>
+            <Button class="h-8 w-8" variant="ghost" size="icon" title="顺时针旋转 15 度" @pointerdown.stop @click.stop="rotateSelectedPart(15)">
+              <RotateCw class="h-4 w-4" />
+            </Button>
+            <Button
+              v-if="selectedPart.type === 'switch'"
+              class="h-8 w-8"
+              variant="ghost"
+              size="icon"
+              :title="selectedPart.closed ? '断开开关' : '闭合开关'"
+              @pointerdown.stop
+              @click.stop="toggleSwitch(selectedPart)"
+            >
+              <component :is="selectedPart.closed ? ToggleRight : ToggleLeft" class="h-4 w-4" />
+            </Button>
+            <Button
+              v-if="selectedPart.type === 'battery'"
+              class="h-8 w-8"
+              variant="ghost"
+              size="icon"
+              title="反转电池极性"
+              @pointerdown.stop
+              @click.stop="toggleBatteryPolarity(selectedPart)"
+            >
+              <BatteryCharging class="h-4 w-4" />
+            </Button>
+            <Button class="h-8 w-8" variant="ghost" size="icon" title="复制元件" @pointerdown.stop @click.stop="duplicateSelectedPart">
+              <Copy class="h-4 w-4" />
+            </Button>
+            <Button
+              class="h-8 w-8 text-rose-700 hover:text-rose-800"
+              variant="ghost"
+              size="icon"
+              title="删除元件"
+              :disabled="parts.length <= 1"
+              @pointerdown.stop
+              @click.stop="removeSelectedPart"
+            >
+              <Trash2 class="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div
           class="relative mx-0 mb-24 mt-0 xl:absolute xl:left-1/2 xl:top-1/2 xl:m-0 xl:-translate-x-1/2 xl:-translate-y-1/2"
           :style="{
             width: `${effectiveWorkbenchWidth * (zoom / 100)}px`,
@@ -331,6 +411,53 @@ function bindWorkbench(element: unknown) {
             @pointercancel="endDrag"
             @pointerdown.self="clearCanvasSelection"
           >
+            <div
+              v-if="selectedPart && !selectedWire"
+              class="absolute z-50 hidden items-center gap-1 rounded-md border bg-card/95 p-1 shadow-panel xl:flex"
+              :style="selectedPartToolbarStyle"
+              data-circuit-interactive="true"
+            >
+              <Button variant="ghost" size="icon" title="逆时针旋转 15 度" @pointerdown.stop @click.stop="rotateSelectedPart(-15)">
+                <RotateCcw class="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" title="顺时针旋转 15 度" @pointerdown.stop @click.stop="rotateSelectedPart(15)">
+                <RotateCw class="h-4 w-4" />
+              </Button>
+              <Button
+                v-if="selectedPart.type === 'switch'"
+                variant="ghost"
+                size="icon"
+                :title="selectedPart.closed ? '断开开关' : '闭合开关'"
+                @pointerdown.stop
+                @click.stop="toggleSwitch(selectedPart)"
+              >
+                <component :is="selectedPart.closed ? ToggleRight : ToggleLeft" class="h-4 w-4" />
+              </Button>
+              <Button
+                v-if="selectedPart.type === 'battery'"
+                variant="ghost"
+                size="icon"
+                title="反转电池极性"
+                @pointerdown.stop
+                @click.stop="toggleBatteryPolarity(selectedPart)"
+              >
+                <BatteryCharging class="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" title="复制元件" @pointerdown.stop @click.stop="duplicateSelectedPart">
+                <Copy class="h-4 w-4" />
+              </Button>
+              <Button
+                class="text-rose-700 hover:text-rose-800"
+                variant="ghost"
+                size="icon"
+                title="删除元件"
+                :disabled="parts.length <= 1"
+                @pointerdown.stop
+                @click.stop="removeSelectedPart"
+              >
+                <Trash2 class="h-4 w-4" />
+              </Button>
+            </div>
             <svg class="pointer-events-none absolute inset-0 z-30 h-full w-full">
             <path
               v-if="newWireDrag"

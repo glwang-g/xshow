@@ -19,6 +19,7 @@ import {
   PackageCheck,
   Pencil,
   RotateCcw,
+  RotateCw,
   Save,
   ShieldCheck,
   Trash2,
@@ -132,6 +133,7 @@ defineProps<{
   selectedWire: Wire | undefined;
   selectedWireId: string | null;
   setCloudAuthMode: (mode: CloudAuthMode) => void;
+  setPartRotation: (part: CircuitPart, value: number) => void;
   setResistance: (part: CircuitPart, value: number) => void;
   shareLinkState: "copied" | "idle" | "manual";
   sharedWorkspaceLoaded: boolean;
@@ -841,6 +843,45 @@ function updateInput(event: Event) {
                 type="number"
               />
             </label>
+          </div>
+          <div class="space-y-2 rounded-md border bg-card px-3 py-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs text-muted-foreground">角度</span>
+              <div class="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="逆时针旋转 15 度"
+                  @click="setPartRotation(selectedPart, (selectedPart.rotation ?? 0) - 15)"
+                >
+                  <RotateCcw class="h-4 w-4" />
+                </Button>
+                <input
+                  class="h-8 w-16 rounded-md border bg-background px-2 text-center text-xs tabular-nums"
+                  max="359"
+                  min="0"
+                  type="number"
+                  :value="selectedPart.rotation ?? 0"
+                  @input="setPartRotation(selectedPart, Number(($event.target as HTMLInputElement).value))"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="顺时针旋转 15 度"
+                  @click="setPartRotation(selectedPart, (selectedPart.rotation ?? 0) + 15)"
+                >
+                  <RotateCw class="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <input
+              class="w-full accent-cyan-700"
+              max="359"
+              min="0"
+              type="range"
+              :value="selectedPart.rotation ?? 0"
+              @input="setPartRotation(selectedPart, Number(($event.target as HTMLInputElement).value))"
+            />
           </div>
           <Button
             v-if="selectedPart.type === 'switch'"

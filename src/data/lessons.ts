@@ -32,6 +32,7 @@ export type LessonWorkspacePart = {
   name: string;
   polarity?: "normal" | "reversed";
   resistance?: number;
+  rotation?: number;
   type: LessonPartType;
   x: number;
   y: number;

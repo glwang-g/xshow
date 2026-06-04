@@ -93,11 +93,25 @@ function partExportColors(part: CircuitPart) {
   return { background: "#ffffff", foreground: "#0f172a", muted: part.closed ? "#10b981" : "#f43f5e" };
 }
 
+function partRotation(part: CircuitPart) {
+  const rotation = Math.round(part.rotation ?? 0) % 360;
+  return rotation < 0 ? rotation + 360 : rotation;
+}
+
 function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart, options: ExportWorkbenchImageOptions) {
   const spec = getSpec(part);
   const colors = partExportColors(part);
 
   context.save();
+  const rotation = partRotation(part);
+  if (rotation !== 0) {
+    const centerX = part.x + spec.width / 2;
+    const centerY = part.y + spec.height / 2;
+    context.translate(centerX, centerY);
+    context.rotate((rotation * Math.PI) / 180);
+    context.translate(-centerX, -centerY);
+  }
+
   roundedRectPath(context, part.x, part.y, spec.width, spec.height, 8);
   context.fillStyle = colors.background;
   context.fill();

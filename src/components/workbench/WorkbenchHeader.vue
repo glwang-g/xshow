@@ -66,7 +66,7 @@ defineProps<{
       <Button variant="outline" size="sm" @click="clearWires">
         <span class="relative h-4 w-4">
           <Unplug class="h-4 w-4" />
-          <X class="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-card text-rose-600" />
+          <X class="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 stroke-[3] text-rose-600" />
         </span>
         清线
       </Button>

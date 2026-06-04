@@ -64,7 +64,7 @@ import {
   formatPhysicalBuildPlanMarkdown,
 } from "@/lib/physical-build";
 import { exportWorkbenchImage as exportWorkbenchImageFile } from "@/lib/workbench-export";
-import { pwaUpdateAvailableEvent, requestPwaUpdateCheck } from "@/pwa";
+import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
 type TerminalHit = {
@@ -141,7 +141,6 @@ const cloudUserEmail = ref<string | null>(null);
 const sharedWorkspaceLoaded = ref(false);
 const suppressCloudDirtyMark = ref(false);
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
-const pwaUpdateCheckState = ref<"checking" | "idle" | "latest">("idle");
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
 const statusPanelTab = ref<StatusPanelTab>("lesson");
@@ -692,7 +691,6 @@ const {
 let autosaveTimer: number | null = null;
 let buildPlanCopyFeedbackTimer: number | null = null;
 let cloudAuthUnsubscribe: (() => void) | null = null;
-let pwaUpdateCheckFeedbackTimer: number | null = null;
 let shareLinkFeedbackTimer: number | null = null;
 
 function clearInteractionState() {
@@ -2845,31 +2843,6 @@ function dismissPwaUpdate() {
   pwaUpdateRegistration.value = null;
 }
 
-async function checkPwaUpdate() {
-  if (pwaUpdateCheckState.value === "checking") {
-    return;
-  }
-
-  if (pwaUpdateCheckFeedbackTimer !== null) {
-    window.clearTimeout(pwaUpdateCheckFeedbackTimer);
-    pwaUpdateCheckFeedbackTimer = null;
-  }
-
-  pwaUpdateCheckState.value = "checking";
-  const updateFound = await requestPwaUpdateCheck();
-
-  if (updateFound || pwaUpdateRegistration.value) {
-    pwaUpdateCheckState.value = "idle";
-    return;
-  }
-
-  pwaUpdateCheckState.value = "latest";
-  pwaUpdateCheckFeedbackTimer = window.setTimeout(() => {
-    pwaUpdateCheckFeedbackTimer = null;
-    pwaUpdateCheckState.value = "idle";
-  }, 1800);
-}
-
 function applyPwaUpdate() {
   const waitingWorker = pwaUpdateRegistration.value?.waiting;
   if (!waitingWorker || !("serviceWorker" in navigator)) {
@@ -2966,20 +2939,15 @@ onBeforeUnmount(() => {
     window.clearTimeout(buildPlanCopyFeedbackTimer);
   }
 
-  if (pwaUpdateCheckFeedbackTimer !== null) {
-    window.clearTimeout(pwaUpdateCheckFeedbackTimer);
-  }
 });
 </script>
 
 <template>
   <main class="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-background xl:h-screen xl:min-h-[720px]">
     <WorkbenchHeader
-      :check-pwa-update="checkPwaUpdate"
       :clear-wires="clearWires"
       :export-workbench-image="exportWorkbenchImage"
       :github-repository-url="githubRepositoryUrl"
-      :pwa-update-check-state="pwaUpdateCheckState"
       :reset-demo="resetDemo"
       :saved-workspace-label="savedWorkspaceLabel"
       :set-zoom="board.setZoom"
@@ -3051,8 +3019,6 @@ onBeforeUnmount(() => {
         :part-style="partStyle"
         :parts="parts"
         :pwa-update-registration="pwaUpdateRegistration"
-        :check-pwa-update="checkPwaUpdate"
-        :pwa-update-check-state="pwaUpdateCheckState"
         :rendered-wires="renderedWires"
         :reset-demo="resetDemo"
         :reset-mobile-view="resetMobileView"

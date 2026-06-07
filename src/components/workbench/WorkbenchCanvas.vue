@@ -11,6 +11,7 @@ import {
   Download,
   Gauge,
   GitFork,
+  HelpCircle,
   Lightbulb,
   LocateFixed,
   PackagePlus,
@@ -51,6 +52,18 @@ type LessonProgress = { completed: number; percent: number; total: number };
 type Point = { x: number; y: number };
 type NewWireDrag = { from: TerminalRef; moved: boolean; over: TerminalRef | null; x: number; y: number };
 type EndpointDrag = { wireId: string; end: WireEnd; x: number; y: number; over: TerminalRef | null };
+type BeginnerGuideStep = {
+  actionLabel: string;
+  description: string;
+  id: "parts" | "switch" | "wire";
+  title: string;
+};
+type GuideAssistantMode = "diagnosis" | "menu" | "steps" | "wire";
+type GuideDiagnosis = {
+  actionLabel: string;
+  description: string;
+  title: string;
+};
 
 const terminalKeys: TerminalKey[] = ["a", "b"];
 
@@ -58,6 +71,9 @@ const props = defineProps<{
   activeLesson: { title: string };
   applyPwaUpdate: () => void;
   batteryPolarityLabel: (part: CircuitPart) => string;
+  beginnerGuideStep: BeginnerGuideStep;
+  beginnerGuideStepIndex: number;
+  beginnerGuideTotal: number;
   ammeterStatus: (part: CircuitPart) => AmmeterState;
   bulbBrightness: (part: CircuitPart) => number;
   buzzerStatus: (part: CircuitPart) => BuzzerState;
@@ -68,6 +84,7 @@ const props = defineProps<{
   clearWires: () => void;
   closeLessonCompletePanel: () => void;
   currentAnimationDuration: string;
+  dismissGuideAssistant: () => void;
   dismissPwaUpdate: () => void;
   duplicateSelectedPart: () => void;
   endCanvasGesture: (event: PointerEvent) => void;
@@ -85,6 +102,11 @@ const props = defineProps<{
   handlePartPointerDown: (event: PointerEvent, part: CircuitPart) => void;
   handleTerminalClick: (part: CircuitPart, terminal: TerminalKey) => void;
   handleWorkbenchPointerMove: (event: PointerEvent) => void;
+  handleBeginnerGuideAction: () => void;
+  handleGuideDiagnosisAction: () => void;
+  guideAssistantMode: GuideAssistantMode;
+  guideAssistantOpen: boolean;
+  guideDiagnosis: GuideDiagnosis;
   isLessonPartTarget: (part: CircuitPart) => boolean;
   isLessonTerminalTarget: (part: CircuitPart, terminal: TerminalKey) => boolean;
   isTerminalDropTarget: (part: CircuitPart, terminal: TerminalKey) => boolean;
@@ -102,12 +124,16 @@ const props = defineProps<{
   motorStatus: (part: CircuitPart) => MotorState;
   newWireDrag: NewWireDrag | null;
   newWireDragPath: () => string;
+  loadExampleFromGuide: () => void;
+  nextBeginnerGuideStep: () => void;
+  openGuideAssistant: (mode?: GuideAssistantMode) => void;
   palettePanelOpen: boolean;
   partStyle: (part: CircuitPart) => Record<string, string>;
   parts: CircuitPart[];
   pwaUpdateRegistration: ServiceWorkerRegistration | null;
   renderedWires: Wire[];
   resetDemo: () => void;
+  resetLayoutFromGuide: () => void;
   resetMobileView: () => void;
   removeSelectedPart: () => void;
   rewiring: { wireId: string; end: WireEnd } | null;
@@ -122,7 +148,10 @@ const props = defineProps<{
   setWorkbenchElement: (element: HTMLElement | null) => void;
   setPartRotation: (part: CircuitPart, value: number) => void;
   setZoom: (value: number) => void;
+  showGuideDiagnosis: () => void;
+  showWireGuide: () => void;
   simulation: CircuitSimulation;
+  startBeginnerGuide: () => void;
   startEndpointDrag: (event: PointerEvent, wire: Wire, end: WireEnd) => void;
   startNewWireDrag: (event: PointerEvent, part: CircuitPart, terminal: TerminalKey) => void;
   statusPanelOpen: boolean;
@@ -176,6 +205,24 @@ function rotateSelectedPart(delta: number) {
 
   props.setPartRotation(selectedPart.value, (selectedPart.value.rotation ?? 0) + delta);
 }
+
+function isBeginnerWireTerminal(part: CircuitPart, terminal: TerminalKey) {
+  const isSelectedGuideTerminal =
+    props.selectedTerminal?.partId === part.id && props.selectedTerminal.terminal === terminal;
+
+  return (
+    props.guideAssistantOpen &&
+    (props.guideAssistantMode === "steps" || props.guideAssistantMode === "wire") &&
+    (props.beginnerGuideStep.id === "wire" || props.guideAssistantMode === "wire") &&
+    ((part.id === "battery-1" && terminal === "b") ||
+      (part.id === "switch-1" && terminal === "a") ||
+      isSelectedGuideTerminal)
+  );
+}
+
+function isBeginnerSwitchTarget(part: CircuitPart) {
+  return props.guideAssistantOpen && props.guideAssistantMode === "steps" && props.beginnerGuideStep.id === "switch" && part.type === "switch";
+}
 </script>
 
 <template>
@@ -224,6 +271,16 @@ function rotateSelectedPart(delta: number) {
               @click="emit('toggle-status')"
             >
               <Gauge class="h-4 w-4" />
+            </Button>
+            <Button
+              :class="`h-8 w-8 ${guideAssistantOpen ? 'bg-amber-100 text-amber-950 hover:bg-amber-100' : ''}`"
+              :aria-pressed="guideAssistantOpen"
+              variant="ghost"
+              size="icon"
+              title="引导助手"
+              @click="openGuideAssistant()"
+            >
+              <HelpCircle class="h-4 w-4" />
             </Button>
             <Button class="h-8 w-8" variant="ghost" size="icon" title="清线" @click="clearWires">
               <span class="relative h-4 w-4">
@@ -317,6 +374,91 @@ function rotateSelectedPart(delta: number) {
           </Button>
         </section>
 
+        <section
+          v-if="guideAssistantOpen"
+          class="fixed left-3 right-3 top-3 z-50 rounded-md border border-amber-200 bg-card/95 p-3 shadow-panel sm:left-auto sm:right-5 sm:w-[24rem] xl:top-20"
+        >
+          <div class="mb-3 flex items-start gap-3">
+            <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-amber-100 text-amber-900">
+              <HelpCircle class="h-4 w-4" />
+            </span>
+            <div class="min-w-0 flex-1">
+              <div class="mb-1 flex items-center gap-2 text-xs font-medium text-amber-800">
+                <span>引导助手</span>
+                <span v-if="guideAssistantMode === 'steps'" class="rounded-md bg-amber-100 px-1.5 py-0.5 tabular-nums">
+                  {{ beginnerGuideStepIndex + 1 }}/{{ beginnerGuideTotal }}
+                </span>
+              </div>
+              <template v-if="guideAssistantMode === 'menu'">
+                <div class="text-sm font-semibold">卡住了？我带你走下一步</div>
+                <p class="mt-1 text-xs leading-5 text-muted-foreground">选择一个现在最像的问题，助手会直接高亮对应操作。</p>
+              </template>
+              <template v-else-if="guideAssistantMode === 'diagnosis'">
+                <div class="text-sm font-semibold">{{ guideDiagnosis.title }}</div>
+                <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ guideDiagnosis.description }}</p>
+              </template>
+              <template v-else-if="guideAssistantMode === 'wire'">
+                <div class="text-sm font-semibold">拖动圆点就能连线</div>
+                <p class="mt-1 text-xs leading-5 text-muted-foreground">已高亮一组端子。按住电池右侧圆点，拖到开关左侧圆点上松手。</p>
+              </template>
+              <template v-else>
+                <div class="text-sm font-semibold">{{ beginnerGuideStep.title }}</div>
+                <p class="mt-1 text-xs leading-5 text-muted-foreground">{{ beginnerGuideStep.description }}</p>
+              </template>
+            </div>
+            <Button variant="ghost" size="icon" title="关闭助手" @click="dismissGuideAssistant">
+              <X class="h-4 w-4" />
+            </Button>
+          </div>
+          <div v-if="guideAssistantMode === 'steps'" class="mb-3 h-1.5 overflow-hidden rounded-full bg-amber-100">
+            <div
+              class="h-full rounded-full bg-amber-500 transition-all"
+              :style="{ width: `${((beginnerGuideStepIndex + 1) / beginnerGuideTotal) * 100}%` }"
+            />
+          </div>
+          <div v-if="guideAssistantMode === 'menu'" class="grid grid-cols-1 gap-2">
+            <Button variant="outline" size="sm" class="justify-start" @click="startBeginnerGuide()">
+              我不知道怎么开始
+            </Button>
+            <Button variant="outline" size="sm" class="justify-start" @click="showWireGuide">
+              我不知道怎么连线
+            </Button>
+            <Button variant="outline" size="sm" class="justify-start" @click="showGuideDiagnosis">
+              为什么灯不亮
+            </Button>
+            <Button variant="outline" size="sm" class="justify-start" @click="resetLayoutFromGuide">
+              恢复默认布局
+            </Button>
+            <Button size="sm" class="justify-start" @click="loadExampleFromGuide">
+              看一个示例
+            </Button>
+          </div>
+          <div v-else class="flex items-center justify-between gap-2">
+            <Button variant="outline" size="sm" @click="openGuideAssistant('menu')">
+              返回
+            </Button>
+            <div v-if="guideAssistantMode === 'steps'" class="flex items-center gap-2">
+              <Button variant="outline" size="sm" @click="handleBeginnerGuideAction">
+                {{ beginnerGuideStep.actionLabel }}
+              </Button>
+              <Button size="sm" @click="nextBeginnerGuideStep">
+                {{ beginnerGuideStepIndex + 1 >= beginnerGuideTotal ? "完成" : "下一步" }}
+              </Button>
+            </div>
+            <div v-else-if="guideAssistantMode === 'diagnosis'" class="flex items-center gap-2">
+              <Button variant="outline" size="sm" @click="showGuideDiagnosis">
+                再检查
+              </Button>
+              <Button size="sm" @click="handleGuideDiagnosisAction">
+                {{ guideDiagnosis.actionLabel }}
+              </Button>
+            </div>
+            <Button v-else size="sm" @click="openGuideAssistant('steps')">
+              继续三步引导
+            </Button>
+          </div>
+        </section>
+
         <div class="hidden w-max max-w-[calc(100vw-1.5rem)] items-center gap-2 rounded-md border bg-card/95 px-3 py-2 shadow-panel xl:absolute xl:left-4 xl:top-4 xl:z-20 xl:flex">
           <CircuitBoard class="h-4 w-4 text-cyan-700" />
           <span class="text-sm font-medium">Workbench</span>
@@ -342,9 +484,9 @@ function rotateSelectedPart(delta: number) {
 
         <div
           v-if="selectedPart && !selectedWire && !palettePanelOpen && !statusPanelOpen && !lessonCompletePanelOpen && !pwaUpdateRegistration"
-          class="fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] left-3 right-3 z-30 flex items-center justify-center xl:hidden"
+          class="pointer-events-none fixed bottom-[calc(7rem+env(safe-area-inset-bottom))] left-3 right-3 z-30 flex items-center justify-center xl:hidden"
         >
-          <div class="flex max-w-full items-center gap-1 overflow-x-auto rounded-md border bg-card/95 p-1 shadow-panel" data-circuit-interactive="true">
+          <div class="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-md border bg-card/95 p-1 shadow-panel" data-circuit-interactive="true">
             <Button class="h-8 w-8" variant="ghost" size="icon" title="逆时针旋转 15 度" @pointerdown.stop @click.stop="rotateSelectedPart(-15)">
               <RotateCcw class="h-4 w-4" />
             </Button>
@@ -568,6 +710,7 @@ function rotateSelectedPart(delta: number) {
               part.type === 'voltmeter' ? 'bg-indigo-50' : '',
               part.type === 'buzzer' ? 'bg-sky-50' : '',
               part.type === 'motor' ? 'bg-emerald-50' : '',
+              isBeginnerSwitchTarget(part) ? 'z-30 ring-4 ring-amber-300 ring-offset-2 ring-offset-white' : '',
             ]"
             :style="partStyle(part)"
             @pointerdown="handlePartPointerDown($event, part)"
@@ -581,6 +724,7 @@ function rotateSelectedPart(delta: number) {
                 isTerminalSelected(part, terminal) ? 'ring-4 ring-amber-300' : '',
                 isTerminalDropTarget(part, terminal) ? 'scale-125 bg-amber-500 text-amber-950' : '',
                 isLessonTerminalTarget(part, terminal) ? 'lesson-terminal-target' : '',
+                isBeginnerWireTerminal(part, terminal) ? 'animate-pulse bg-amber-500 text-amber-950 ring-4 ring-amber-300' : '',
               ]"
               :style="terminalStyle(part, terminal)"
               :title="terminalDisplayLabel(part, terminal)"

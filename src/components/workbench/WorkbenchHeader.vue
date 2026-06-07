@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, GitFork, RotateCcw, Save, Sparkles, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
+import { Download, GitFork, HelpCircle, RotateCcw, Save, Sparkles, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
 import Button from "@/components/ui/Button.vue";
 import type { CircuitSimulation } from "@/lib/circuit";
 
@@ -7,6 +7,7 @@ defineProps<{
   clearWires: () => void;
   exportWorkbenchImage: () => void;
   githubRepositoryUrl: string;
+  openGuideAssistant: () => void;
   resetDemo: () => void;
   savedWorkspaceLabel: string;
   setZoom: (value: number) => void;
@@ -52,6 +53,10 @@ defineProps<{
     </div>
 
     <div class="flex items-center gap-2">
+      <Button variant="outline" size="sm" @click="openGuideAssistant()">
+        <HelpCircle class="h-4 w-4" />
+        新手
+      </Button>
       <a
         :href="githubRepositoryUrl"
         target="_blank"

@@ -96,12 +96,30 @@ type WorkbenchBounds = {
 };
 
 type CloudRecord = CloudWorkspaceRecord<PersistedWorkspace>;
+type BeginnerGuideStepId = "parts" | "wire" | "switch";
+type BeginnerGuideStep = {
+  actionLabel: string;
+  description: string;
+  id: BeginnerGuideStepId;
+  title: string;
+};
+type GuideAssistantMode = "diagnosis" | "menu" | "steps" | "wire";
+type GuideDiagnosisAction = "none" | "status" | "switch" | "wire";
+type GuideDiagnosis = {
+  action: GuideDiagnosisAction;
+  actionLabel: string;
+  description: string;
+  title: string;
+};
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
+const guideAssistantDismissedKey = "xshow.guide-assistant.dismissed.v1";
 const cloudUploadSuggestionKeyPrefix = "xshow.cloud.upload-suggestion.v1";
 const maxEditorHistoryEntries = 40;
 const workspaceShareParam = "workspace";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
+const icpRecordNumber = "京ICP备2026031619号-1";
+const icpRecordUrl = "https://beian.miit.gov.cn/";
 const mobileWorkbenchBase = {
   width: workbench.width,
   height: workbench.height,
@@ -144,6 +162,9 @@ const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
 const statusPanelOpen = ref(false);
 const statusPanelTab = ref<StatusPanelTab>("lesson");
+const guideAssistantOpen = ref(false);
+const guideAssistantMode = ref<GuideAssistantMode>("menu");
+const beginnerGuideStepIndex = ref(0);
 const lessonCompletePanelOpen = ref(false);
 const dismissedLessonCompletionId = ref<string | null>(null);
 const hoveredWireId = ref<string | null>(null);
@@ -204,6 +225,27 @@ const parts = ref<CircuitPart[]>([
   { id: "bulb-1", name: "小灯泡", type: "bulb", x: 658, y: 240 },
   { id: "resistor-1", name: "可变电阻器", type: "resistor", x: 330, y: 472, resistance: 48 },
 ]);
+
+const beginnerGuideSteps: BeginnerGuideStep[] = [
+  {
+    id: "parts",
+    title: "先选一个元器件",
+    description: "从元器件面板点一下电池、开关或灯泡，工作台会自动放上去。",
+    actionLabel: "打开元器件",
+  },
+  {
+    id: "wire",
+    title: "拖动圆点就能连线",
+    description: "按住元器件旁边的圆形端子，拖到另一个端子上松手，就能接出一根导线。",
+    actionLabel: "高亮端子",
+  },
+  {
+    id: "switch",
+    title: "点开关看结果",
+    description: "电路接通后，点击开关，灯泡、导线动画和状态面板会一起变化。",
+    actionLabel: "找到开关",
+  },
+];
 
 const wires = ref<Wire[]>([
   {
@@ -656,6 +698,62 @@ const lessonStepStates = computed(() =>
 const nextLessonStep = computed(() => lessonStepStates.value.find((step) => !step.complete));
 const activeLessonGuide = computed(() => nextLessonStep.value?.guide ?? null);
 const mobileLessonStripText = computed(() => nextLessonStep.value?.description ?? "实验完成");
+const beginnerGuideStep = computed(() => beginnerGuideSteps[beginnerGuideStepIndex.value] ?? beginnerGuideSteps[0]);
+const guideDiagnosis = computed<GuideDiagnosis>(() => {
+  const openSwitch = parts.value.find((part) => part.type === "switch" && !part.closed);
+  if (openSwitch) {
+    return {
+      action: "switch",
+      actionLabel: "找到开关",
+      title: "开关还没闭合",
+      description: "先点一下开关，让电流有机会通过。开关闭合后，灯泡和导线动画会立刻变化。",
+    };
+  }
+
+  if (!simulation.value.closed) {
+    return {
+      action: "wire",
+      actionLabel: "高亮端子",
+      title: "导线还没接成一圈",
+      description: "从一个圆形端子拖到另一个端子，试着让电池、开关和灯泡连成一圈。",
+    };
+  }
+
+  const reversedLed = ledParts().find((part) => ledStatus(part).reversed);
+  if (reversedLed) {
+    return {
+      action: "status",
+      actionLabel: "看属性",
+      title: "LED 可能接反了",
+      description: "LED 有正负极。选中 LED 后看属性面板，把正负方向调对，或者重新连接两端。",
+    };
+  }
+
+  if (mainBulb.value && mainBulbBrightness.value === 0) {
+    return {
+      action: "status",
+      actionLabel: "看状态",
+      title: "灯泡还没有电流",
+      description: "回路看起来接通了，但灯泡没有明显亮度。可以调小可变电阻，或检查灯泡两端是否接在线路里。",
+    };
+  }
+
+  if (simulation.value.closed) {
+    return {
+      action: "status",
+      actionLabel: "看状态",
+      title: "电路已经接通",
+      description: "现在可以试试调电阻、反转电池，或者换成 LED、电机和蜂鸣器观察差异。",
+    };
+  }
+
+  return {
+    action: "none",
+    actionLabel: "知道了",
+    title: "先从一根线开始",
+    description: "按住元器件旁边的圆点，拖到另一个圆点上松手，就能连出第一根导线。",
+  };
+});
 const lessonProgress = computed(() => {
   const completed = lessonStepStates.value.filter((step) => step.complete).length;
   const total = lessonStepStates.value.length;
@@ -1695,6 +1793,14 @@ function addWireBetween(from: TerminalRef, to: TerminalRef) {
   wires.value.push(wire);
   hoveredWireId.value = wire.id;
   selectedWireId.value = wire.id;
+  if (
+    guideAssistantOpen.value &&
+    (guideAssistantMode.value === "steps" || guideAssistantMode.value === "wire") &&
+    beginnerGuideStep.value.id === "wire"
+  ) {
+    beginnerGuideStepIndex.value = 2;
+    guideAssistantMode.value = "steps";
+  }
   return wire;
 }
 
@@ -2856,10 +2962,118 @@ function applyPwaUpdate() {
   waitingWorker.postMessage({ type: "SKIP_WAITING" });
 }
 
+function openGuideAssistant(mode: GuideAssistantMode = "menu") {
+  guideAssistantMode.value = mode;
+  guideAssistantOpen.value = true;
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(guideAssistantDismissedKey, "opened");
+  }
+}
+
+function startBeginnerGuide(stepIndex = 0) {
+  beginnerGuideStepIndex.value = Math.min(beginnerGuideSteps.length - 1, Math.max(0, stepIndex));
+  openGuideAssistant("steps");
+}
+
+function showWireGuide() {
+  beginnerGuideStepIndex.value = 1;
+  handleGuideWireAction();
+  openGuideAssistant("wire");
+}
+
+function showGuideDiagnosis() {
+  openGuideAssistant("diagnosis");
+}
+
+function dismissGuideAssistant() {
+  guideAssistantOpen.value = false;
+
+  if (typeof window !== "undefined") {
+    window.localStorage.setItem(guideAssistantDismissedKey, "dismissed");
+  }
+}
+
+function nextBeginnerGuideStep() {
+  if (beginnerGuideStepIndex.value >= beginnerGuideSteps.length - 1) {
+    dismissGuideAssistant();
+    return;
+  }
+
+  beginnerGuideStepIndex.value += 1;
+}
+
 function openMobileStatusPanel(tab: StatusPanelTab = statusPanelTab.value) {
   statusPanelTab.value = tab;
   statusPanelOpen.value = true;
   palettePanelOpen.value = false;
+}
+
+function handleGuidePartsAction() {
+  palettePanelOpen.value = true;
+  statusPanelOpen.value = false;
+}
+
+function handleGuideWireAction() {
+  selectedPartId.value = "battery-1";
+  selectedWireId.value = null;
+  selectedTerminal.value = { partId: "battery-1", terminal: "b" };
+  palettePanelOpen.value = false;
+  statusPanelOpen.value = false;
+}
+
+function handleGuideSwitchAction() {
+  selectedPartId.value = "switch-1";
+  selectedWireId.value = null;
+  selectedTerminal.value = null;
+  palettePanelOpen.value = false;
+  statusPanelOpen.value = false;
+}
+
+function handleBeginnerGuideAction() {
+  const step = beginnerGuideStep.value;
+
+  if (step.id === "parts") {
+    handleGuidePartsAction();
+    return;
+  }
+
+  if (step.id === "wire") {
+    handleGuideWireAction();
+    return;
+  }
+
+  if (step.id === "switch") {
+    handleGuideSwitchAction();
+  }
+}
+
+function handleGuideDiagnosisAction() {
+  const action = guideDiagnosis.value.action;
+
+  if (action === "switch") {
+    handleGuideSwitchAction();
+    return;
+  }
+
+  if (action === "wire") {
+    showWireGuide();
+    return;
+  }
+
+  if (action === "status") {
+    openMobileStatusPanel("circuit");
+  }
+}
+
+function resetLayoutFromGuide() {
+  resetMobileView();
+  guideAssistantOpen.value = false;
+}
+
+function loadExampleFromGuide() {
+  resetDemo();
+  guideAssistantOpen.value = false;
 }
 
 function startCloudAuthSession() {
@@ -2898,6 +3112,11 @@ onMounted(() => {
   window.addEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
   window.visualViewport?.addEventListener("resize", handleMobileViewportChange);
   window.screen.orientation?.addEventListener("change", handleMobileViewportChange);
+
+  if (!window.localStorage.getItem(guideAssistantDismissedKey)) {
+    guideAssistantOpen.value = true;
+    guideAssistantMode.value = "menu";
+  }
 
   if (cloudConfig.configured) {
     cloudStartupTimer = window.setTimeout(() => {
@@ -2944,10 +3163,20 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-background xl:h-screen xl:min-h-[720px]">
+    <a
+      :href="icpRecordUrl"
+      target="_blank"
+      rel="noreferrer"
+      class="fixed right-3 top-[calc(0.5rem+env(safe-area-inset-top))] z-10 rounded-md border bg-card/75 px-2 py-1 text-[10px] leading-none text-muted-foreground shadow-sm backdrop-blur transition-colors hover:text-foreground xl:bottom-2 xl:right-3 xl:top-auto"
+    >
+      {{ icpRecordNumber }}
+    </a>
+
     <WorkbenchHeader
       :clear-wires="clearWires"
       :export-workbench-image="exportWorkbenchImage"
       :github-repository-url="githubRepositoryUrl"
+      :open-guide-assistant="openGuideAssistant"
       :reset-demo="resetDemo"
       :saved-workspace-label="savedWorkspaceLabel"
       :set-zoom="board.setZoom"
@@ -2972,6 +3201,9 @@ onBeforeUnmount(() => {
         :active-lesson="activeLesson"
         :apply-pwa-update="applyPwaUpdate"
         :battery-polarity-label="batteryPolarityLabel"
+        :beginner-guide-step="beginnerGuideStep"
+        :beginner-guide-step-index="beginnerGuideStepIndex"
+        :beginner-guide-total="beginnerGuideSteps.length"
         :bulb-brightness="bulbBrightness"
         :buzzer-status="buzzerStatus"
         :capacitor-status="capacitorStatus"
@@ -2982,6 +3214,7 @@ onBeforeUnmount(() => {
         :close-lesson-complete-panel="closeLessonCompletePanel"
         :current-animation-duration="currentAnimationDuration"
         :dismiss-pwa-update="dismissPwaUpdate"
+        :dismiss-guide-assistant="dismissGuideAssistant"
         :duplicate-selected-part="duplicateSelectedPart"
         :end-canvas-gesture="endCanvasGesture"
         :end-drag="endDrag"
@@ -2998,6 +3231,11 @@ onBeforeUnmount(() => {
         :handle-part-pointer-down="handlePartPointerDown"
         :handle-terminal-click="handleTerminalClick"
         :handle-workbench-pointer-move="handleWorkbenchPointerMove"
+        :guide-assistant-mode="guideAssistantMode"
+        :guide-assistant-open="guideAssistantOpen"
+        :guide-diagnosis="guideDiagnosis"
+        :handle-beginner-guide-action="handleBeginnerGuideAction"
+        :handle-guide-diagnosis-action="handleGuideDiagnosisAction"
         :is-lesson-part-target="isLessonPartTarget"
         :is-lesson-terminal-target="isLessonTerminalTarget"
         :is-terminal-drop-target="isTerminalDropTarget"
@@ -3016,12 +3254,16 @@ onBeforeUnmount(() => {
         :motor-status="motorStatus"
         :new-wire-drag="newWireDrag"
         :new-wire-drag-path="newWireDragPath"
+        :load-example-from-guide="loadExampleFromGuide"
+        :next-beginner-guide-step="nextBeginnerGuideStep"
+        :open-guide-assistant="openGuideAssistant"
         :palette-panel-open="palettePanelOpen"
         :part-style="partStyle"
         :parts="parts"
         :pwa-update-registration="pwaUpdateRegistration"
         :rendered-wires="renderedWires"
         :reset-demo="resetDemo"
+        :reset-layout-from-guide="resetLayoutFromGuide"
         :reset-mobile-view="resetMobileView"
         :remove-selected-part="removeSelectedPart"
         :rewiring="rewiring"
@@ -3036,8 +3278,11 @@ onBeforeUnmount(() => {
         :set-workbench-element="setWorkbenchElement"
         :set-part-rotation="setPartRotation"
         :set-zoom="board.setZoom"
+        :show-guide-diagnosis="showGuideDiagnosis"
+        :show-wire-guide="showWireGuide"
         :simulation="simulation"
         :start-endpoint-drag="startEndpointDrag"
+        :start-beginner-guide="startBeginnerGuide"
         :start-new-wire-drag="startNewWireDrag"
         :status-panel-open="statusPanelOpen"
         :terminal-display-label="terminalDisplayLabel"

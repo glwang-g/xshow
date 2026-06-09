@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 360" role="img" aria-label="明石空间">
+  <defs>
+    <radialGradient id="light" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(180 180) rotate(90) scale(58)">
+      <stop offset="0" stop-color="#fbbf24" stop-opacity="0.9"/>
+      <stop offset="0.52" stop-color="#fde68a" stop-opacity="0.4"/>
+      <stop offset="1" stop-color="#fde68a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <path d="M180 72 274 126v108l-94 54-94-54V126Z" fill="#fff" stroke="#1f2937" stroke-linejoin="round" stroke-width="10"/>
+  <path d="M180 72v216M86 126l94 54 94-54M86 234l94-54 94 54" fill="none" stroke="#cbd5e1" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+  <circle cx="180" cy="180" r="58" fill="url(#light)"/>
+  <circle cx="180" cy="180" r="28" fill="#fff" stroke="#fbbf24" stroke-width="10"/>
+  <circle cx="180" cy="180" r="8" fill="#fbbf24"/>
+</svg>

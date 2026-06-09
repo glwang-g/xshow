@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>明石空间 Logo 方向</title>
+    <style>
+      :root {
+        color: #111827;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      body {
+        background: #f8fafc;
+        margin: 0;
+        padding: 32px;
+      }
+
+      main {
+        display: grid;
+        gap: 24px;
+        grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+        margin: 0 auto;
+        max-width: 1180px;
+      }
+
+      section {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 24px;
+      }
+
+      h1 {
+        font-size: 17px;
+        margin: 0 0 6px;
+      }
+
+      p {
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.7;
+        margin: 0 0 20px;
+      }
+
+      .stage {
+        align-items: center;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        display: grid;
+        min-height: 360px;
+        overflow: hidden;
+        padding: 24px;
+      }
+
+      .quiet { background: #ffffff; }
+
+      .tech { background: #09111f; border-color: #1e293b; }
+
+      svg {
+        display: block;
+        height: auto;
+        max-width: 100%;
+      }
+
+      .swatches {
+        display: flex;
+        gap: 8px;
+        margin-top: 18px;
+      }
+
+      .swatch {
+        border: 1px solid rgb(15 23 42 / 0.12);
+        border-radius: 999px;
+        height: 20px;
+        width: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h1>静雅：几何光孔</h1>
+        <p>去掉天然石头的不规则感，用正六边形和同心光孔表达“光石”。更稳、更像品牌标志。</p>
+        <div class="stage quiet">
+          <svg viewBox="0 0 720 360" role="img" aria-label="明石空间静雅几何光孔 logo">
+            <defs>
+              <radialGradient id="quietLight" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(180 180) rotate(90) scale(58)">
+                <stop offset="0" stop-color="#fbbf24" stop-opacity="0.9"/>
+                <stop offset="0.52" stop-color="#fde68a" stop-opacity="0.4"/>
+                <stop offset="1" stop-color="#fde68a" stop-opacity="0"/>
+              </radialGradient>
+            </defs>
+
+            <g transform="translate(38 0)">
+              <path d="M180 72 274 126v108l-94 54-94-54V126Z" fill="#fff" stroke="#1f2937" stroke-linejoin="round" stroke-width="10"/>
+              <path d="M180 72v216M86 126l94 54 94-54M86 234l94-54 94 54" fill="none" stroke="#cbd5e1" stroke-linecap="round" stroke-linejoin="round" stroke-width="5"/>
+              <circle cx="180" cy="180" r="58" fill="url(#quietLight)"/>
+              <circle cx="180" cy="180" r="28" fill="#fff" stroke="#fbbf24" stroke-width="10"/>
+              <circle cx="180" cy="180" r="8" fill="#fbbf24"/>
+            </g>
+
+            <g transform="translate(356 128)">
+              <text x="0" y="0" fill="#111827" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="62" font-weight="650" letter-spacing="5">明石空间</text>
+              <path d="M4 30h276" fill="none" stroke="#fbbf24" stroke-linecap="round" stroke-width="5" opacity="0.86"/>
+            </g>
+          </svg>
+        </div>
+        <div class="swatches" aria-label="静雅配色">
+          <span class="swatch" style="background: #111827"></span>
+          <span class="swatch" style="background: #64748b"></span>
+          <span class="swatch" style="background: #fbbf24"></span>
+          <span class="swatch" style="background: #f8fafc"></span>
+        </div>
+      </section>
+
+      <section>
+        <h1>科技：几何光脉</h1>
+        <p>同样去掉歪斜石块，用正六边形网格和一条折线光脉。更像工具/实验室品牌。</p>
+        <div class="stage tech">
+          <svg viewBox="0 0 720 360" role="img" aria-label="明石空间科技几何光脉 logo">
+            <defs>
+              <linearGradient id="techStone" x1="86" y1="72" x2="274" y2="288" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#f8fafc"/>
+                <stop offset="0.58" stop-color="#dff8ff"/>
+                <stop offset="1" stop-color="#fff3c4"/>
+              </linearGradient>
+              <linearGradient id="techVein" x1="112" y1="226" x2="248" y2="118" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#67e8f9"/>
+                <stop offset="1" stop-color="#2dd4bf"/>
+              </linearGradient>
+              <filter id="techGlow" x="-35%" y="-35%" width="170%" height="170%" color-interpolation-filters="sRGB">
+                <feGaussianBlur stdDeviation="7" result="blur"/>
+                <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.26 0 0 0 0 0.88 0 0 0 0 0.92 0 0 0 0.72 0"/>
+                <feMerge>
+                  <feMergeNode/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+
+            <g transform="translate(38 0)">
+              <path d="M180 72 274 126v108l-94 54-94-54V126Z" fill="#08111f" stroke="url(#techStone)" stroke-linejoin="round" stroke-width="12"/>
+              <path d="M180 72v216M86 126l94 54 94-54M86 234l94-54 94 54" fill="none" stroke="#94a3b8" stroke-linecap="round" stroke-linejoin="round" stroke-width="5" opacity="0.42"/>
+              <path d="M112 226h72l24-92h72" fill="none" stroke="#06141c" stroke-linecap="round" stroke-linejoin="round" stroke-width="28"/>
+              <path d="M112 226h72l24-92h72" fill="none" stroke="url(#techVein)" stroke-linecap="round" stroke-linejoin="round" stroke-width="13" filter="url(#techGlow)"/>
+              <circle cx="208" cy="134" r="18" fill="#08111f" stroke="#fde68a" stroke-width="8"/>
+              <circle cx="208" cy="134" r="6" fill="#fbbf24"/>
+            </g>
+
+            <g transform="translate(356 130)">
+              <text x="0" y="0" fill="#f8fafc" font-family="PingFang SC, Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="62" font-weight="680" letter-spacing="5">明石空间</text>
+              <path d="M4 30h276" fill="none" stroke="#67e8f9" stroke-linecap="round" stroke-width="5"/>
+            </g>
+          </svg>
+        </div>
+        <div class="swatches" aria-label="科技配色">
+          <span class="swatch" style="background: #09111f"></span>
+          <span class="swatch" style="background: #f8fafc"></span>
+          <span class="swatch" style="background: #67e8f9"></span>
+          <span class="swatch" style="background: #fbbf24"></span>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { Download, GitFork, HelpCircle, RotateCcw, Save, Sparkles, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
+import { Download, GitFork, HelpCircle, Home, RotateCcw, Save, Sparkles, Swords, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
+import { RouterLink } from "vue-router";
+import logoUrl from "@/assets/mingshi-mark.svg";
 import Button from "@/components/ui/Button.vue";
 import type { CircuitSimulation } from "@/lib/circuit";
 
@@ -19,12 +21,10 @@ defineProps<{
 <template>
   <header class="hidden h-14 items-center justify-between gap-2 border-b bg-card px-3 xl:flex">
     <div class="flex items-center gap-3">
-      <div class="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-        <Sparkles class="h-4 w-4" />
-      </div>
+      <img class="h-8 w-8 object-contain" :src="logoUrl" alt="明石空间 logo" />
       <div class="leading-tight">
-        <div class="text-sm font-semibold">xshow circuits</div>
-        <div class="text-xs text-muted-foreground">电子积木实验台</div>
+        <div class="text-sm font-semibold">明石空间</div>
+        <div class="text-xs text-muted-foreground">xshow circuits · 电子积木实验台</div>
       </div>
     </div>
 
@@ -53,6 +53,27 @@ defineProps<{
     </div>
 
     <div class="flex items-center gap-2">
+      <RouterLink
+        to="/"
+        class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"
+      >
+        <Home class="h-4 w-4" />
+        大厅
+      </RouterLink>
+      <RouterLink
+        to="/tank-lab"
+        class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"
+      >
+        <Swords class="h-4 w-4" />
+        战车
+      </RouterLink>
+      <RouterLink
+        to="/repair-lab"
+        class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"
+      >
+        <Sparkles class="h-4 w-4" />
+        修理
+      </RouterLink>
       <Button variant="outline" size="sm" @click="openGuideAssistant()">
         <HelpCircle class="h-4 w-4" />
         新手

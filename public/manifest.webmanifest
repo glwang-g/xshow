@@ -1,7 +1,7 @@
 {
-  "name": "xshow circuits",
-  "short_name": "xshow",
-  "description": "A touch-friendly electronic brick circuit playground for learning simple circuits.",
+  "name": "明石空间 xshow circuits",
+  "short_name": "明石空间",
+  "description": "A touch-friendly circuit playground from Mingshi Space for learning simple circuits.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

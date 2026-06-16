@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Mingshi logo">
+  <defs>
+    <clipPath id="crystal-clip">
+      <path d="M256 42c14 0 28 5 40 13l128 74c16 9 26 26 26 44v166c0 18-10 35-26 44l-128 74c-12 8-26 13-40 13s-28-5-40-13L88 383c-16-9-26-26-26-44V173c0-18 10-35 26-44l128-74c12-8 26-13 40-13Z"/>
+    </clipPath>
+    <linearGradient id="top-left" x1="209" x2="92" y1="74" y2="331" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0734a3"/>
+      <stop offset="1" stop-color="#001f78"/>
+    </linearGradient>
+    <linearGradient id="top-right" x1="285" x2="410" y1="73" y2="223" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#008dff"/>
+      <stop offset="1" stop-color="#0458ec"/>
+    </linearGradient>
+    <linearGradient id="right" x1="410" x2="442" y1="157" y2="327" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#058ff6"/>
+      <stop offset="1" stop-color="#00c9e9"/>
+    </linearGradient>
+    <linearGradient id="bottom" x1="176" x2="285" y1="426" y2="318" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0867ff"/>
+      <stop offset="1" stop-color="#89c8ff"/>
+    </linearGradient>
+    <linearGradient id="left" x1="72" x2="233" y1="191" y2="233" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0574ec"/>
+      <stop offset="1" stop-color="#13a7ff"/>
+    </linearGradient>
+    <linearGradient id="white-face" x1="173" x2="380" y1="394" y2="154" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/>
+      <stop offset=".72" stop-color="#fff"/>
+      <stop offset="1" stop-color="#f7fbff"/>
+    </linearGradient>
+    <linearGradient id="ice-face" x1="337" x2="418" y1="318" y2="134" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#dff3ff"/>
+      <stop offset="1" stop-color="#fff"/>
+    </linearGradient>
+  </defs>
+  <g clip-path="url(#crystal-clip)">
+    <path fill="#0757e6" d="M0 0h512v512H0z"/>
+    <path fill="url(#top-left)" d="M256 42 242 240 88 129 216 55Z"/>
+    <path fill="url(#top-right)" d="M256 42 424 129 242 240Z"/>
+    <path fill="url(#right)" d="M424 129 450 339 314 328Z"/>
+    <path fill="#052e9b" d="M314 328 450 339 296 457Z"/>
+    <path fill="url(#bottom)" d="M116 428 314 328 296 457 256 470Z"/>
+    <path fill="url(#left)" d="M62 173 88 129 242 240 62 339Z"/>
+    <path fill="#042b90" d="M62 339 242 240 116 428 88 383Z"/>
+    <path fill="url(#white-face)" d="M116 428 242 240 424 129 286 300Z"/>
+    <path fill="#d7edff" d="M116 428 286 300 314 328Z"/>
+    <path fill="url(#ice-face)" d="M286 300 424 129 314 328Z"/>
+  </g>
+</svg>

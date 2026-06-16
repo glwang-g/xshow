@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import {
   ArrowLeft,
   Copy,
@@ -7,8 +7,8 @@ import {
   RotateCcw,
   X,
 } from "@lucide/vue";
-import { RouterLink } from "vue-router";
-import logoUrl from "@/assets/mingshi-mark.svg";
+import { RouterLink, useRoute, useRouter } from "vue-router";
+import logoUrl from "@/assets/logo.png";
 import Button from "@/components/ui/Button.vue";
 import { evaluateCircuit, type CircuitPart } from "@/lib/circuit";
 import { getSpec } from "@/lib/workbench-ui";
@@ -22,7 +22,16 @@ import {
   type RepairLevel,
 } from "@/lib/repair-lab";
 
-const presetIndex = ref(0);
+const route = useRoute();
+const router = useRouter();
+
+function presetIndexForLevelId(levelId: unknown) {
+  const normalizedLevelId = Array.isArray(levelId) ? levelId[0] : levelId;
+  const index = repairLevelPresets.findIndex((preset) => preset.id === normalizedLevelId);
+  return index >= 0 ? index : 0;
+}
+
+const presetIndex = ref(presetIndexForLevelId(route.query.level));
 const level = ref<RepairLevel>(cloneRepairLevel(repairLevelPresets[presetIndex.value]));
 const selectedPartId = ref(level.value.workspace.parts[0]?.id ?? "");
 const copyState = ref<"idle" | "copied">("idle");
@@ -53,11 +62,35 @@ const repairPathText = computed({
   },
 });
 
-function setPreset(index: number) {
+function setPreset(index: number, options: { syncRoute?: boolean } = {}) {
+  const preset = repairLevelPresets[index];
+  if (!preset) {
+    return;
+  }
+
   presetIndex.value = index;
-  level.value = cloneRepairLevel(repairLevelPresets[index]);
+  level.value = cloneRepairLevel(preset);
   selectedPartId.value = level.value.workspace.parts[0]?.id ?? "";
+
+  if (options.syncRoute ?? true) {
+    void router.replace({
+      query: {
+        ...route.query,
+        level: preset.id,
+      },
+    });
+  }
 }
+
+watch(
+  () => route.query.level,
+  (levelId) => {
+    const nextIndex = presetIndexForLevelId(levelId);
+    if (nextIndex !== presetIndex.value) {
+      setPreset(nextIndex, { syncRoute: false });
+    }
+  },
+);
 
 function copyGeneratedJson() {
   if (!navigator.clipboard?.writeText) {
@@ -293,7 +326,7 @@ const targetMotorMin = computed({
             class="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium hover:bg-slate-50"
           >
             <ArrowLeft class="h-4 w-4" />
-            回工作台
+            回任务大厅
           </RouterLink>
           <Button variant="outline" size="sm" @click="resetCurrentLevel">
             <RotateCcw class="h-4 w-4" />

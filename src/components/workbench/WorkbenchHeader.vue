@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Download, GitFork, HelpCircle, Home, RotateCcw, Save, Sparkles, Swords, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
 import { RouterLink } from "vue-router";
-import logoUrl from "@/assets/mingshi-mark.svg";
+import logoUrl from "@/assets/logo.png";
 import Button from "@/components/ui/Button.vue";
 import type { CircuitSimulation } from "@/lib/circuit";
 

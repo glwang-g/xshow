@@ -1,7 +1,8 @@
 const BUILD_ID = "__XSHOW_BUILD_ID__";
-const CACHE_NAME = `xshow-circuits-${BUILD_ID}`;
+const ICON_ASSET_VERSION = "logo11-20260617";
+const CACHE_NAME = `xshow-circuits-${BUILD_ID}-${ICON_ASSET_VERSION}`;
 const NAVIGATION_TIMEOUT_MS = 4000;
-const versioned = (url) => `${url}?v=${BUILD_ID}`;
+const versioned = (url) => `${url}?v=${BUILD_ID}-${ICON_ASSET_VERSION}`;
 const APP_SHELL = [
   "/",
   "/index.html",

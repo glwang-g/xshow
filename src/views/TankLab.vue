@@ -491,7 +491,7 @@ function formatTurn(value: number): string {
           class="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium transition-colors hover:bg-slate-100"
         >
           <Home class="h-4 w-4" />
-          电子积木
+          任务大厅
         </RouterLink>
         <Button :variant="running ? 'secondary' : 'default'" @click="toggleRunning">
           <Pause v-if="running" class="h-4 w-4" />

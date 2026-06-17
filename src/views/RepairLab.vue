@@ -10,6 +10,7 @@ import {
 import { RouterLink, useRoute, useRouter } from "vue-router";
 import logoUrl from "@/assets/logo.png";
 import Button from "@/components/ui/Button.vue";
+import { useRepairProgress } from "@/composables/useRepairProgress";
 import { evaluateCircuit, type CircuitPart } from "@/lib/circuit";
 import { getSpec } from "@/lib/workbench-ui";
 import {
@@ -24,6 +25,7 @@ import {
 
 const route = useRoute();
 const router = useRouter();
+const { markRepairCompleted, markRepairStarted, nextRepairLevel } = useRepairProgress();
 
 function presetIndexForLevelId(levelId: unknown) {
   const normalizedLevelId = Array.isArray(levelId) ? levelId[0] : levelId;
@@ -36,6 +38,7 @@ const level = ref<RepairLevel>(cloneRepairLevel(repairLevelPresets[presetIndex.v
 const selectedPartId = ref(level.value.workspace.parts[0]?.id ?? "");
 const copyState = ref<"idle" | "copied">("idle");
 const mobileMode = ref<"stage" | "task" | "template">("stage");
+markRepairStarted(level.value.id);
 
 const simulation = computed(() => evaluateCircuit(level.value.workspace.parts, level.value.workspace.wires));
 const evaluation = computed(() => evaluateRepairLevel(level.value, simulation.value));
@@ -71,6 +74,7 @@ function setPreset(index: number, options: { syncRoute?: boolean } = {}) {
   presetIndex.value = index;
   level.value = cloneRepairLevel(preset);
   selectedPartId.value = level.value.workspace.parts[0]?.id ?? "";
+  markRepairStarted(preset.id);
 
   if (options.syncRoute ?? true) {
     void router.replace({
@@ -195,6 +199,15 @@ function partStyle(part: CircuitPart) {
 
 const solved = computed(() => evaluation.value.solved);
 const solvedCount = computed(() => evaluation.value.checks.filter((check) => check.passed).length);
+watch(
+  solved,
+  (isSolved) => {
+    if (isSolved) {
+      markRepairCompleted(level.value.id);
+    }
+  },
+  { immediate: true },
+);
 const repairTargetLabel = computed(() => {
   if (level.value.goal.bulbs) {
     return "灯泡亮度";
@@ -373,6 +386,22 @@ const targetMotorMin = computed({
             <span class="h-2.5 w-2.5 rounded-full" :class="solved ? 'bg-emerald-500' : 'bg-amber-500'" />
             <span class="font-medium">{{ solved ? "已修复" : "等待修复" }}</span>
             <span class="text-slate-500">{{ solvedCount }}/{{ evaluation.checks.length }}</span>
+          </div>
+          <div v-if="solved" class="mt-4 grid gap-2 sm:grid-cols-2">
+            <RouterLink
+              to="/"
+              class="inline-flex h-10 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-medium text-white hover:bg-slate-800"
+            >
+              返回大厅
+            </RouterLink>
+            <RouterLink
+              v-if="nextRepairLevel"
+              :to="{ path: '/repair-lab', query: { level: nextRepairLevel.id } }"
+              class="inline-flex h-10 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              @click="markRepairStarted(nextRepairLevel.id)"
+            >
+              下一个任务
+            </RouterLink>
           </div>
         </div>
 
@@ -576,6 +605,22 @@ const targetMotorMin = computed({
                 <span class="font-medium">{{ solved ? "已修复" : "等待修复" }}</span>
                 <span class="text-slate-500">{{ solvedCount }}/{{ evaluation.checks.length }}</span>
               </div>
+            </div>
+            <div v-if="solved" class="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+              <RouterLink
+                to="/"
+                class="inline-flex h-9 items-center justify-center rounded-md bg-slate-950 px-4 text-sm font-medium text-white hover:bg-slate-800"
+              >
+                返回大厅
+              </RouterLink>
+              <RouterLink
+                v-if="nextRepairLevel"
+                :to="{ path: '/repair-lab', query: { level: nextRepairLevel.id } }"
+                class="inline-flex h-9 items-center justify-center rounded-md border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                @click="markRepairStarted(nextRepairLevel.id)"
+              >
+                下一个任务
+              </RouterLink>
             </div>
           </div>
 

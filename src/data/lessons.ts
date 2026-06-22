@@ -15,6 +15,21 @@ export type LessonCheckId =
   | "hasForwardLed"
   | "hasLitLed"
   | "hasSafeLedCurrent"
+  | "hasDiodeParts"
+  | "hasForwardDiodeWiring"
+  | "hasReverseBlockingDiode"
+  | "hasMeterParts"
+  | "hasSeriesAmmeterWiring"
+  | "hasActiveAmmeter"
+  | "hasActiveVoltmeter"
+  | "hasOutputParts"
+  | "hasParallelOutputWiring"
+  | "hasActiveBuzzer"
+  | "hasActiveMotor"
+  | "hasCapacitorParts"
+  | "hasSwitchedCapacitorWiring"
+  | "hasChargedCapacitor"
+  | "hasCapacitorWithoutMainCurrent"
   | "hasTwoBulbs"
   | "hasTwoLitBulbs"
   | "hasSeriesBulbs"
@@ -107,6 +122,10 @@ const connectedLoopWires: LessonWorkspaceWire[] = [
 const starterPartIds = ["battery-1", "switch-1", "bulb-1", "resistor-1"];
 const twoBulbPartIds = ["battery-1", "switch-1", "bulb-1", "bulb-2", "resistor-1"];
 const ledPartIds = ["battery-1", "switch-1", "resistor-1", "led-1"];
+const diodePartIds = ["battery-1", "switch-1", "resistor-1", "diode-1"];
+const meterPartIds = ["battery-1", "switch-1", "ammeter-1", "bulb-1", "resistor-1", "voltmeter-1"];
+const outputPartIds = ["battery-1", "switch-1", "buzzer-1", "motor-1", "resistor-1"];
+const capacitorPartIds = ["battery-1", "switch-1", "capacitor-1"];
 
 const starterTerminalRefs: LessonGuide["terminalRefs"] = [
   { partId: "battery-1", terminal: "a" },
@@ -128,6 +147,54 @@ const ledTerminalRefs: LessonGuide["terminalRefs"] = [
   { partId: "resistor-1", terminal: "b" },
   { partId: "led-1", terminal: "a" },
   { partId: "led-1", terminal: "b" },
+];
+
+const diodeTerminalRefs: LessonGuide["terminalRefs"] = [
+  { partId: "battery-1", terminal: "a" },
+  { partId: "battery-1", terminal: "b" },
+  { partId: "switch-1", terminal: "a" },
+  { partId: "switch-1", terminal: "b" },
+  { partId: "resistor-1", terminal: "a" },
+  { partId: "resistor-1", terminal: "b" },
+  { partId: "diode-1", terminal: "a" },
+  { partId: "diode-1", terminal: "b" },
+];
+
+const meterTerminalRefs: LessonGuide["terminalRefs"] = [
+  { partId: "battery-1", terminal: "a" },
+  { partId: "battery-1", terminal: "b" },
+  { partId: "switch-1", terminal: "a" },
+  { partId: "switch-1", terminal: "b" },
+  { partId: "ammeter-1", terminal: "a" },
+  { partId: "ammeter-1", terminal: "b" },
+  { partId: "bulb-1", terminal: "a" },
+  { partId: "bulb-1", terminal: "b" },
+  { partId: "resistor-1", terminal: "a" },
+  { partId: "resistor-1", terminal: "b" },
+  { partId: "voltmeter-1", terminal: "a" },
+  { partId: "voltmeter-1", terminal: "b" },
+];
+
+const outputTerminalRefs: LessonGuide["terminalRefs"] = [
+  { partId: "battery-1", terminal: "a" },
+  { partId: "battery-1", terminal: "b" },
+  { partId: "switch-1", terminal: "a" },
+  { partId: "switch-1", terminal: "b" },
+  { partId: "buzzer-1", terminal: "a" },
+  { partId: "buzzer-1", terminal: "b" },
+  { partId: "motor-1", terminal: "a" },
+  { partId: "motor-1", terminal: "b" },
+  { partId: "resistor-1", terminal: "a" },
+  { partId: "resistor-1", terminal: "b" },
+];
+
+const capacitorTerminalRefs: LessonGuide["terminalRefs"] = [
+  { partId: "battery-1", terminal: "a" },
+  { partId: "battery-1", terminal: "b" },
+  { partId: "switch-1", terminal: "a" },
+  { partId: "switch-1", terminal: "b" },
+  { partId: "capacitor-1", terminal: "a" },
+  { partId: "capacitor-1", terminal: "b" },
 ];
 
 function starterParts({ resistance = 48, switchClosed = true } = {}): LessonWorkspacePart[] {
@@ -155,6 +222,44 @@ function ledParts({ resistance = 120, switchClosed = true } = {}): LessonWorkspa
     { id: "switch-1", name: "单刀开关", type: "switch", x: 292, y: 122, closed: switchClosed },
     { id: "resistor-1", name: "限流电阻", type: "resistor", x: 574, y: 118, resistance },
     { id: "led-1", name: "红色 LED", type: "led", x: 620, y: 396 },
+  ];
+}
+
+function diodeLessonParts({ resistance = 120, switchClosed = true } = {}): LessonWorkspacePart[] {
+  return [
+    { id: "battery-1", name: "9V 电池", type: "battery", x: 72, y: 282 },
+    { id: "switch-1", name: "单刀开关", type: "switch", x: 292, y: 122, closed: switchClosed },
+    { id: "resistor-1", name: "限流电阻", type: "resistor", x: 574, y: 118, resistance },
+    { id: "diode-1", name: "二极管", type: "diode", x: 620, y: 396 },
+  ];
+}
+
+function meterLessonParts({ resistance = 48, switchClosed = false } = {}): LessonWorkspacePart[] {
+  return [
+    { id: "battery-1", name: "9V 电池", type: "battery", x: 58, y: 280 },
+    { id: "switch-1", name: "单刀开关", type: "switch", x: 258, y: 116, closed: switchClosed },
+    { id: "ammeter-1", name: "电流表", type: "ammeter", x: 508, y: 116 },
+    { id: "bulb-1", name: "小灯泡", type: "bulb", x: 740, y: 222 },
+    { id: "resistor-1", name: "可变电阻器", type: "resistor", x: 382, y: 472, resistance },
+    { id: "voltmeter-1", name: "电压表", type: "voltmeter", x: 54, y: 438 },
+  ];
+}
+
+function outputLessonParts({ resistance = 24, switchClosed = false } = {}): LessonWorkspacePart[] {
+  return [
+    { id: "battery-1", name: "9V 电池", type: "battery", x: 72, y: 280 },
+    { id: "switch-1", name: "单刀开关", type: "switch", x: 300, y: 118, closed: switchClosed },
+    { id: "buzzer-1", name: "蜂鸣器", type: "buzzer", x: 594, y: 130 },
+    { id: "motor-1", name: "驱动电机", type: "motor", x: 594, y: 386 },
+    { id: "resistor-1", name: "限流电阻", type: "resistor", x: 296, y: 474, resistance },
+  ];
+}
+
+function capacitorLessonParts({ switchClosed = false } = {}): LessonWorkspacePart[] {
+  return [
+    { id: "battery-1", name: "9V 电池", type: "battery", x: 74, y: 280 },
+    { id: "switch-1", name: "单刀开关", type: "switch", x: 326, y: 126, closed: switchClosed },
+    { id: "capacitor-1", name: "电容", type: "capacitor", x: 658, y: 256 },
   ];
 }
 
@@ -484,6 +589,191 @@ export const lessonCatalog: Lesson[] = [
         guide: { partIds: ["resistor-1", "led-1"] },
         hint: "如果出现电流偏大警告，把限流电阻调高一些。",
         checkId: "hasSafeLedCurrent",
+      },
+    ],
+  },
+  {
+    id: "diode-direction",
+    title: "实验 7：二极管单向导通",
+    objective: "把二极管接入限流回路，先按正向接好，再切换电池极性观察反向截止。",
+    starterWorkspace: {
+      parts: diodeLessonParts({ switchClosed: false }),
+      selectedPartId: "diode-1",
+      wires: [],
+      zoom: 82,
+    },
+    steps: [
+      {
+        id: "diode-parts",
+        description: "工作台上有电池、开关、限流电阻和二极管。",
+        guide: { partIds: diodePartIds },
+        hint: "二极管和 LED 一样有方向，+ 端接到电池 + 一侧时才会正向导通。",
+        checkId: "hasDiodeParts",
+      },
+      {
+        id: "diode-forward-route",
+        description: "按正向把二极管接进回路。",
+        guide: { terminalRefs: diodeTerminalRefs },
+        hint: "推荐路径：电池 + → 开关 → 限流电阻 → 二极管 +，再由二极管 - 回到电池 -。",
+        checkId: "hasForwardDiodeWiring",
+      },
+      {
+        id: "diode-switch",
+        description: "闭合开关，让正向回路可以导通。",
+        guide: { partIds: ["switch-1", "diode-1"] },
+        hint: "如果没有电流动画，检查开关是否闭合、二极管方向是否接反。",
+        checkId: "hasClosedSwitch",
+      },
+      {
+        id: "diode-reverse",
+        description: "把电池极性切到反向，观察二极管截止。",
+        guide: { partIds: ["battery-1", "diode-1"] },
+        hint: "选中电池，在属性面板切换极性；同一条线路会因为电源方向反过来而停止导通。",
+        checkId: "hasReverseBlockingDiode",
+      },
+    ],
+  },
+  {
+    id: "meter-readings",
+    title: "实验 8：用电表测量回路",
+    objective: "把电流表串进主回路，并把电压表并在电池两端，观察电流和电压读数。",
+    starterWorkspace: {
+      parts: meterLessonParts(),
+      selectedPartId: "ammeter-1",
+      wires: [],
+      zoom: 78,
+    },
+    steps: [
+      {
+        id: "meter-parts",
+        description: "工作台上有电池、开关、电流表、灯泡、可变电阻和电压表。",
+        guide: { partIds: meterPartIds },
+        hint: "电流表要串在主回路里；电压表要跨接在要测量的两端。",
+        checkId: "hasMeterParts",
+      },
+      {
+        id: "ammeter-series",
+        description: "把电流表串进灯泡所在的主回路。",
+        guide: { terminalRefs: meterTerminalRefs },
+        hint: "推荐路径：电池 + → 开关 → 电流表 → 灯泡 → 可变电阻 → 电池 -。",
+        checkId: "hasSeriesAmmeterWiring",
+      },
+      {
+        id: "switch",
+        description: "闭合开关，让主回路通电。",
+        guide: { partIds: ["switch-1", "ammeter-1"] },
+        hint: "开关闭合后，电流表会显示这条串联回路中的电流。",
+        checkId: "hasClosedSwitch",
+      },
+      {
+        id: "ammeter-reading",
+        description: "确认电流表读到主回路电流。",
+        guide: { partIds: ["ammeter-1", "bulb-1"] },
+        hint: "如果电流表没有读数，检查它是否串在主回路中，而不是并在电池两端。",
+        checkId: "hasActiveAmmeter",
+      },
+      {
+        id: "voltmeter-reading",
+        description: "把电压表接在电池两端，读取电池电压。",
+        guide: { partIds: ["battery-1", "voltmeter-1"] },
+        hint: "把电压表 B 端接电池 +，A 端接电池 -；电压表会并联测量，不需要串进主回路。",
+        checkId: "hasActiveVoltmeter",
+      },
+    ],
+  },
+  {
+    id: "sound-and-motion-output",
+    title: "实验 9：声音和运动输出",
+    objective: "把蜂鸣器和电机接成两条输出支路，观察同一个开关如何同时控制声音和运动。",
+    starterWorkspace: {
+      parts: outputLessonParts(),
+      selectedPartId: "buzzer-1",
+      wires: [],
+      zoom: 78,
+    },
+    steps: [
+      {
+        id: "output-parts",
+        description: "工作台上有电池、开关、蜂鸣器、电机和限流电阻。",
+        guide: { partIds: outputPartIds },
+        hint: "蜂鸣器会把电能变成声音，电机会把电能变成转动。",
+        checkId: "hasOutputParts",
+      },
+      {
+        id: "output-branches",
+        description: "把蜂鸣器和电机接成两条并联输出支路。",
+        guide: { terminalRefs: outputTerminalRefs },
+        hint: "推荐路径：电池 + → 开关，然后分别接到蜂鸣器和电机；两条支路再汇回限流电阻并回到电池 -。",
+        checkId: "hasParallelOutputWiring",
+      },
+      {
+        id: "switch",
+        description: "闭合开关，让两条输出支路同时通电。",
+        guide: { partIds: ["switch-1", "buzzer-1", "motor-1"] },
+        hint: "开关闭合后，蜂鸣器和电机会一起响应；断开后两条支路都会停止。",
+        checkId: "hasClosedSwitch",
+      },
+      {
+        id: "buzzer-active",
+        description: "确认蜂鸣器已经响起。",
+        guide: { partIds: ["buzzer-1", "resistor-1"] },
+        hint: "如果蜂鸣器仍然静音，检查它是否接在完整输出支路上，并尝试降低限流电阻。",
+        checkId: "hasActiveBuzzer",
+      },
+      {
+        id: "motor-active",
+        description: "确认电机已经转动。",
+        guide: { partIds: ["motor-1", "resistor-1"] },
+        hint: "如果电机仍然停止，检查电机两端是否分别接到了输出支路的两侧。",
+        checkId: "hasActiveMotor",
+      },
+    ],
+  },
+  {
+    id: "capacitor-charge",
+    title: "实验 10：观察电容储能",
+    objective: "用开关把电容接到电池两端，观察它显示电压和充电百分比，同时不形成持续输出电流。",
+    starterWorkspace: {
+      parts: capacitorLessonParts(),
+      selectedPartId: "capacitor-1",
+      wires: [],
+      zoom: 86,
+    },
+    steps: [
+      {
+        id: "capacitor-parts",
+        description: "工作台上有电池、开关和电容。",
+        guide: { partIds: capacitorPartIds },
+        hint: "电容可以跨接在电源两端观察电压和充电状态。",
+        checkId: "hasCapacitorParts",
+      },
+      {
+        id: "capacitor-wiring",
+        description: "通过开关把电容接到电池两端。",
+        guide: { terminalRefs: capacitorTerminalRefs },
+        hint: "推荐路径：电池 + → 开关 → 电容 B 端，电容 A 端回到电池 -。",
+        checkId: "hasSwitchedCapacitorWiring",
+      },
+      {
+        id: "capacitor-switch",
+        description: "闭合开关，让电容接到电池上。",
+        guide: { partIds: ["switch-1", "capacitor-1"] },
+        hint: "开关闭合后，电容卡片会显示电压和充电百分比。",
+        checkId: "hasClosedSwitch",
+      },
+      {
+        id: "capacitor-charge",
+        description: "确认电容已经显示充电状态。",
+        guide: { partIds: ["capacitor-1"] },
+        hint: "如果电容仍显示未接入，检查它的两端是否分别接到了电池的 + 和 - 两侧。",
+        checkId: "hasChargedCapacitor",
+      },
+      {
+        id: "capacitor-current",
+        description: "观察电容跨接后没有形成持续主回路电流。",
+        guide: { partIds: ["battery-1", "capacitor-1"] },
+        hint: "当前模型会显示电容两端电压，但顶部主回路电流保持 0 mA。",
+        checkId: "hasCapacitorWithoutMainCurrent",
       },
     ],
   },

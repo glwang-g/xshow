@@ -513,6 +513,30 @@ function litLedParts() {
   return ledParts().filter((part) => (simulation.value.leds[part.id]?.brightness ?? 0) > 0);
 }
 
+function diodeParts() {
+  return parts.value.filter((part) => part.type === "diode");
+}
+
+function ammeterParts() {
+  return parts.value.filter((part) => part.type === "ammeter");
+}
+
+function voltmeterParts() {
+  return parts.value.filter((part) => part.type === "voltmeter");
+}
+
+function buzzerParts() {
+  return parts.value.filter((part) => part.type === "buzzer");
+}
+
+function motorParts() {
+  return parts.value.filter((part) => part.type === "motor");
+}
+
+function capacitorParts() {
+  return parts.value.filter((part) => part.type === "capacitor");
+}
+
 function ledStatus(part: CircuitPart): LedState {
   return (
     simulation.value.leds[part.id] ?? {
@@ -660,36 +684,121 @@ function hasParallelBulbRoute() {
   );
 }
 
+function hasSeriesAmmeterWiring() {
+  return (
+    hasWireBetween({ partId: "battery-1", terminal: "b" }, { partId: "switch-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "ammeter-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "ammeter-1", terminal: "b" }, { partId: "bulb-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "bulb-1", terminal: "b" }, { partId: "resistor-1", terminal: "b" }) &&
+    hasWireBetween({ partId: "resistor-1", terminal: "a" }, { partId: "battery-1", terminal: "a" })
+  );
+}
+
+function hasParallelOutputWiring() {
+  return (
+    hasWireBetween({ partId: "battery-1", terminal: "b" }, { partId: "switch-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "buzzer-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "motor-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "buzzer-1", terminal: "b" }, { partId: "resistor-1", terminal: "b" }) &&
+    hasWireBetween({ partId: "motor-1", terminal: "b" }, { partId: "resistor-1", terminal: "b" }) &&
+    hasWireBetween({ partId: "resistor-1", terminal: "a" }, { partId: "battery-1", terminal: "a" })
+  );
+}
+
+function hasSwitchedCapacitorWiring() {
+  return (
+    hasWireBetween({ partId: "battery-1", terminal: "b" }, { partId: "switch-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "capacitor-1", terminal: "b" }) &&
+    hasWireBetween({ partId: "capacitor-1", terminal: "a" }, { partId: "battery-1", terminal: "a" })
+  );
+}
+
+function hasForwardDiodeWiring() {
+  return (
+    hasWireBetween({ partId: "battery-1", terminal: "b" }, { partId: "switch-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "resistor-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "resistor-1", terminal: "b" }, { partId: "diode-1", terminal: "b" }) &&
+    hasWireBetween({ partId: "diode-1", terminal: "a" }, { partId: "battery-1", terminal: "a" })
+  );
+}
+
 const lessonCheckers: Record<LessonCheckId, () => boolean> = {
+  hasActiveBuzzer: () =>
+    buzzerParts().some((part) => {
+      const state = buzzerStatus(part);
+      return state.active && state.volumePercent > 0;
+    }),
+  hasActiveAmmeter: () =>
+    ammeterParts().some((part) => {
+      const state = ammeterStatus(part);
+      return state.active && state.currentMilliAmps > 0;
+    }),
+  hasActiveMotor: () =>
+    motorParts().some((part) => {
+      const state = motorStatus(part);
+      return state.active && state.speedPercent > 0;
+    }),
+  hasActiveVoltmeter: () =>
+    voltmeterParts().some((part) => {
+      const state = voltmeterStatus(part);
+      return state.active && state.voltage > 0;
+    }),
   hasAdjustedResistor: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) !== 48),
   hasBrightBulb: () => mainBulbBrightness.value >= 0.4,
   hasBrightParallelBulbs: () =>
     hasParallelBulbRoute() &&
     twoBulbBrightnessValues().length >= 2 &&
     twoBulbBrightnessValues().every((brightness) => brightness >= 0.24),
+  hasCapacitorParts: () =>
+    ["battery", "switch", "capacitor"].every((type) => parts.value.some((part) => part.type === type)),
+  hasCapacitorWithoutMainCurrent: () =>
+    capacitorParts().some((part) => capacitorStatus(part).connected) && simulation.value.currentMilliAmps === 0,
+  hasChargedCapacitor: () =>
+    capacitorParts().some((part) => {
+      const state = capacitorStatus(part);
+      return state.connected && state.chargePercent >= 80;
+    }),
   hasClosedCircuit: () => simulation.value.closed,
   hasClosedSwitch: () => parts.value.some((part) => part.type === "switch" && part.closed),
   hasDarkBulb: () => mainBulbBrightness.value === 0,
+  hasDiodeParts: () =>
+    ["battery", "switch", "resistor", "diode"].every((type) => parts.value.some((part) => part.type === type)),
   hasDimSeriesBulbs: () =>
     hasSeriesBulbRoute() &&
     twoBulbBrightnessValues().length >= 2 &&
     twoBulbBrightnessValues().every((brightness) => brightness > 0 && brightness <= 0.32),
+  hasForwardDiodeWiring,
   hasForwardLed: () => ledParts().some((part) => ledStatus(part).forward),
   hasLedParts: () =>
     ["battery", "switch", "resistor", "led"].every((type) => parts.value.some((part) => part.type === type)),
   hasLitLed: () => litLedParts().length > 0,
   hasLitBulb: () => mainBulbBrightness.value > 0,
   hasLowResistance: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) <= 24),
+  hasMeterParts: () =>
+    ["battery", "switch", "ammeter", "bulb", "resistor", "voltmeter"].every((type) =>
+      parts.value.some((part) => part.type === type),
+    ),
   hasOpenCircuit: () => !simulation.value.closed,
   hasOpenSwitch: () => parts.value.some((part) => part.type === "switch" && !part.closed),
+  hasOutputParts: () =>
+    ["battery", "switch", "buzzer", "motor", "resistor"].every((type) =>
+      parts.value.some((part) => part.type === type),
+    ),
   hasParallelBulbs: () => simulation.value.closed && hasParallelBulbRoute(),
+  hasParallelOutputWiring,
+  hasReverseBlockingDiode: () => diodeParts().some((part) => {
+    const state = diodeStatus(part);
+    return state.reversed && !state.conducting;
+  }),
   hasSafeLedCurrent: () => ledParts().some((part) => {
     const state = ledStatus(part);
     return state.brightness > 0 && !state.overCurrent;
   }),
   hasSeriesBulbs: () => simulation.value.closed && hasSeriesBulbRoute(),
+  hasSeriesAmmeterWiring,
   hasStarterParts: () =>
     ["battery", "switch", "bulb", "resistor"].every((type) => parts.value.some((part) => part.type === type)),
+  hasSwitchedCapacitorWiring,
   hasTwoBulbs: () => bulbParts().length >= 2,
   hasTwoLitBulbs: () => litBulbParts().length >= 2,
 };

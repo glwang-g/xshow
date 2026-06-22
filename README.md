@@ -46,6 +46,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Import or export the current workbench as a JSON archive for cross-device migration
 - Copy a shareable URL that restores the current workbench state
 - Generate and export a first-pass physical build list with component quantities, purchase keywords, and wiring steps
+- Generate a copyable/exportable Markdown experiment report with lesson progress, circuit conclusions, component inventory, wiring records, and observation prompts
 - Display circuit status, current, equivalent resistance, and brightness
 - Use editor-style shortcuts for delete, cancel, nudge, duplicate, zoom, undo, and redo
 - Export the current workbench as a PNG image
@@ -169,7 +170,7 @@ Near-term priorities:
 - First slice for v0.4: buzzer, motor, diode, capacitor, ammeter, and voltmeter components with powered-state feedback
 - First slice for v0.4: node/branch simulation with branch currents, equivalent resistance, and meter readings
 - First slice for v0.4: simulation and physical-build regression tests
-- Product direction slice: turn the current workspace into a copyable/exportable physical component list, purchase keywords, and wiring steps
+- Product direction slice: turn the current workspace into a copyable/exportable physical component list, purchase keywords, wiring steps, and experiment report
 - Done for v0.1: one-click lesson starter workspaces
 - Done for v0.1: contextual hints for incomplete lesson steps
 - Done for v0.1: workbench highlights for active lesson steps

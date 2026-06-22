@@ -354,13 +354,33 @@ function createContext(
 
 function runStrategy(strategy: TankStrategy, context: TankLabContext): TankAction {
   try {
-    return strategy(context) ?? {};
+    return sanitizeTankAction(strategy(context));
   } catch (error) {
     return {
       message: error instanceof Error ? error.message : "策略异常",
       thrust: 0,
     };
   }
+}
+
+function actionNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function sanitizeTankAction(action: unknown): TankAction {
+  if (!action || typeof action !== "object" || Array.isArray(action)) {
+    return {};
+  }
+
+  const candidate = action as Record<string, unknown>;
+  return {
+    fire: actionNumber(candidate.fire),
+    gunTurn: actionNumber(candidate.gunTurn),
+    message: typeof candidate.message === "string" ? candidate.message : undefined,
+    scan: actionNumber(candidate.scan),
+    thrust: actionNumber(candidate.thrust),
+    turn: actionNumber(candidate.turn),
+  };
 }
 
 function toSnapshot(tank: TankState): TankSnapshot {

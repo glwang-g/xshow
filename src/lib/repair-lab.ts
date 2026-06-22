@@ -1,4 +1,11 @@
-import { batteryPositiveTerminal, type CircuitPart, type CircuitSimulation, type PartType, type Wire } from "@/lib/circuit";
+import {
+  batteryPositiveTerminal,
+  partTypes,
+  type CircuitPart,
+  type CircuitSimulation,
+  type PartType,
+  type Wire,
+} from "@/lib/circuit";
 
 export type RepairRange = {
   max?: number;
@@ -124,6 +131,134 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isFiniteNumber(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isTerminalKey(value: unknown): value is "a" | "b" {
+  return value === "a" || value === "b";
+}
+
+function isRepairPart(value: unknown): value is CircuitPart {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  if (
+    !isNonEmptyString(value.id) ||
+    !isNonEmptyString(value.name) ||
+    typeof value.type !== "string" ||
+    !partTypes.includes(value.type as PartType) ||
+    !isFiniteNumber(value.x) ||
+    !isFiniteNumber(value.y)
+  ) {
+    return false;
+  }
+
+  if (value.closed !== undefined && typeof value.closed !== "boolean") {
+    return false;
+  }
+
+  if (value.polarity !== undefined && value.polarity !== "normal" && value.polarity !== "reversed") {
+    return false;
+  }
+
+  if (value.resistance !== undefined && !isFiniteNumber(value.resistance)) {
+    return false;
+  }
+
+  if (value.rotation !== undefined && !isFiniteNumber(value.rotation)) {
+    return false;
+  }
+
+  return true;
+}
+
+function isRepairTerminalRef(value: unknown, partIds: ReadonlySet<string>) {
+  if (!isRecord(value) || !isNonEmptyString(value.partId)) {
+    return false;
+  }
+
+  return partIds.has(value.partId) && isTerminalKey(value.terminal);
+}
+
+function isRepairWire(value: unknown, partIds: ReadonlySet<string>) {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    isNonEmptyString(value.id) &&
+    isRepairTerminalRef(value.from, partIds) &&
+    isRepairTerminalRef(value.to, partIds)
+  );
+}
+
+function referencedGoalPartIds(goal: RepairLevelGoal) {
+  return [
+    ...Object.keys(goal.parts ?? {}),
+    ...Object.keys(goal.bulbs ?? {}),
+    ...Object.keys(goal.buzzers ?? {}),
+    ...Object.keys(goal.diodes ?? {}),
+    ...Object.keys(goal.leds ?? {}),
+    ...Object.keys(goal.motors ?? {}),
+    ...Object.keys(goal.voltmeters ?? {}),
+  ];
+}
+
+function assertRepairLevelWorkspace(value: unknown): asserts value is RepairLevel["workspace"] {
+  if (!isRecord(value) || !Array.isArray(value.parts) || !Array.isArray(value.wires)) {
+    throw new Error("关卡 workspace 格式不正确");
+  }
+
+  if (!value.parts.every(isRepairPart)) {
+    throw new Error("关卡 workspace parts 格式不正确");
+  }
+
+  const partIds = new Set(value.parts.map((part) => part.id));
+  if (partIds.size !== value.parts.length) {
+    throw new Error("关卡 workspace parts 存在重复 id");
+  }
+
+  const wireIds = new Set<string>();
+  for (const wire of value.wires) {
+    if (!isRepairWire(wire, partIds)) {
+      throw new Error("关卡 workspace wires 格式不正确");
+    }
+
+    if (wireIds.has(wire.id)) {
+      throw new Error("关卡 workspace wires 存在重复 id");
+    }
+
+    wireIds.add(wire.id);
+  }
+}
+
+function assertRepairLevelGoal(value: unknown, partIds: ReadonlySet<string>): asserts value is RepairLevelGoal {
+  if (!isRecord(value)) {
+    throw new Error("关卡 goal 格式不正确");
+  }
+
+  for (const key of ["parts", "bulbs", "buzzers", "diodes", "leds", "motors", "voltmeters"] as const) {
+    if (value[key] !== undefined && !isRecord(value[key])) {
+      throw new Error(`关卡 goal.${key} 格式不正确`);
+    }
+  }
+
+  const missingGoalPartId = referencedGoalPartIds(value as RepairLevelGoal).find((partId) => !partIds.has(partId));
+  if (missingGoalPartId) {
+    throw new Error(`关卡 goal 引用了不存在的部件 ${missingGoalPartId}`);
+  }
+}
+
 function findPart(level: RepairLevel, id: string) {
   return level.workspace.parts.find((candidate) => candidate.id === id);
 }
@@ -197,17 +332,27 @@ export function repairLevelToJson(level: RepairLevel) {
 
 export function parseRepairLevelJson(json: string) {
   const parsed = JSON.parse(json) as RepairLevel;
-  if (!parsed || typeof parsed !== "object") {
+  if (!isRecord(parsed)) {
     throw new Error("关卡 JSON 不是对象");
   }
 
-  if (typeof parsed.id !== "string" || typeof parsed.title !== "string") {
+  if (!isNonEmptyString(parsed.id) || !isNonEmptyString(parsed.title)) {
     throw new Error("关卡缺少 id 或 title");
   }
 
-  if (!parsed.workspace || !Array.isArray(parsed.workspace.parts) || !Array.isArray(parsed.workspace.wires)) {
-    throw new Error("关卡 workspace 格式不正确");
+  if (
+    !isNonEmptyString(parsed.failure) ||
+    !isNonEmptyString(parsed.summary) ||
+    !Array.isArray(parsed.tags) ||
+    !parsed.tags.every(isNonEmptyString) ||
+    !Array.isArray(parsed.repairPath) ||
+    !parsed.repairPath.every(isNonEmptyString)
+  ) {
+    throw new Error("关卡缺少故障描述、摘要、标签或维修路径");
   }
+
+  assertRepairLevelWorkspace(parsed.workspace);
+  assertRepairLevelGoal(parsed.goal, new Set(parsed.workspace.parts.map((part) => part.id)));
 
   return parsed;
 }

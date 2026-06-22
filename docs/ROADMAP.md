@@ -18,7 +18,7 @@ Current focus: **v0.4 simulation calibration and lessons for new components**.
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
 | Workspace records | v0.3 feature complete | The browser automatically restores local workspaces; v0.3 adds Supabase email/password auth, explicit cloud records, renaming, conflict handling, and visible sync states. |
 | More components | v0.4 first slice | Buzzer, motor, diode, capacitor, ammeter, and voltmeter components are available with first-pass educational feedback driven by the node/branch model. |
-| Physical build bridge | First slice | The current workspace can generate, copy, and export a component list, purchase keywords, wiring steps, and safety notes for hands-on building. |
+| Physical build bridge | First slice | The current workspace can generate, copy, and export a component list, purchase keywords, wiring steps, safety notes for hands-on building, and Markdown experiment reports. |
 | Mobile responsive experience | Released in v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |

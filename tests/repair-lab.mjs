@@ -1,23 +1,9 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { transformWithEsbuild } from "vite";
+import { compiledModuleUrl } from "./helpers/compile-module.mjs";
 
-async function compiledModuleUrl(path, replacements = []) {
-  let source = await readFile(new URL(path, import.meta.url), "utf8");
-  for (const [from, to] of replacements) {
-    source = source.replaceAll(from, to);
-  }
-
-  const { code } = await transformWithEsbuild(source, path, {
-    format: "esm",
-    loader: "ts",
-  });
-  return `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
-}
-
-const circuitModuleUrl = await compiledModuleUrl("../src/lib/circuit.ts");
-const repairLabModuleUrl = await compiledModuleUrl("../src/lib/repair-lab.ts", [["@/lib/circuit", circuitModuleUrl]]);
+const circuitModuleUrl = await compiledModuleUrl("../src/lib/circuit.ts", import.meta.url);
+const repairLabModuleUrl = await compiledModuleUrl("../src/lib/repair-lab.ts", import.meta.url, [["@/lib/circuit", circuitModuleUrl]]);
 const circuit = await import(circuitModuleUrl);
 const repairLab = await import(repairLabModuleUrl);
 
@@ -52,4 +38,50 @@ test("led preset is solved after polarity correction", () => {
 test("repair level parser rejects invalid structure", () => {
   assert.throws(() => repairLab.parseRepairLevelJson("{\"id\":1}"), /title|JSON/);
   assert.throws(() => repairLab.parseRepairLevelJson("not json"));
+  assert.throws(
+    () =>
+      repairLab.parseRepairLevelJson(
+        JSON.stringify({
+          ...repairLab.repairLevelPresets[0],
+          workspace: {
+            parts: [{ id: "battery-1" }],
+            wires: [],
+          },
+        }),
+      ),
+    /parts|workspace/,
+  );
+  assert.throws(
+    () =>
+      repairLab.parseRepairLevelJson(
+        JSON.stringify({
+          ...repairLab.repairLevelPresets[0],
+          goal: {
+            parts: {
+              "missing-part": { closed: true },
+            },
+          },
+        }),
+      ),
+    /不存在/,
+  );
+  assert.throws(
+    () =>
+      repairLab.parseRepairLevelJson(
+        JSON.stringify({
+          ...repairLab.repairLevelPresets[0],
+          goal: {
+            parts: 1,
+          },
+        }),
+      ),
+    /goal\.parts/,
+  );
+});
+
+test("repair level parser accepts complete preset exports", () => {
+  const parsed = repairLab.parseRepairLevelJson(repairLab.repairLevelToJson(repairLab.repairLevelPresets[0]));
+
+  assert.equal(parsed.id, repairLab.repairLevelPresets[0].id);
+  assert.deepEqual(parsed.workspace.wires, repairLab.repairLevelPresets[0].workspace.wires);
 });

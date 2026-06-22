@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, GitFork, HelpCircle, Home, RotateCcw, Save, Sparkles, Swords, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
+import { Download, FileText, GitFork, HelpCircle, Home, RotateCcw, Save, Sparkles, Swords, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import logoUrl from "@/assets/logo.png";
 import Button from "@/components/ui/Button.vue";
@@ -10,6 +10,7 @@ defineProps<{
   exportWorkbenchImage: () => void;
   githubRepositoryUrl: string;
   openGuideAssistant: () => void;
+  openReportPanel: () => void;
   resetDemo: () => void;
   savedWorkspaceLabel: string;
   setZoom: (value: number) => void;
@@ -29,7 +30,7 @@ defineProps<{
     </div>
 
     <div class="flex items-center gap-2">
-      <div class="flex items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm">
+      <div class="flex shrink-0 items-center gap-2 whitespace-nowrap rounded-md border bg-muted/60 px-3 py-1.5 text-sm">
         <span
           class="h-2.5 w-2.5 rounded-full"
           :class="simulation.closed ? 'bg-emerald-500' : 'bg-rose-500'"
@@ -37,7 +38,7 @@ defineProps<{
         <span class="font-medium">{{ simulation.closed ? "回路闭合" : "回路断开" }}</span>
         <span class="text-muted-foreground">{{ simulation.currentMilliAmps }} mA</span>
       </div>
-      <div class="hidden items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground md:flex">
+      <div class="hidden items-center gap-2 rounded-md border bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground 2xl:flex">
         <Save class="h-4 w-4" />
         <span>{{ savedWorkspaceLabel }}</span>
       </div>
@@ -89,20 +90,24 @@ defineProps<{
         <GitFork class="h-4 w-4" />
         <span class="hidden sm:inline">GitHub</span>
       </a>
-      <Button variant="outline" size="sm" @click="clearWires">
+      <Button variant="outline" size="sm" title="清除所有导线" @click="clearWires">
         <span class="relative h-4 w-4">
           <Unplug class="h-4 w-4" />
           <X class="absolute left-1/2 top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 stroke-[3] text-rose-600" />
         </span>
-        清线
+        <span class="hidden 2xl:inline">清线</span>
       </Button>
-      <Button variant="outline" size="sm" @click="exportWorkbenchImage">
+      <Button variant="outline" size="sm" title="导出工作台图片" @click="exportWorkbenchImage">
         <Download class="h-4 w-4" />
-        导出
+        <span class="hidden 2xl:inline">导出</span>
       </Button>
-      <Button size="sm" @click="resetDemo">
+      <Button variant="outline" size="sm" title="打开实验报告" @click="openReportPanel">
+        <FileText class="h-4 w-4" />
+        <span class="hidden 2xl:inline">报告</span>
+      </Button>
+      <Button size="sm" title="复位当前演示" @click="resetDemo">
         <RotateCcw class="h-4 w-4" />
-        复位
+        <span class="hidden 2xl:inline">复位</span>
       </Button>
     </div>
   </header>

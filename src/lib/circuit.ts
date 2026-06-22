@@ -1,15 +1,18 @@
-export type PartType =
-  | "ammeter"
-  | "battery"
-  | "bulb"
-  | "capacitor"
-  | "diode"
-  | "led"
-  | "motor"
-  | "resistor"
-  | "switch"
-  | "voltmeter"
-  | "buzzer";
+export const partTypes = [
+  "ammeter",
+  "battery",
+  "bulb",
+  "buzzer",
+  "capacitor",
+  "diode",
+  "led",
+  "motor",
+  "resistor",
+  "switch",
+  "voltmeter",
+] as const;
+
+export type PartType = (typeof partTypes)[number];
 export type TerminalKey = "a" | "b";
 
 export type TerminalRef = {
@@ -109,6 +112,20 @@ const buzzerLoudCurrentMilliAmps = 160;
 const motorFastCurrentMilliAmps = 180;
 const voltageEpsilon = 0.01;
 const currentEpsilon = 0.0005;
+export const defaultResistorOhms = 60;
+export const maxResistorOhms = 1000;
+export const minResistorOhms = 0;
+
+export function normalizePartRotation(value: number, fallback = 0) {
+  const source = Number.isFinite(value) ? value : fallback;
+  const rotation = Math.round(source) % 360;
+  return rotation < 0 ? rotation + 360 : rotation;
+}
+
+export function clampResistorOhms(value: number, fallback = defaultResistorOhms) {
+  const source = Number.isFinite(value) ? value : fallback;
+  return Math.min(maxResistorOhms, Math.max(minResistorOhms, Math.round(source)));
+}
 
 export function terminalId(ref: TerminalRef) {
   return `${ref.partId}:${ref.terminal}`;
@@ -234,7 +251,7 @@ function branchResistance(part: CircuitPart, conductiveLedIds: Set<string>, cond
   }
 
   if (part.type === "resistor") {
-    return Math.max(minConductiveOhms, part.resistance ?? 60);
+    return Math.max(minConductiveOhms, clampResistorOhms(part.resistance ?? defaultResistorOhms));
   }
 
   if (part.type === "led") {

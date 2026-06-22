@@ -1,21 +1,12 @@
 import { computed, ref } from "vue";
 import { repairLevelPresets, type RepairLevel } from "@/lib/repair-lab";
-
-export type RepairTaskStatus = "completed" | "in-progress" | "not-started";
-
-export type RepairProgressRecord = {
-  completedAt?: string;
-  completions: number;
-  lastOpenedAt: string;
-  levelId: string;
-  startedAt: string;
-  status: Exclude<RepairTaskStatus, "not-started">;
-};
-
-type RepairProgressState = {
-  currentLevelId?: string;
-  records: Record<string, RepairProgressRecord>;
-};
+import {
+  sanitizeRepairProgressState,
+  type RepairProgressRecord,
+  type RepairProgressState,
+  type RepairTaskStatus,
+} from "@/lib/repair-progress-codec";
+export type { RepairProgressRecord, RepairProgressState, RepairTaskStatus } from "@/lib/repair-progress-codec";
 
 const storageKey = "xshow.repair-progress.v1";
 const validLevelIds = new Set(repairLevelPresets.map((level) => level.id));
@@ -32,19 +23,6 @@ function levelById(levelId: string | undefined) {
   return repairLevelPresets.find((level) => level.id === levelId);
 }
 
-function cleanState(value: RepairProgressState): RepairProgressState {
-  const records = Object.fromEntries(
-    Object.entries(value.records ?? {}).filter(([levelId, record]) => {
-      return isValidLevelId(levelId) && record.levelId === levelId && record.startedAt && record.lastOpenedAt;
-    }),
-  );
-
-  return {
-    currentLevelId: isValidLevelId(value.currentLevelId) ? value.currentLevelId : undefined,
-    records,
-  };
-}
-
 function loadState(): RepairProgressState {
   if (typeof window === "undefined") {
     return { records: {} };
@@ -52,7 +30,7 @@ function loadState(): RepairProgressState {
 
   try {
     const raw = window.localStorage.getItem(storageKey);
-    return raw ? cleanState(JSON.parse(raw) as RepairProgressState) : { records: {} };
+    return raw ? sanitizeRepairProgressState(JSON.parse(raw) as unknown, validLevelIds) : { records: {} };
   } catch {
     return { records: {} };
   }
@@ -65,7 +43,11 @@ function saveState() {
     return;
   }
 
-  window.localStorage.setItem(storageKey, JSON.stringify(state.value));
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(state.value));
+  } catch {
+    // Progress is helpful, but the repair lab should keep working if browser storage is unavailable.
+  }
 }
 
 function updateRecord(levelId: string, mutator: (record: RepairProgressRecord | undefined) => RepairProgressRecord) {

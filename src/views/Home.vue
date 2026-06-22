@@ -9,8 +9,10 @@ import { lessonCatalog, type LessonCheckId, type LessonWorkspace } from "@/data/
 import {
   batteryPolarity,
   batteryPositiveTerminal,
+  clampResistorOhms,
   evaluateCircuit,
   hasPath,
+  normalizePartRotation,
   sameTerminal,
   terminalId,
   type AmmeterState,
@@ -58,11 +60,13 @@ import {
   formatSavedTime,
   isPersistedWorkspace,
   isSavedWorkspaceRecord,
+  sanitizeCloudWorkspaceRecords,
 } from "@/lib/workspace-codec";
 import {
   createPhysicalBuildPlan,
   formatPhysicalBuildPlanMarkdown,
 } from "@/lib/physical-build";
+import { formatExperimentReportMarkdown } from "@/lib/experiment-report";
 import { exportWorkbenchImage as exportWorkbenchImageFile } from "@/lib/workbench-export";
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
@@ -137,6 +141,7 @@ const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
 const shareLinkState = ref<"copied" | "idle" | "manual">("idle");
 const buildPlanCopyState = ref<"copied" | "idle" | "manual">("idle");
+const experimentReportCopyState = ref<"copied" | "idle" | "manual">("idle");
 const cloudAuthBusy = ref(false);
 const cloudAuthError = ref("");
 const cloudAuthMode = ref<CloudAuthMode>("sign-in");
@@ -789,7 +794,45 @@ const {
 let autosaveTimer: number | null = null;
 let buildPlanCopyFeedbackTimer: number | null = null;
 let cloudAuthUnsubscribe: (() => void) | null = null;
+let experimentReportCopyFeedbackTimer: number | null = null;
 let shareLinkFeedbackTimer: number | null = null;
+
+function readLocalStorage(key: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeLocalStorage(key: string, value: string) {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function removeLocalStorage(key: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Removing stale storage is best-effort.
+  }
+}
 
 function clearInteractionState() {
   selectedTerminal.value = null;
@@ -833,8 +876,7 @@ function terminalDisplayLabel(part: CircuitPart, terminal: TerminalKey) {
 }
 
 function normalizeRotation(value: number) {
-  const rotation = Math.round(value) % 360;
-  return rotation < 0 ? rotation + 360 : rotation;
+  return normalizePartRotation(value);
 }
 
 function partRotation(part: CircuitPart) {
@@ -2277,7 +2319,7 @@ function restoreAutoSavedWorkspace() {
     return false;
   }
 
-  const rawWorkspace = window.localStorage.getItem(savedWorkspaceKey);
+  const rawWorkspace = readLocalStorage(savedWorkspaceKey);
   if (!rawWorkspace) {
     return false;
   }
@@ -2288,8 +2330,10 @@ function restoreAutoSavedWorkspace() {
       loadWorkspaceSnapshot(workspace);
       return true;
     }
+
+    removeLocalStorage(savedWorkspaceKey);
   } catch {
-    window.localStorage.removeItem(savedWorkspaceKey);
+    removeLocalStorage(savedWorkspaceKey);
   }
 
   return false;
@@ -2301,8 +2345,9 @@ function saveWorkspaceToStorage() {
   }
 
   const workspace = workspaceSnapshot();
-  window.localStorage.setItem(savedWorkspaceKey, JSON.stringify(workspace));
-  lastSavedAt.value = workspace.savedAt;
+  if (writeLocalStorage(savedWorkspaceKey, JSON.stringify(workspace))) {
+    lastSavedAt.value = workspace.savedAt;
+  }
 }
 
 function markCloudWorkspaceChanged() {
@@ -2322,7 +2367,7 @@ function dismissCloudInitialUploadSuggestion() {
   cloudShouldSuggestInitialUpload.value = false;
 
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(cloudUploadSuggestionKey(), "dismissed");
+    writeLocalStorage(cloudUploadSuggestionKey(), "dismissed");
   }
 }
 
@@ -2345,18 +2390,26 @@ function loadSavedRecords() {
     return;
   }
 
-  const rawRecords = window.localStorage.getItem(savedRecordsKey);
+  const rawRecords = readLocalStorage(savedRecordsKey);
   if (!rawRecords) {
     return;
   }
 
   try {
     const records = JSON.parse(rawRecords) as unknown;
-    savedRecords.value = Array.isArray(records)
-      ? records.filter(isSavedWorkspaceRecord).slice(0, 12)
-      : [];
+    if (!Array.isArray(records)) {
+      savedRecords.value = [];
+      removeLocalStorage(savedRecordsKey);
+      return;
+    }
+
+    const nextRecords = records.filter(isSavedWorkspaceRecord).slice(0, 12);
+    savedRecords.value = nextRecords;
+    if (nextRecords.length !== records.length) {
+      persistSavedRecords();
+    }
   } catch {
-    window.localStorage.removeItem(savedRecordsKey);
+    removeLocalStorage(savedRecordsKey);
   }
 }
 
@@ -2365,7 +2418,7 @@ function persistSavedRecords() {
     return;
   }
 
-  window.localStorage.setItem(savedRecordsKey, JSON.stringify(savedRecords.value));
+  writeLocalStorage(savedRecordsKey, JSON.stringify(savedRecords.value));
 }
 
 function saveWorkspaceRecord() {
@@ -2391,10 +2444,11 @@ function downloadTextFile(filename: string, content: string, type: string) {
 
   const blob = new Blob([content], { type });
   const link = document.createElement("a");
+  const objectUrl = URL.createObjectURL(blob);
   link.download = filename;
-  link.href = URL.createObjectURL(blob);
+  link.href = objectUrl;
   link.click();
-  URL.revokeObjectURL(link.href);
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
 }
 
 function exportWorkspaceJson() {
@@ -2476,6 +2530,70 @@ function exportPhysicalBuildPlan() {
   downloadTextFile(
     `xshow-physical-build-${date}.md`,
     formatPhysicalBuildPlanMarkdown(physicalBuildPlan.value),
+    "text/markdown;charset=utf-8",
+  );
+}
+
+function openExperimentReportPanel() {
+  statusPanelTab.value = "records";
+  statusPanelOpen.value = true;
+  palettePanelOpen.value = false;
+}
+
+function currentExperimentReportMarkdown() {
+  return formatExperimentReportMarkdown({
+    generatedAt: new Date().toISOString(),
+    lessonObjective: activeLesson.value.objective,
+    lessonSteps: lessonStepStates.value.map((step) => ({
+      complete: step.complete,
+      description: step.description,
+    })),
+    lessonTitle: activeLesson.value.title,
+    physicalBuildPlan: physicalBuildPlan.value,
+    parts: parts.value,
+    simulation: simulation.value,
+    wires: wires.value,
+  });
+}
+
+function showExperimentReportCopyFeedback(state: "copied" | "manual") {
+  experimentReportCopyState.value = state;
+
+  if (experimentReportCopyFeedbackTimer) {
+    window.clearTimeout(experimentReportCopyFeedbackTimer);
+  }
+
+  experimentReportCopyFeedbackTimer = window.setTimeout(() => {
+    experimentReportCopyState.value = "idle";
+    experimentReportCopyFeedbackTimer = null;
+  }, state === "copied" ? 1800 : 3600);
+}
+
+async function copyExperimentReport() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const markdown = currentExperimentReportMarkdown();
+
+  try {
+    if (!navigator.clipboard?.writeText) {
+      throw new Error("Clipboard API unavailable");
+    }
+
+    await navigator.clipboard.writeText(markdown);
+    showExperimentReportCopyFeedback("copied");
+  } catch {
+    showExperimentReportCopyFeedback("manual");
+    window.prompt("浏览器没有允许自动复制，请手动复制这个实验报告：", markdown);
+  }
+}
+
+function exportExperimentReport() {
+  const date = new Date().toISOString().slice(0, 10);
+  downloadTextFile(
+    `xshow-experiment-report-${date}.md`,
+    currentExperimentReportMarkdown(),
     "text/markdown;charset=utf-8",
   );
 }
@@ -2645,12 +2763,17 @@ async function loadCloudRecords() {
   cloudRecordsError.value = "";
 
   try {
-    cloudRecords.value = await listCloudWorkspaceRecords<PersistedWorkspace>();
+    const { droppedCount, records } = sanitizeCloudWorkspaceRecords(
+      await listCloudWorkspaceRecords<PersistedWorkspace>(),
+    );
+    cloudRecords.value = records;
+    if (droppedCount > 0) {
+      cloudRecordsError.value = `已忽略 ${droppedCount} 条无效云端记录。`;
+    }
     cloudShouldSuggestInitialUpload.value =
       cloudRecords.value.length === 0 &&
       !cloudActiveRecordId.value &&
-      typeof window !== "undefined" &&
-      !window.localStorage.getItem(cloudUploadSuggestionKey());
+      !readLocalStorage(cloudUploadSuggestionKey());
   } catch (error) {
     cloudSyncStatus.value = "failed";
     cloudRecordsError.value = error instanceof Error ? error.message : "读取云端记录失败。";
@@ -2895,11 +3018,11 @@ function toggleBatteryPolarity(part: CircuitPart) {
 }
 
 function setResistance(part: CircuitPart, value: number) {
-  part.resistance = Math.round(value);
+  part.resistance = clampResistorOhms(value, part.resistance);
 }
 
 function setPartRotation(part: CircuitPart, value: number) {
-  part.rotation = normalizeRotation(value);
+  part.rotation = normalizePartRotation(value, part.rotation);
 }
 
 loadSavedRecords();
@@ -2967,7 +3090,7 @@ function openGuideAssistant(mode: GuideAssistantMode = "menu") {
   guideAssistantOpen.value = true;
 
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(guideAssistantDismissedKey, "opened");
+    writeLocalStorage(guideAssistantDismissedKey, "opened");
   }
 }
 
@@ -2990,7 +3113,7 @@ function dismissGuideAssistant() {
   guideAssistantOpen.value = false;
 
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(guideAssistantDismissedKey, "dismissed");
+    writeLocalStorage(guideAssistantDismissedKey, "dismissed");
   }
 }
 
@@ -3113,7 +3236,7 @@ onMounted(() => {
   window.visualViewport?.addEventListener("resize", handleMobileViewportChange);
   window.screen.orientation?.addEventListener("change", handleMobileViewportChange);
 
-  if (!window.localStorage.getItem(guideAssistantDismissedKey)) {
+  if (!readLocalStorage(guideAssistantDismissedKey)) {
     guideAssistantOpen.value = true;
     guideAssistantMode.value = "menu";
   }
@@ -3158,6 +3281,10 @@ onBeforeUnmount(() => {
     window.clearTimeout(buildPlanCopyFeedbackTimer);
   }
 
+  if (experimentReportCopyFeedbackTimer) {
+    window.clearTimeout(experimentReportCopyFeedbackTimer);
+  }
+
 });
 </script>
 
@@ -3177,6 +3304,7 @@ onBeforeUnmount(() => {
       :export-workbench-image="exportWorkbenchImage"
       :github-repository-url="githubRepositoryUrl"
       :open-guide-assistant="openGuideAssistant"
+      :open-report-panel="openExperimentReportPanel"
       :reset-demo="resetDemo"
       :saved-workspace-label="savedWorkspaceLabel"
       :set-zoom="board.setZoom"
@@ -3341,6 +3469,7 @@ onBeforeUnmount(() => {
         :cloud-sync-state="cloudSyncState"
         :cloud-user-email="cloudUserEmail"
         :dismiss-cloud-initial-upload-suggestion="dismissCloudInitialUploadSuggestion"
+        :experiment-report-copy-state="experimentReportCopyState"
         :format-saved-time="formatSavedTime"
         :handle-cloud-sign-out="handleCloudSignOut"
         :has-buzzer-parts="hasBuzzerParts"
@@ -3391,7 +3520,9 @@ onBeforeUnmount(() => {
         :wires="wires"
         @close="statusPanelOpen = false"
         @copy-physical-build-plan="copyPhysicalBuildPlan"
+        @copy-experiment-report="copyExperimentReport"
         @copy-workspace-share-link="copyWorkspaceShareLink"
+        @export-experiment-report="exportExperimentReport"
         @export-physical-build-plan="exportPhysicalBuildPlan"
         @export-workspace-json="exportWorkspaceJson"
       />

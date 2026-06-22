@@ -382,6 +382,7 @@ test("physical build plan turns the workspace into a component list and wiring s
   const workspace = singleBulbCircuit();
   const plan = buildPlan.createPhysicalBuildPlan(workspace.parts, workspace.wires);
   const markdown = buildPlan.formatPhysicalBuildPlanMarkdown(plan);
+  const sheetHtml = buildPlan.formatPhysicalBuildSheetHtml(plan, { generatedAt: "2026-06-22T12:00:00.000Z" });
 
   assert.equal(plan.ready, true);
   assert.equal(plan.connections.length, workspace.wires.length);
@@ -400,6 +401,22 @@ test("physical build plan turns the workspace into a component list and wiring s
   assert.match(markdown, /## 物料/);
   assert.match(markdown, /采购关键词/);
   assert.match(markdown, /## 接线步骤/);
+  assert.match(sheetHtml, /<title>xshow 实体装配单<\/title>/);
+  assert.match(sheetHtml, /物料清单/);
+  assert.match(sheetHtml, /通电前检查/);
+});
+
+test("physical build sheet escapes workspace names before producing printable HTML", () => {
+  const parts = [
+    part("battery", "battery", { name: "<电池&>" }),
+    part("bulb", "bulb", { name: "灯泡" }),
+  ];
+  const wires = [wire("wire-1", "battery", "b", "bulb", "a")];
+  const plan = buildPlan.createPhysicalBuildPlan(parts, wires);
+  const sheetHtml = buildPlan.formatPhysicalBuildSheetHtml(plan);
+
+  assert.match(sheetHtml, /&lt;电池&amp;&gt; \+端/);
+  assert.doesNotMatch(sheetHtml, /<电池&>/);
 });
 
 test("physical build plan warns about LED circuits without current limiting", () => {

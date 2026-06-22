@@ -258,3 +258,263 @@ export function formatPhysicalBuildPlanMarkdown(plan: PhysicalBuildPlan) {
 
   return lines.join("\n");
 }
+
+type PhysicalBuildSheetOptions = {
+  generatedAt?: string;
+  title?: string;
+};
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatGeneratedAt(generatedAt: string | undefined) {
+  if (!generatedAt) {
+    return "";
+  }
+
+  const date = new Date(generatedAt);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return date.toLocaleString("zh-CN", {
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function checkboxListItem(content: string) {
+  return `<li><span class="box"></span><span>${content}</span></li>`;
+}
+
+export function formatPhysicalBuildSheetHtml(plan: PhysicalBuildPlan, options: PhysicalBuildSheetOptions = {}) {
+  const title = escapeHtml(options.title?.trim() || "xshow 实体装配单");
+  const generatedAt = formatGeneratedAt(options.generatedAt);
+  const itemRows = plan.items.length
+    ? plan.items
+        .map(
+          (item) => `<tr>
+            <td>${escapeHtml(item.label)}</td>
+            <td class="qty">x${item.quantity}</td>
+            <td>${escapeHtml(item.note)}</td>
+            <td>${escapeHtml(item.purchaseKeywords.join(" / "))}</td>
+          </tr>`,
+        )
+        .join("")
+    : `<tr><td colspan="4" class="muted">当前工作台还没有可列出的物料。</td></tr>`;
+  const connectionItems = plan.connections.length
+    ? plan.connections.map((connection) => checkboxListItem(escapeHtml(connection.instruction))).join("")
+    : checkboxListItem("连接元器件后，这里会生成可照着搭的接线步骤。");
+  const warningItems = plan.warnings.length
+    ? plan.warnings.map((warning) => `<li>${escapeHtml(warning.message)}</li>`).join("")
+    : "<li>实体搭建前，请确认电源断开，完成接线检查后再通电。</li>";
+
+  return `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${title}</title>
+  <style>
+    :root {
+      color: #0f172a;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+    body {
+      margin: 0;
+      background: #f8fafc;
+    }
+    main {
+      box-sizing: border-box;
+      max-width: 920px;
+      min-height: 100vh;
+      margin: 0 auto;
+      padding: 32px;
+      background: #ffffff;
+    }
+    header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 2px solid #0f172a;
+      padding-bottom: 18px;
+    }
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 28px 0 10px;
+      font-size: 17px;
+    }
+    .meta {
+      color: #475569;
+      font-size: 12px;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .summary {
+      margin: 16px 0 0;
+      color: #334155;
+      font-size: 14px;
+    }
+    .badge {
+      display: inline-block;
+      margin-top: 10px;
+      border: 1px solid ${plan.ready ? "#047857" : "#b45309"};
+      border-radius: 999px;
+      padding: 3px 10px;
+      color: ${plan.ready ? "#047857" : "#92400e"};
+      font-size: 12px;
+      font-weight: 700;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th,
+    td {
+      border: 1px solid #cbd5e1;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #e2e8f0;
+      font-weight: 700;
+    }
+    .qty {
+      white-space: nowrap;
+      text-align: center;
+      font-weight: 700;
+    }
+    ol,
+    ul {
+      margin: 0;
+      padding-left: 22px;
+    }
+    li {
+      margin: 7px 0;
+    }
+    .checklist {
+      list-style: none;
+      padding-left: 0;
+    }
+    .checklist li {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .box {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-top: 4px;
+      border: 1.5px solid #334155;
+      flex: 0 0 auto;
+    }
+    .notes {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .note-box {
+      min-height: 96px;
+      border: 1px solid #cbd5e1;
+      padding: 10px;
+    }
+    .muted {
+      color: #64748b;
+    }
+    @page {
+      margin: 14mm;
+    }
+    @media print {
+      body {
+        background: #ffffff;
+      }
+      main {
+        max-width: none;
+        min-height: auto;
+        padding: 0;
+      }
+      h2 {
+        break-after: avoid;
+      }
+      table,
+      .note-box {
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>${title}</h1>
+        <p class="summary">${escapeHtml(plan.summary)}</p>
+        <span class="badge">${plan.ready ? "可搭建" : "待补齐"}</span>
+      </div>
+      <div class="meta">${generatedAt ? `生成时间<br />${escapeHtml(generatedAt)}` : "xshow circuits"}</div>
+    </header>
+
+    <section>
+      <h2>物料清单</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>物料</th>
+            <th>数量</th>
+            <th>备注</th>
+            <th>采购关键词</th>
+          </tr>
+        </thead>
+        <tbody>${itemRows}</tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>接线检查</h2>
+      <ol class="checklist">${connectionItems}</ol>
+    </section>
+
+    <section>
+      <h2>安全和搭建注意</h2>
+      <ul>${warningItems}</ul>
+    </section>
+
+    <section>
+      <h2>通电前检查</h2>
+      <ul class="checklist">
+        ${checkboxListItem("电源开关处于断开状态。")}
+        ${checkboxListItem("极性敏感元件方向已经核对。")}
+        ${checkboxListItem("导线没有直接短接电源正负极。")}
+        ${checkboxListItem("需要限流的支路已经串联电阻。")}
+      </ul>
+    </section>
+
+    <section>
+      <h2>实验记录</h2>
+      <div class="notes">
+        <div class="note-box">观察现象：</div>
+        <div class="note-box">调整和结论：</div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>`;
+}

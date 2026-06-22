@@ -217,6 +217,33 @@ test("diode conducts forward and blocks reverse current", () => {
   assert.equal(reversedResult.diodes.diode.conducting, false);
 });
 
+test("reversing battery polarity makes a forward-wired diode block current", () => {
+  const parts = [
+    part("battery", "battery"),
+    part("switch", "switch", { closed: true }),
+    part("resistor", "resistor", { resistance: 120 }),
+    part("diode", "diode"),
+  ];
+  const wires = [
+    wire("wire-1", "battery", "b", "switch", "a"),
+    wire("wire-2", "switch", "b", "resistor", "a"),
+    wire("wire-3", "resistor", "b", "diode", "b"),
+    wire("wire-4", "diode", "a", "battery", "a"),
+  ];
+
+  const forwardResult = circuit.evaluateCircuit(parts, wires);
+  const reversedPolarityResult = circuit.evaluateCircuit(
+    parts.map((item) => (item.id === "battery" ? { ...item, polarity: "reversed" } : item)),
+    wires,
+  );
+
+  assert.equal(forwardResult.closed, true);
+  assert.equal(forwardResult.diodes.diode.conducting, true);
+  assert.equal(reversedPolarityResult.closed, false);
+  assert.equal(reversedPolarityResult.diodes.diode.reversed, true);
+  assert.equal(reversedPolarityResult.diodes.diode.conducting, false);
+});
+
 test("ammeter reports the current through its branch", () => {
   const parts = [
     part("battery", "battery"),
@@ -252,6 +279,94 @@ test("voltmeter reads voltage across connected nodes without closing the circuit
   assert.equal(result.currentMilliAmps, 0);
   assert.equal(result.voltmeters.voltmeter.active, true);
   assert.equal(result.voltmeters.voltmeter.voltage, 9);
+});
+
+test("ammeter and voltmeter can measure a live teaching circuit together", () => {
+  const parts = [
+    part("battery", "battery"),
+    part("switch", "switch", { closed: true }),
+    part("ammeter", "ammeter"),
+    part("bulb", "bulb"),
+    part("resistor", "resistor", { resistance: 48 }),
+    part("voltmeter", "voltmeter"),
+  ];
+  const wires = [
+    wire("wire-1", "battery", "b", "switch", "a"),
+    wire("wire-2", "switch", "b", "ammeter", "a"),
+    wire("wire-3", "ammeter", "b", "bulb", "a"),
+    wire("wire-4", "bulb", "b", "resistor", "b"),
+    wire("wire-5", "resistor", "a", "battery", "a"),
+    wire("wire-6", "battery", "b", "voltmeter", "b"),
+    wire("wire-7", "battery", "a", "voltmeter", "a"),
+  ];
+  const result = circuit.evaluateCircuit(parts, wires);
+
+  assert.equal(result.closed, true);
+  assert.equal(result.currentMilliAmps, 134);
+  assert.equal(result.ammeters.ammeter.active, true);
+  assert.equal(result.ammeters.ammeter.currentMilliAmps, result.currentMilliAmps);
+  assert.equal(result.voltmeters.voltmeter.active, true);
+  assert.equal(result.voltmeters.voltmeter.voltage, 9);
+  assert.ok(result.bulbs.bulb.brightnessPercent > 0);
+});
+
+test("parallel buzzer and motor output branches respond to one switch", () => {
+  const parts = [
+    part("battery", "battery"),
+    part("switch", "switch", { closed: true }),
+    part("buzzer", "buzzer"),
+    part("motor", "motor"),
+    part("resistor", "resistor", { resistance: 24 }),
+  ];
+  const wires = [
+    wire("wire-1", "battery", "b", "switch", "a"),
+    wire("wire-2", "switch", "b", "buzzer", "a"),
+    wire("wire-3", "switch", "b", "motor", "a"),
+    wire("wire-4", "buzzer", "b", "resistor", "b"),
+    wire("wire-5", "motor", "b", "resistor", "b"),
+    wire("wire-6", "resistor", "a", "battery", "a"),
+  ];
+  const powered = circuit.evaluateCircuit(parts, wires);
+  const stopped = circuit.evaluateCircuit(
+    parts.map((item) => (item.id === "switch" ? { ...item, closed: false } : item)),
+    wires,
+  );
+
+  assert.equal(powered.closed, true);
+  assert.equal(powered.buzzers.buzzer.active, true);
+  assert.equal(powered.buzzers.buzzer.volumePercent, 77);
+  assert.equal(powered.motors.motor.active, true);
+  assert.equal(powered.motors.motor.speedPercent, 49);
+  assert.equal(stopped.closed, false);
+  assert.equal(stopped.buzzers.buzzer.active, false);
+  assert.equal(stopped.motors.motor.active, false);
+});
+
+test("switch connects a capacitor across the battery without sustained current", () => {
+  const parts = [
+    part("battery", "battery"),
+    part("switch", "switch", { closed: false }),
+    part("capacitor", "capacitor"),
+  ];
+  const wires = [
+    wire("wire-1", "battery", "b", "switch", "a"),
+    wire("wire-2", "switch", "b", "capacitor", "b"),
+    wire("wire-3", "capacitor", "a", "battery", "a"),
+  ];
+  const disconnected = circuit.evaluateCircuit(parts, wires);
+  const connected = circuit.evaluateCircuit(
+    parts.map((item) => (item.id === "switch" ? { ...item, closed: true } : item)),
+    wires,
+  );
+
+  assert.equal(disconnected.capacitors.capacitor.connected, false);
+  assert.equal(disconnected.capacitors.capacitor.chargePercent, 0);
+  assert.equal(connected.closed, false);
+  assert.equal(connected.currentMilliAmps, 0);
+  assert.equal(connected.capacitors.capacitor.connected, true);
+  assert.equal(connected.capacitors.capacitor.charging, true);
+  assert.equal(connected.capacitors.capacitor.voltage, 9);
+  assert.equal(connected.capacitors.capacitor.chargePercent, 100);
 });
 
 test("reversing battery polarity flips wire animation direction", () => {

@@ -25,7 +25,7 @@ import {
 
 const route = useRoute();
 const router = useRouter();
-const { markRepairCompleted, markRepairStarted, nextRepairLevel } = useRepairProgress();
+const { markRepairCompleted, markRepairRestarted, markRepairStarted, nextRepairLevel } = useRepairProgress();
 
 function presetIndexForLevelId(levelId: unknown) {
   const normalizedLevelId = Array.isArray(levelId) ? levelId[0] : levelId;
@@ -66,7 +66,7 @@ const repairPathText = computed({
   },
 });
 
-function setPreset(index: number, options: { syncRoute?: boolean } = {}) {
+function setPreset(index: number, options: { restartProgress?: boolean; syncRoute?: boolean } = {}) {
   const preset = repairLevelPresets[index];
   if (!preset) {
     return;
@@ -75,7 +75,11 @@ function setPreset(index: number, options: { syncRoute?: boolean } = {}) {
   presetIndex.value = index;
   level.value = cloneRepairLevel(preset);
   selectedPartId.value = level.value.workspace.parts[0]?.id ?? "";
-  markRepairStarted(preset.id);
+  if (options.restartProgress) {
+    markRepairRestarted(preset.id);
+  } else {
+    markRepairStarted(preset.id);
+  }
 
   if (options.syncRoute ?? true) {
     void router.replace({
@@ -120,7 +124,7 @@ function copyGeneratedJson() {
 }
 
 function resetCurrentLevel() {
-  setPreset(Math.max(0, presetIndex.value));
+  setPreset(Math.max(0, presetIndex.value), { restartProgress: true });
 }
 
 function setMobileMode(mode: "stage" | "task" | "template") {

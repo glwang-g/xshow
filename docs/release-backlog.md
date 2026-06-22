@@ -108,7 +108,7 @@ Status: **first slice implemented, pending regression QA**.
 - [x] Add safety notes for polarity-sensitive parts and meter placement.
 - [x] Export the first-pass build plan as Markdown.
 - [ ] Map virtual parts to real kit SKUs or recommended purchase links.
-- [ ] Export a printable assembly sheet with layout and wiring.
+- [x] Export a printable assembly sheet with material, wiring, safety, and observation sections.
 
 ## Ship Rule
 

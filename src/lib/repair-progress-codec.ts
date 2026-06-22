@@ -65,3 +65,47 @@ export function sanitizeRepairProgressState(
     records,
   };
 }
+
+export function startedRepairProgressRecord(
+  levelId: string,
+  openedAt: string,
+  record: RepairProgressRecord | undefined,
+): RepairProgressRecord {
+  return {
+    completedAt: record?.completedAt,
+    completions: record?.completions ?? 0,
+    lastOpenedAt: openedAt,
+    levelId,
+    startedAt: record?.startedAt ?? openedAt,
+    status: record?.status === "completed" ? "completed" : "in-progress",
+  };
+}
+
+export function restartedRepairProgressRecord(
+  levelId: string,
+  startedAt: string,
+  record: RepairProgressRecord | undefined,
+): RepairProgressRecord {
+  return {
+    completions: record?.completions ?? 0,
+    lastOpenedAt: startedAt,
+    levelId,
+    startedAt,
+    status: "in-progress",
+  };
+}
+
+export function completedRepairProgressRecord(
+  levelId: string,
+  completedAt: string,
+  record: RepairProgressRecord | undefined,
+): RepairProgressRecord {
+  return {
+    completedAt,
+    completions: record?.status === "completed" ? record.completions : (record?.completions ?? 0) + 1,
+    lastOpenedAt: completedAt,
+    levelId,
+    startedAt: record?.startedAt ?? completedAt,
+    status: "completed",
+  };
+}

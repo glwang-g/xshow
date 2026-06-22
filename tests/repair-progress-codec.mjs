@@ -71,3 +71,49 @@ test("repair progress sanitizer handles non-object payloads", () => {
   assert.deepEqual(progressCodec.sanitizeRepairProgressState(null, validLevelIds), { records: {} });
   assert.deepEqual(progressCodec.sanitizeRepairProgressState({ records: [] }, validLevelIds), { records: {} });
 });
+
+test("repair progress transitions preserve review starts but reset completed tasks on restart", () => {
+  const completed = progressRecord("lamp-outage", {
+    completedAt: "2026-06-21T10:45:00.000Z",
+    completions: 1,
+    status: "completed",
+  });
+
+  const reviewed = progressCodec.startedRepairProgressRecord(
+    "lamp-outage",
+    "2026-06-21T11:00:00.000Z",
+    completed,
+  );
+  assert.equal(reviewed.status, "completed");
+  assert.equal(reviewed.completedAt, completed.completedAt);
+  assert.equal(reviewed.completions, 1);
+
+  const restarted = progressCodec.restartedRepairProgressRecord(
+    "lamp-outage",
+    "2026-06-21T11:05:00.000Z",
+    completed,
+  );
+  assert.equal(restarted.status, "in-progress");
+  assert.equal(restarted.completedAt, undefined);
+  assert.equal(restarted.completions, 1);
+  assert.equal(restarted.startedAt, "2026-06-21T11:05:00.000Z");
+});
+
+test("repair progress completion increments only when moving out of an active attempt", () => {
+  const inProgress = progressRecord("lamp-outage", { completions: 1 });
+  const completed = progressCodec.completedRepairProgressRecord(
+    "lamp-outage",
+    "2026-06-21T11:10:00.000Z",
+    inProgress,
+  );
+
+  assert.equal(completed.status, "completed");
+  assert.equal(completed.completions, 2);
+
+  const completedAgain = progressCodec.completedRepairProgressRecord(
+    "lamp-outage",
+    "2026-06-21T11:20:00.000Z",
+    completed,
+  );
+  assert.equal(completedAgain.completions, 2);
+});

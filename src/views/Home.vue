@@ -65,6 +65,7 @@ import {
 import {
   createPhysicalBuildPlan,
   formatPhysicalBuildPlanMarkdown,
+  formatPhysicalBuildSheetHtml,
 } from "@/lib/physical-build";
 import { formatExperimentReportMarkdown } from "@/lib/experiment-report";
 import { exportWorkbenchImage as exportWorkbenchImageFile } from "@/lib/workbench-export";
@@ -2643,6 +2644,16 @@ function exportPhysicalBuildPlan() {
   );
 }
 
+function exportPhysicalBuildSheet() {
+  const generatedAt = new Date().toISOString();
+  const date = generatedAt.slice(0, 10);
+  downloadTextFile(
+    `xshow-assembly-sheet-${date}.html`,
+    formatPhysicalBuildSheetHtml(physicalBuildPlan.value, { generatedAt }),
+    "text/html;charset=utf-8",
+  );
+}
+
 function openExperimentReportPanel() {
   statusPanelTab.value = "records";
   statusPanelOpen.value = true;
@@ -3633,6 +3644,7 @@ onBeforeUnmount(() => {
         @copy-workspace-share-link="copyWorkspaceShareLink"
         @export-experiment-report="exportExperimentReport"
         @export-physical-build-plan="exportPhysicalBuildPlan"
+        @export-physical-build-sheet="exportPhysicalBuildSheet"
         @export-workspace-json="exportWorkspaceJson"
       />
     </section>

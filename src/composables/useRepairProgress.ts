@@ -1,7 +1,10 @@
 import { computed, ref } from "vue";
 import { repairLevelPresets, type RepairLevel } from "@/lib/repair-lab";
 import {
+  completedRepairProgressRecord,
+  restartedRepairProgressRecord,
   sanitizeRepairProgressState,
+  startedRepairProgressRecord,
   type RepairProgressRecord,
   type RepairProgressState,
   type RepairTaskStatus,
@@ -71,14 +74,16 @@ function markRepairStarted(levelId: string | undefined) {
   }
 
   const openedAt = nowIso();
-  updateRecord(levelId, (record) => ({
-    completedAt: record?.completedAt,
-    completions: record?.completions ?? 0,
-    lastOpenedAt: openedAt,
-    levelId,
-    startedAt: record?.startedAt ?? openedAt,
-    status: record?.status === "completed" ? "completed" : "in-progress",
-  }));
+  updateRecord(levelId, (record) => startedRepairProgressRecord(levelId, openedAt, record));
+}
+
+function markRepairRestarted(levelId: string | undefined) {
+  if (!isValidLevelId(levelId)) {
+    return;
+  }
+
+  const startedAt = nowIso();
+  updateRecord(levelId, (record) => restartedRepairProgressRecord(levelId, startedAt, record));
 }
 
 function markRepairCompleted(levelId: string | undefined) {
@@ -87,14 +92,7 @@ function markRepairCompleted(levelId: string | undefined) {
   }
 
   const completedAt = nowIso();
-  updateRecord(levelId, (record) => ({
-    completedAt,
-    completions: record?.status === "completed" ? record.completions : (record?.completions ?? 0) + 1,
-    lastOpenedAt: completedAt,
-    levelId,
-    startedAt: record?.startedAt ?? completedAt,
-    status: "completed",
-  }));
+  updateRecord(levelId, (record) => completedRepairProgressRecord(levelId, completedAt, record));
 }
 
 function repairTaskStatus(levelId: string | undefined): RepairTaskStatus {
@@ -160,6 +158,7 @@ export function useRepairProgress() {
     currentLevelId,
     hasCurrentRepair,
     markRepairCompleted,
+    markRepairRestarted,
     markRepairStarted,
     missionCount,
     nextRepairLevel,

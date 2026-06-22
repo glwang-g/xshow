@@ -18,6 +18,7 @@ import {
   Mail,
   PackageCheck,
   Pencil,
+  Printer,
   RotateCcw,
   RotateCw,
   Save,
@@ -152,6 +153,7 @@ const emit = defineEmits<{
   close: [];
   "copy-experiment-report": [];
   "copy-physical-build-plan": [];
+  "export-physical-build-sheet": [];
   "export-physical-build-plan": [];
   "export-experiment-report": [];
   "copy-workspace-share-link": [];
@@ -316,6 +318,10 @@ function updateInput(event: Event) {
             <Button variant="outline" size="sm" @click="emit('export-physical-build-plan')">
               <FileDown class="h-4 w-4" />
               导出 MD
+            </Button>
+            <Button class="col-span-2" variant="outline" size="sm" @click="emit('export-physical-build-sheet')">
+              <Printer class="h-4 w-4" />
+              打印装配单
             </Button>
           </div>
         </div>

@@ -45,7 +45,7 @@ An interactive electronic brick circuit playground built with Vue 3, Vite, TypeS
 - Save, load, rename, and delete cloud workspace records across devices
 - Import or export the current workbench as a JSON archive for cross-device migration
 - Copy a shareable URL that restores the current workbench state
-- Generate and export a first-pass physical build list with component quantities, purchase keywords, and wiring steps
+- Generate and export a first-pass physical build list with component quantities, purchase keywords, wiring steps, and a printable assembly sheet
 - Generate a copyable/exportable Markdown experiment report with lesson progress, circuit conclusions, component inventory, wiring records, and observation prompts
 - Display circuit status, current, equivalent resistance, and brightness
 - Use editor-style shortcuts for delete, cancel, nudge, duplicate, zoom, undo, and redo
@@ -122,7 +122,7 @@ pnpm preview
 10. Use **Records** to save and reload named local workspace snapshots.
 11. Use **Import JSON / Export JSON** to move the current workbench between devices.
 12. Use **Copy Share Link** to send the current workbench state as a URL.
-13. Use **Physical** to copy or export a component list and wiring steps for hands-on building.
+13. Use **Physical** to copy/export a component list, wiring steps, and a printable assembly sheet for hands-on building.
 14. Use **Clear Wires** to remove connections.
 15. Use **Reset** to restore the default demo circuit.
 
@@ -170,7 +170,7 @@ Near-term priorities:
 - First slice for v0.4: buzzer, motor, diode, capacitor, ammeter, and voltmeter components with powered-state feedback
 - First slice for v0.4: node/branch simulation with branch currents, equivalent resistance, and meter readings
 - First slice for v0.4: simulation and physical-build regression tests
-- Product direction slice: turn the current workspace into a copyable/exportable physical component list, purchase keywords, wiring steps, and experiment report
+- Product direction slice: turn the current workspace into a copyable/exportable physical component list, purchase keywords, wiring steps, printable assembly sheet, and experiment report
 - Done for v0.1: one-click lesson starter workspaces
 - Done for v0.1: contextual hints for incomplete lesson steps
 - Done for v0.1: workbench highlights for active lesson steps

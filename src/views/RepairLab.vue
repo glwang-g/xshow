@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import {
   ArrowLeft,
   Copy,
@@ -11,7 +11,7 @@ import { RouterLink, useRoute, useRouter } from "vue-router";
 import logoUrl from "@/assets/logo.png";
 import Button from "@/components/ui/Button.vue";
 import { useRepairProgress } from "@/composables/useRepairProgress";
-import { evaluateCircuit, type CircuitPart } from "@/lib/circuit";
+import { clampResistorOhms, evaluateCircuit, type CircuitPart } from "@/lib/circuit";
 import { getSpec } from "@/lib/workbench-ui";
 import {
   cloneRepairLevel,
@@ -37,6 +37,7 @@ const presetIndex = ref(presetIndexForLevelId(route.query.level));
 const level = ref<RepairLevel>(cloneRepairLevel(repairLevelPresets[presetIndex.value]));
 const selectedPartId = ref(level.value.workspace.parts[0]?.id ?? "");
 const copyState = ref<"idle" | "copied">("idle");
+let copyFeedbackTimer: number | null = null;
 const mobileMode = ref<"stage" | "task" | "template">("stage");
 markRepairStarted(level.value.id);
 
@@ -104,9 +105,17 @@ function copyGeneratedJson() {
 
   navigator.clipboard.writeText(generatedJson.value).then(() => {
     copyState.value = "copied";
-    window.setTimeout(() => {
+
+    if (copyFeedbackTimer) {
+      window.clearTimeout(copyFeedbackTimer);
+    }
+
+    copyFeedbackTimer = window.setTimeout(() => {
       copyState.value = "idle";
+      copyFeedbackTimer = null;
     }, 1000);
+  }).catch(() => {
+    copyState.value = "idle";
   });
 }
 
@@ -149,7 +158,7 @@ function toggleBatteryPolarity() {
 function setResistance(value: number) {
   updateSelectedPart((part) => {
     if (part.type === "resistor") {
-      part.resistance = value;
+      part.resistance = clampResistorOhms(value, part.resistance);
     }
   });
 }
@@ -208,6 +217,12 @@ watch(
   },
   { immediate: true },
 );
+
+onBeforeUnmount(() => {
+  if (copyFeedbackTimer) {
+    window.clearTimeout(copyFeedbackTimer);
+  }
+});
 const repairTargetLabel = computed(() => {
   if (level.value.goal.bulbs) {
     return "灯泡亮度";

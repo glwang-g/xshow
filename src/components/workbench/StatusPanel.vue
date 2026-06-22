@@ -95,6 +95,7 @@ defineProps<{
   cloudSyncState: CloudSyncState;
   cloudUserEmail: string | null;
   dismissCloudInitialUploadSuggestion: () => void;
+  experimentReportCopyState: "copied" | "idle" | "manual";
   formatSavedTime: (savedAt: string) => string;
   handleCloudSignOut: () => void | Promise<void>;
   hasBuzzerParts: boolean;
@@ -149,8 +150,10 @@ defineProps<{
 
 const emit = defineEmits<{
   close: [];
+  "copy-experiment-report": [];
   "copy-physical-build-plan": [];
   "export-physical-build-plan": [];
+  "export-experiment-report": [];
   "copy-workspace-share-link": [];
   "export-workspace-json": [];
   "update:activeLessonId": [lessonId: string];
@@ -408,6 +411,25 @@ function updateInput(event: Event) {
             <FileDown class="h-4 w-4" />
             导出 JSON
           </Button>
+        </div>
+        <div class="mb-3 rounded-md border border-cyan-100 bg-cyan-50/70 p-2">
+          <div class="mb-2 text-xs font-medium text-cyan-950">实验报告</div>
+          <div class="grid grid-cols-2 gap-2">
+            <Button variant="outline" size="sm" @click="emit('copy-experiment-report')">
+              <Copy class="h-4 w-4" />
+              {{
+                experimentReportCopyState === "copied"
+                  ? "已复制"
+                  : experimentReportCopyState === "manual"
+                    ? "手动复制"
+                    : "复制报告"
+              }}
+            </Button>
+            <Button variant="outline" size="sm" @click="emit('export-experiment-report')">
+              <FileDown class="h-4 w-4" />
+              导出报告
+            </Button>
+          </div>
         </div>
         <Button class="mb-3 w-full" variant="outline" size="sm" @click="emit('copy-workspace-share-link')">
           <Link class="h-4 w-4" />

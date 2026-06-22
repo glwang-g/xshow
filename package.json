@@ -16,10 +16,13 @@
   ],
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "vue-tsc --noEmit && vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "build": "pnpm typecheck && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test tests/*.mjs",
-    "test:simulation": "node --test tests/simulation.mjs"
+    "test:dist": "node --test tests/build-output/*.mjs",
+    "test:simulation": "node --test tests/simulation.mjs",
+    "verify": "pnpm test && pnpm build && pnpm test:dist"
   },
   "dependencies": {
     "@lucide/vue": "^1.16.0",

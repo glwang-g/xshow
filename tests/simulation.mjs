@@ -1,25 +1,11 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { transformWithEsbuild } from "vite";
+import { compiledModuleUrl } from "./helpers/compile-module.mjs";
 
-async function compiledModuleUrl(path, replacements = []) {
-  let source = await readFile(new URL(path, import.meta.url), "utf8");
-  for (const [from, to] of replacements) {
-    source = source.replaceAll(from, to);
-  }
-
-  const { code } = await transformWithEsbuild(source, path, {
-    format: "esm",
-    loader: "ts",
-  });
-  return `data:text/javascript;base64,${Buffer.from(code).toString("base64")}`;
-}
-
-const circuitModuleUrl = await compiledModuleUrl("../src/lib/circuit.ts");
+const circuitModuleUrl = await compiledModuleUrl("../src/lib/circuit.ts", import.meta.url);
 const circuit = await import(circuitModuleUrl);
 const buildPlan = await import(
-  await compiledModuleUrl("../src/lib/physical-build.ts", [["@/lib/circuit", circuitModuleUrl]])
+  await compiledModuleUrl("../src/lib/physical-build.ts", import.meta.url, [["@/lib/circuit", circuitModuleUrl]])
 );
 
 function part(id, type, overrides = {}) {
@@ -115,6 +101,25 @@ test("single bulb loop solves current, resistance, and brightness", () => {
   assert.equal(result.currentMilliAmps, 136);
   assert.equal(result.equivalentResistance, 66);
   assert.equal(result.bulbs.bulb.brightnessPercent, 27);
+});
+
+test("circuit numeric helpers keep rotation and resistor values safe", () => {
+  assert.equal(circuit.normalizePartRotation(725), 5);
+  assert.equal(circuit.normalizePartRotation(-15), 345);
+  assert.equal(circuit.normalizePartRotation(Number.NaN, 30), 30);
+
+  assert.equal(circuit.clampResistorOhms(-10), circuit.minResistorOhms);
+  assert.equal(circuit.clampResistorOhms(48.6), 49);
+  assert.equal(circuit.clampResistorOhms(Number.POSITIVE_INFINITY, 120), 120);
+  assert.equal(circuit.clampResistorOhms(2000), circuit.maxResistorOhms);
+});
+
+test("malformed resistor values fall back before simulation math", () => {
+  const result = evaluate(singleBulbCircuit({ resistance: Number.NaN }));
+
+  assert.equal(result.closed, true);
+  assert.equal(Number.isFinite(result.currentMilliAmps), true);
+  assert.equal(Number.isFinite(result.equivalentResistance), true);
 });
 
 test("open switch interrupts current and turns the bulb off", () => {
@@ -292,4 +297,14 @@ test("physical build plan warns about LED circuits without current limiting", ()
 
   assert.equal(plan.ready, true);
   assert.ok(plan.warnings.some((warning) => warning.id === "missing-current-limit"));
+});
+
+test("physical build plan covers every supported part type", () => {
+  const parts = circuit.partTypes.map((type, index) => part(`${type}-${index}`, type));
+  const plan = buildPlan.createPhysicalBuildPlan(parts, []);
+  const itemIds = new Set(plan.items.map((item) => item.id));
+
+  for (const type of circuit.partTypes) {
+    assert.ok(itemIds.has(type), `missing physical build item for ${type}`);
+  }
 });

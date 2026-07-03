@@ -14,6 +14,20 @@ export type RepairProgressState = {
   records: Record<string, RepairProgressRecord>;
 };
 
+export function resetRepairProgressRecord(
+  levelId: string,
+  openedAt: string,
+  record?: RepairProgressRecord,
+): RepairProgressRecord {
+  return {
+    completions: record?.completions ?? 0,
+    lastOpenedAt: openedAt,
+    levelId,
+    startedAt: openedAt,
+    status: "in-progress",
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }

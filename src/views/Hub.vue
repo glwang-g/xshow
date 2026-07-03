@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { ArrowRight, CircuitBoard, Swords, Wrench } from "@lucide/vue";
+import { ArrowRight, CircuitBoard, Sparkles, Swords, Wrench } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import logoUrl from "@/assets/logo.png";
 import { useRepairProgress } from "@/composables/useRepairProgress";
@@ -53,20 +53,13 @@ function formatProgressDate(value: string) {
           </div>
         </div>
 
-        <div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+        <div class="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           <RouterLink
             to="/workbench"
             class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-3 sm:text-sm"
           >
             <CircuitBoard class="h-4 w-4" />
             <span class="truncate">工作台</span>
-          </RouterLink>
-          <RouterLink
-            to="/tank-lab"
-            class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-3 sm:text-sm"
-          >
-            <Swords class="h-4 w-4" />
-            <span class="truncate">战车试验场</span>
           </RouterLink>
         </div>
       </header>
@@ -192,6 +185,39 @@ function formatProgressDate(value: string) {
                   {{ taskActionLabel(preset.id) }}
                   <ArrowRight class="h-4 w-4" />
                 </span>
+              </RouterLink>
+            </div>
+          </section>
+
+          <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div class="flex items-center justify-between gap-2">
+              <div>
+                <h2 class="text-sm font-semibold">探索实验区</h2>
+                <p class="text-xs text-slate-500">独立原型</p>
+              </div>
+            </div>
+
+            <div class="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+              <RouterLink
+                to="/tank-lab"
+                class="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm transition-colors hover:bg-slate-100"
+              >
+                <span class="inline-flex min-w-0 items-center gap-2">
+                  <Swords class="h-4 w-4 shrink-0 text-slate-600" />
+                  <span class="truncate font-medium text-slate-900">战车试验场</span>
+                </span>
+                <ArrowRight class="h-4 w-4 shrink-0 text-cyan-700" />
+              </RouterLink>
+
+              <RouterLink
+                to="/rubiks-cube"
+                class="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm transition-colors hover:bg-slate-100"
+              >
+                <span class="inline-flex min-w-0 items-center gap-2">
+                  <Sparkles class="h-4 w-4 shrink-0 text-slate-600" />
+                  <span class="truncate font-medium text-slate-900">3D 魔方</span>
+                </span>
+                <ArrowRight class="h-4 w-4 shrink-0 text-cyan-700" />
               </RouterLink>
             </div>
           </section>

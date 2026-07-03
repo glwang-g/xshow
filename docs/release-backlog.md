@@ -2,6 +2,8 @@
 
 This backlog turns the current roadmap into releasable versions so `xshow circuits` can move from "keep adding features" to "close, verify, and ship".
 
+For the broader near-term execution order across product work, see [execution-plan.md](execution-plan.md).
+
 ## Public Beta: Release Hardening
 
 Status: **in hardening; freeze large features and accept only blocking fixes, verification notes, and release-documentation updates**.

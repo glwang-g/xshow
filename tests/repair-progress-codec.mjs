@@ -51,6 +51,27 @@ test("repair progress sanitizer clears invalid current level without losing vali
   assert.equal(state.records["led-polarity"].status, "completed");
 });
 
+test("repair progress reset moves a completed record back to in-progress", () => {
+  const openedAt = "2026-06-21T11:00:00.000Z";
+  const record = progressCodec.resetRepairProgressRecord(
+    "led-polarity",
+    openedAt,
+    progressRecord("led-polarity", {
+      completedAt: "2026-06-21T10:45:00.000Z",
+      completions: 2,
+      lastOpenedAt: "2026-06-21T10:45:00.000Z",
+      status: "completed",
+    }),
+  );
+
+  assert.equal(record.levelId, "led-polarity");
+  assert.equal(record.status, "in-progress");
+  assert.equal(record.completedAt, undefined);
+  assert.equal(record.completions, 2);
+  assert.equal(record.startedAt, openedAt);
+  assert.equal(record.lastOpenedAt, openedAt);
+});
+
 test("repair progress sanitizer rejects malformed records", () => {
   const state = progressCodec.sanitizeRepairProgressState(
     {

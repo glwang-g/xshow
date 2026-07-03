@@ -2,6 +2,7 @@ import { computed, ref } from "vue";
 import { repairLevelPresets, type RepairLevel } from "@/lib/repair-lab";
 import {
   completedRepairProgressRecord,
+  resetRepairProgressRecord,
   restartedRepairProgressRecord,
   sanitizeRepairProgressState,
   startedRepairProgressRecord,
@@ -95,6 +96,15 @@ function markRepairCompleted(levelId: string | undefined) {
   updateRecord(levelId, (record) => completedRepairProgressRecord(levelId, completedAt, record));
 }
 
+function markRepairReset(levelId: string | undefined) {
+  if (!isValidLevelId(levelId)) {
+    return;
+  }
+
+  const openedAt = nowIso();
+  updateRecord(levelId, (record) => resetRepairProgressRecord(levelId, openedAt, record));
+}
+
 function repairTaskStatus(levelId: string | undefined): RepairTaskStatus {
   if (!isValidLevelId(levelId)) {
     return "not-started";
@@ -158,6 +168,7 @@ export function useRepairProgress() {
     currentLevelId,
     hasCurrentRepair,
     markRepairCompleted,
+    markRepairReset,
     markRepairRestarted,
     markRepairStarted,
     missionCount,

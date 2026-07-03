@@ -28,6 +28,8 @@ Current focus: **v0.4 simulation calibration and lessons for new components**.
 
 See [release-backlog.md](release-backlog.md) for the versioned backlog. v0.3 is now focused on cloud records without blocking signed-out local use.
 
+For the current priority order across the broader product, see [product-backlog.md](product-backlog.md).
+
 ### Better wire interactions
 
 Status: **Done for v0.1**

@@ -2,11 +2,11 @@
 
 [中文文档](README.zh-CN.md)
 
-An interactive electronic brick circuit playground built with Vue 3, Vite, TypeScript, and Tailwind CSS.
+An interactive computer science visualization platform built with Vue 3, Vite, TypeScript, and Tailwind CSS, starting from signals and circuits and growing toward machines and algorithms.
 
 **Live Demo:** https://labs.freexlib.com
 
-`xshow circuits` is an early-stage educational prototype for building simple circuits with visual components such as batteries, switches, bulbs, LEDs, diodes, capacitors, buzzers, motors, meters, wires, and variable resistors. It is designed for quick classroom-style demonstrations: connect parts, toggle the switch, change resistance, and watch the circuit respond immediately.
+`xshow circuits` is an early-stage educational prototype for learning computer science from simple signals and circuits upward. Users can build simple circuits with visual components such as batteries, switches, bulbs, LEDs, diodes, capacitors, buzzers, motors, meters, wires, and variable resistors. Over time, the mainline path extends toward logic, memory, CPU execution, programs, and algorithm visualization.
 
 ![xshow circuits screenshot](docs/screenshot.png)
 
@@ -144,6 +144,8 @@ Pushes to `main` can automatically build and deploy the static app to a cloud se
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) for the current project direction.
 
+Product north star: [docs/product-north-star.md](docs/product-north-star.md).
+
 Chinese version: [docs/ROADMAP.zh-CN.md](docs/ROADMAP.zh-CN.md).
 
 Release backlog: [docs/release-backlog.md](docs/release-backlog.md).
@@ -162,7 +164,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md). Documentation changes should keep Englis
 
 Near-term priorities:
 
-- Current focus: v0.4 simulation calibration and lessons for new components
+- Current focus: stabilizing the signal/circuit layer, clarifying the main learning path, and designing Rust/WASM machine-layer integration
 - Done for v0.1: current direction animation
 - Done for v0.1: guided lesson mode first slice
 - Done for v0.1: multiple guided lesson experiments

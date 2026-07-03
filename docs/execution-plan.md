@@ -8,10 +8,11 @@ It is intentionally narrower than the roadmap. The roadmap explains direction; t
 
 Push the project in this order:
 
-1. Stabilize the core circuit workbench and teaching loop
-2. Close beta unknowns with QA and release hardening
-3. Improve product coherence around repair tasks, reports, sharing, and hub structure
-4. Reevaluate expansion bets such as desktop packaging or hardware integration only after the above is calmer
+1. Write down the "signals, circuits, machines, algorithms" north star and reflect it in the hub information architecture
+2. Stabilize the circuit workbench and teaching loop as the signal/circuit layer
+3. Close beta unknowns with QA and release hardening
+4. Advance the machine-layer integration design, starting with a Rust/WASM core
+5. Reevaluate expansion bets such as desktop packaging or hardware integration only after the above is calmer
 
 ## Phase A: Core Stabilization
 
@@ -87,14 +88,14 @@ Goal: make the project feel more like one product and less like a collection of 
 - Repair-task system expansion
 - Better reports and physical-build deliverables
 - Share/template quality
-- Hub information architecture
+- Hub information architecture across signal/circuit, machine, algorithm, and experiment areas
 - Clearer product language
 
 ### Concrete outcomes
 
 - Repair tasks feel like a deliberate learning path instead of a side mode
 - Reports and build plans become more useful outside the app
-- The hub makes the main product and experiment zone visibly distinct
+- The hub makes the signal/circuit, machine, algorithm, and experiment areas visibly distinct
 - Users can understand what the project is for within one screen
 
 ### Candidate tasks
@@ -103,7 +104,7 @@ Goal: make the project feel more like one product and less like a collection of 
 - Improve experiment-report readability and printable usefulness
 - Improve physical build-plan wording, grouping, and export quality
 - Add or refine reusable lesson/demo templates
-- Split the hub into a main-product section and an experiment-zone section
+- Split the hub into the main learning path and the experiment zone, and mark the CPU simulator as a machine-layer candidate
 
 ### Exit criteria
 
@@ -118,6 +119,7 @@ Goal: explore bigger bets without destabilizing the product.
 ### Focus
 
 - More components and guided examples
+- Rust/WASM machine-core integration
 - Teacher-oriented workflow experiments
 - Tauri evaluation
 - Hardware-integration exploration
@@ -125,12 +127,13 @@ Goal: explore bigger bets without destabilizing the product.
 ### Decision gates
 
 - Do not start Tauri work until the Web/PWA core is steady and packaging solves a real problem
+- For the machine layer, prefer Rust core -> WASM bridge -> Vue/TypeScript UI before making the whole product desktop-first
 - Do not start hardware work until there is a clear physical-device workflow worth supporting
 - Do not let experiment-zone growth outrun main-product stability
 
 ## Working Rules
 
 - When in doubt, ship confidence beats feature count
-- Main product work beats side experiments when both compete for time
+- Work that strengthens the "signal -> circuit -> machine -> algorithm" path beats side experiments when both compete for time
 - Every expansion bet should answer a concrete product need, not just technical curiosity
 - If a task does not clearly fit a phase, it probably belongs in the idea pool first

@@ -2,9 +2,9 @@
 
 [中文版本](ROADMAP.zh-CN.md)
 
-`xshow circuits` is moving toward a friendly electronic brick playground for teaching simple circuits.
+`xshow circuits` is moving from a friendly electronic brick circuit playground toward an interactive computer science visualization platform that connects signals, circuits, machines, and algorithms.
 
-The project should stay visual, approachable, and immediate: users should be able to build a circuit, see what happens, and learn from the result without needing a full engineering simulator.
+The project should stay visual, approachable, and immediate: users should be able to build a circuit, see what happens, and then follow the path through signals, logic, machines, and algorithms without needing a full engineering simulator.
 
 ## Progress
 
@@ -25,6 +25,8 @@ Current focus: **v0.4 simulation calibration and lessons for new components**.
 | Deployment automation | First slice | Pushes to `main` can build the app and deploy `dist/` to a cloud server over SSH when repository secrets are configured. |
 
 ## Near Term
+
+See [product-north-star.md](product-north-star.md) for the product north star.
 
 See [release-backlog.md](release-backlog.md) for the versioned backlog. v0.3 is now focused on cloud records without blocking signed-out local use.
 

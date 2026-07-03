@@ -49,7 +49,7 @@ function formatProgressDate(value: string) {
           <img class="h-9 w-9 object-contain" :src="logoUrl" alt="明石空间 logo" />
           <div class="min-w-0 leading-tight">
             <div class="text-sm font-semibold tracking-tight">明石空间</div>
-            <div class="text-xs text-slate-500">维修任务大厅</div>
+            <div class="text-xs text-slate-500">从信号到算法的学习路径</div>
           </div>
         </div>
 
@@ -66,17 +66,88 @@ function formatProgressDate(value: string) {
 
       <section class="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
         <div class="flex min-w-0 flex-col gap-4">
+          <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="text-xs font-medium text-cyan-700">主线学习路径</p>
+                <h1 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 lg:text-3xl">
+                  从信号、电路、机器到算法
+                </h1>
+                <p class="mt-3 max-w-3xl break-words text-sm leading-6 text-slate-600">
+                  先看见信号如何流动，再理解电路如何表达逻辑，继续走到存储、CPU、程序执行和算法行为。
+                </p>
+              </div>
+              <img class="h-12 w-12 shrink-0 object-contain" :src="logoUrl" alt="明石空间 logo large" />
+            </div>
+
+            <div class="mt-5 grid gap-3 lg:grid-cols-3">
+              <RouterLink
+                to="/workbench"
+                class="group flex min-w-0 flex-col justify-between rounded-lg border border-cyan-200 bg-cyan-50/70 p-4 transition-colors hover:bg-cyan-50"
+              >
+                <div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white text-cyan-700">
+                      <CircuitBoard class="h-4 w-4" />
+                    </span>
+                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-cyan-700">已可用</span>
+                  </div>
+                  <h2 class="mt-3 text-sm font-semibold text-slate-950">信号与电路层</h2>
+                  <p class="mt-2 text-xs leading-5 text-slate-600">
+                    用电池、开关、导线、电表和元器件观察通断、方向、测量和故障。
+                  </p>
+                </div>
+                <span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-700">
+                  进入工作台
+                  <ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </RouterLink>
+
+              <div class="flex min-w-0 flex-col justify-between rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white text-slate-700">
+                      <CircuitBoard class="h-4 w-4" />
+                    </span>
+                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-slate-600">设计中</span>
+                  </div>
+                  <h2 class="mt-3 text-sm font-semibold text-slate-950">机器层</h2>
+                  <p class="mt-2 text-xs leading-5 text-slate-600">
+                    8-bit 小计算机原型已经起步，下一步会进入主线学习路径。
+                  </p>
+                </div>
+                <span class="mt-4 text-xs font-medium text-slate-500">机器核心融合中</span>
+              </div>
+
+              <div class="flex min-w-0 flex-col justify-between rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white text-slate-700">
+                      <Sparkles class="h-4 w-4" />
+                    </span>
+                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-slate-600">规划中</span>
+                  </div>
+                  <h2 class="mt-3 text-sm font-semibold text-slate-950">算法层</h2>
+                  <p class="mt-2 text-xs leading-5 text-slate-600">
+                    排序、搜索、栈、队列、树和图算法，后续可以下钻到内存、寄存器和指令。
+                  </p>
+                </div>
+                <span class="mt-4 text-xs font-medium text-slate-500">算法行为可视化</span>
+              </div>
+            </div>
+          </section>
+
           <section
             class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:p-7"
           >
             <div class="flex min-w-0 items-start justify-between gap-4">
               <div class="min-w-0">
-                <p class="text-xs font-medium text-cyan-700">{{ hasCurrentRepair ? "继续维修" : "推荐任务" }}</p>
-                <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 lg:text-4xl">
+                <p class="text-xs font-medium text-cyan-700">{{ hasCurrentRepair ? "继续信号诊断" : "推荐信号诊断" }}</p>
+                <h2 class="mt-3 text-2xl font-semibold tracking-tight text-slate-950 lg:text-3xl">
                   {{ currentLevel?.title }}
-                </h1>
+                </h2>
               </div>
-              <img class="h-12 w-12 shrink-0 object-contain" :src="logoUrl" alt="明石空间 logo large" />
+              <Wrench class="h-8 w-8 shrink-0 text-cyan-700" />
             </div>
 
             <div class="mt-6 min-w-0 border-t border-slate-200 pt-5">
@@ -111,7 +182,7 @@ function formatProgressDate(value: string) {
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <h2 class="text-sm font-semibold">维修进度</h2>
+                <h2 class="text-sm font-semibold">信号诊断进度</h2>
                 <p class="text-xs text-slate-500">完成 {{ completedCount }} / {{ missionCount }}</p>
               </div>
               <div class="text-sm font-semibold text-cyan-700">{{ progressPercent }}%</div>
@@ -145,7 +216,7 @@ function formatProgressDate(value: string) {
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div class="flex items-center justify-between gap-2">
               <div>
-                <h2 class="text-sm font-semibold">选择维修任务</h2>
+                <h2 class="text-sm font-semibold">选择信号诊断任务</h2>
                 <p class="text-xs text-slate-500">共 {{ missionCount }} 个</p>
               </div>
             </div>
@@ -193,7 +264,7 @@ function formatProgressDate(value: string) {
             <div class="flex items-center justify-between gap-2">
               <div>
                 <h2 class="text-sm font-semibold">探索实验区</h2>
-                <p class="text-xs text-slate-500">独立原型</p>
+                <p class="text-xs text-slate-500">不抢主线的独立原型</p>
               </div>
             </div>
 

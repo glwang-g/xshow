@@ -1,11 +1,17 @@
 # Product Backlog
 
-This backlog organizes the current product direction into priority bands so `xshow circuits` can keep exploring without losing focus.
+This backlog organizes the current product direction into priority bands so `xshow circuits` can keep exploring while converging on the updated product north star.
 
-It assumes the project now has two layers:
+The current north star is in [product-north-star.md](product-north-star.md):
 
-- Main product: circuit workbench, repair tasks, and teaching flow
-- Experiment zone: side projects such as Tank Lab, Rubik's Cube, and future interactive prototypes
+> `xshow` is an interactive computer science visualization platform that connects signals, circuits, machines, and algorithms.
+
+It assumes the project now has these layers:
+
+- Mainline layers: signal/circuit, logic/memory, machine, and algorithm
+- Current foundation: circuit workbench, repair tasks, and teaching flow
+- Mainline candidate: CPU simulator and future Rust/WASM machine core
+- Experiment zone: Tank Lab, Rubik's Cube, and future interactive prototypes
 
 The goal is not to freeze exploration. The goal is to make it obvious which work strengthens the core product first.
 
@@ -78,7 +84,7 @@ These items move the project from a good prototype toward a tool that feels cohe
 
 ### Information architecture and product clarity
 
-- Separate the main product area from the experiment zone on the hub page
+- Separate the signal/circuit, machine, algorithm, and experiment areas on the hub page
 - Reduce ambiguity about what the project is primarily for
 - Keep side experiments visible without letting them compete with the core entry points
 
@@ -100,6 +106,7 @@ These items are valuable, but they should follow after the core loop and product
 ### Desktop enhancement
 
 - Evaluate a thin Tauri shell only after the Web/PWA core feels settled
+- For the machine layer, prefer Rust/WASM core reuse before making the whole product desktop-first
 - Start with native file access, export destinations, and packaging rather than rewriting the product around desktop assumptions
 
 ### Hardware integration
@@ -127,7 +134,7 @@ These ideas are worth tracking, but they should stay out of the active backlog u
 
 ## Working Rules
 
-- Core product work beats side exploration when priorities conflict
+- Work that strengthens the "signal -> circuit -> machine -> algorithm" path beats side exploration when priorities conflict
 - Side projects are allowed, but they should not blur the hub's main message
 - Product direction should stay compatible with signed-out local use, fast first-time play, and teaching-friendly immediacy
 - New ideas should enter through this backlog instead of expanding the main roadmap without priority

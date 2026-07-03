@@ -23,6 +23,11 @@ const router = createRouter({
       name: "repair-lab",
       component: () => import("@/views/RepairLab.vue"),
     },
+    {
+      path: "/rubiks-cube",
+      name: "rubiks-cube",
+      component: () => import("@/views/RubiksCube.vue"),
+    },
   ],
 });
 

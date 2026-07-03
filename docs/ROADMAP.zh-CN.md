@@ -26,6 +26,8 @@
 
 版本化待完成清单见 [release-backlog.zh-CN.md](release-backlog.zh-CN.md)。v0.3 现在重点推进云端记录，同时保持未登录用户也能完整本地使用。
 
+如果想看当前更宽口径的 `P0 / P1 / P2` 产品优先级，请看 [product-backlog.zh-CN.md](product-backlog.zh-CN.md)。
+
 ### 更好的导线交互
 
 状态：**v0.1 已完成**

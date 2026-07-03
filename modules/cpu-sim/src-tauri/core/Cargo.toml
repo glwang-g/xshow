@@ -1,0 +1,15 @@
+[package]
+name = "cpu-sim-core"
+version = "0.1.0"
+edition = "2021"
+description = "Pure-Rust kernel of the 8-bit teaching simulator (no Tauri deps)."
+license = "MIT"
+
+# Not a member of a bigger workspace — we're a standalone crate the Tauri
+# binary depends on via a path dependency.
+[lib]
+name = "cpu_sim_core"
+path = "src/lib.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }

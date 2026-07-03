@@ -1,0 +1,22 @@
+# Project-local cargo config: use USTC mirror for crates.io so first-time
+# builds inside China finish in seconds instead of minutes.
+#
+# Scope: this file only affects builds run under `modules/cpu-sim/`. The
+# global `~/.cargo/config.toml` is untouched, so other Rust projects on this
+# machine keep whatever they were using.
+
+[source.crates-io]
+replace-with = "ustc"
+
+[source.ustc]
+registry = "sparse+https://mirrors.ustc.edu.cn/crates.io-index/"
+
+# Sparse protocol (default on Rust 1.70+) is much faster than the old git
+# index; leaving this explicit so it survives any future toolchain default flip.
+[registries.crates-io]
+protocol = "sparse"
+
+# Give downloads a fair timeout — the mirror can spike on peak hours.
+[http]
+timeout = 120
+multiplexing = true

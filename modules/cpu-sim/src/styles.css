@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- global tweaks ------------------------------------------------------- */
+
+/* Keep the Tauri window from showing native drag/select behaviour on chrome
+   we build ourselves; individual editable regions re-enable selection. */
+html, body {
+  -webkit-user-select: none;
+  user-select: none;
+}
+textarea, input, pre, code {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Custom scrollbars — matches the terminal aesthetic. */
+::-webkit-scrollbar        { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb  { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }

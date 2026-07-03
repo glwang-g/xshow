@@ -1,10 +1,10 @@
 # xshow circuits
 
-一个用 Vue 3、Vite、TypeScript 和 Tailwind CSS 构建的交互式电子积木电路实验台。
+一个用 Vue 3、Vite、TypeScript 和 Tailwind CSS 构建的交互式计算机科学可视化平台，从信号和电路开始，逐步走向机器和算法。
 
 **在线演示：** https://labs.freexlib.com
 
-`xshow circuits` 是一个早期教育原型，目标是让用户像拼电子积木一样搭建简单电路。你可以把电池、开关、灯泡、LED、二极管、电容、蜂鸣器、电机、电表、导线、可变电阻器连接起来，切换开关，调节电阻，并立即看到电路状态变化。
+`xshow circuits` 是一个早期教育原型，目标是让用户像拼电子积木一样从简单信号和电路开始学习计算机科学。你可以把电池、开关、灯泡、LED、二极管、电容、蜂鸣器、电机、电表、导线、可变电阻器连接起来，切换开关，调节电阻，并立即看到电路状态变化。长期主线会继续向逻辑、存储、CPU、程序执行和算法可视化延伸。
 
 ![xshow circuits 截图](docs/screenshot.png)
 
@@ -141,6 +141,8 @@ pnpm preview
 
 当前项目方向见 [docs/ROADMAP.zh-CN.md](docs/ROADMAP.zh-CN.md)。
 
+项目北极星见 [docs/product-north-star.zh-CN.md](docs/product-north-star.zh-CN.md)。
+
 版本待完成清单见 [docs/release-backlog.zh-CN.md](docs/release-backlog.zh-CN.md)。
 
 云端记录和跨设备同步计划见 [docs/cloud-sync-plan.zh-CN.md](docs/cloud-sync-plan.zh-CN.md)。
@@ -155,7 +157,7 @@ v0.2 发布说明见 [docs/releases/v0.2.0.zh-CN.md](docs/releases/v0.2.0.zh-CN.
 
 近期优先级：
 
-- 当前重点：v0.4 更多元器件和更真实规则
+- 当前重点：信号与电路层稳定、主线学习路径收束、机器层 Rust/WASM 融合设计
 - v0.1 已完成：电流方向动画
 - v0.1 已完成：引导式实验课程模式第一版
 - v0.1 已完成：多个引导式实验

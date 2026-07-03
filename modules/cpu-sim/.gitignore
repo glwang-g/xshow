@@ -1,0 +1,11 @@
+# Frontend
+node_modules/
+dist/
+.pnpm-store/
+
+# Editor
+.vscode/
+.idea/
+
+# TS incremental build cache
+*.tsbuildinfo

@@ -16,6 +16,8 @@ Current focus: **v0.4 simulation calibration and lessons for new components**.
 | Wire selection and reconnecting | Done for v0.1 | Wires can be selected, deleted, reconnected, snapped to nearby terminals, show clearer hover/drag/drop feedback, and use more readable orthogonal routing. |
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
+| Logic/memory Logic Lab | Preview | `/logic-lab` is now in the main app with gate truth tables, SR latch state retention, and 1-bit register rising-edge capture previews. |
+| Machine-layer Computer Lab | Preview | `/computer-lab` is now in the main app with an assembly editor, load/step/run/reset controls, registers, memory, and execution-log preview; real execution should next connect to the Rust/WASM bridge. |
 | Workspace records | v0.3 feature complete | The browser automatically restores local workspaces; v0.3 adds Supabase email/password auth, explicit cloud records, renaming, conflict handling, and visible sync states. |
 | More components | v0.4 first slice | Buzzer, motor, diode, capacitor, ammeter, and voltmeter components are available with first-pass educational feedback driven by the node/branch model. |
 | Physical build bridge | First slice | The current workspace can generate, copy, and export a component list, purchase keywords, wiring steps, safety notes, printable assembly sheets, and Markdown experiment reports. |

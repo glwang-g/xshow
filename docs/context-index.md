@@ -13,9 +13,11 @@ Use this index to quickly find the repository conventions and durable notes that
 | Question | Read First |
 | --- | --- |
 | Product origin, north star, and mainline boundaries | `docs/product-north-star.md`, `docs/product-backlog.md`, `docs/execution-plan.md` |
+| Gamified direction, mission world, and campaign structure | `docs/gamified-evolution-plan.md`, `docs/product-north-star.md` |
 | Roadmap and phased capabilities | `docs/ROADMAP.md` |
 | Near-term release scope and public beta status | `docs/release-backlog.md`, `docs/releases/public-beta-candidate.md` |
 | Architecture boundaries and where code should live | `docs/architecture.md` |
+| Programmable World Engine migration and layer ownership | `docs/world-engine.md`, `docs/layers.md`, `src/lib/world-engine.ts` |
 | Cloud records, Supabase, cross-device sync | `docs/cloud-sync-plan.md`, `docs/supabase-schema.sql` |
 | Deployment and server release flow | `docs/DEPLOYMENT.md` |
 | Mobile, PWA, and QA notes | `docs/mobile-qa.md`, `docs/v0.2-qa-report.md` |
@@ -28,11 +30,15 @@ Use this index to quickly find the repository conventions and durable notes that
 - Product north star: an interactive computer science visualization platform connecting signals, circuits, machines, and algorithms.
 - Mainline layers: signal/circuit, logic/memory, machine, and algorithm.
 - The circuit workbench and repair tasks belong to the signal/circuit layer.
-- The CPU simulator is a mainline machine-layer candidate, not just another experiment.
+- Logic Lab is now a mainline logic/memory preview bridging circuit signals and machine state.
+- The CPU simulator is now a mainline machine-layer preview, not just another experiment.
 - Tank Lab and 3D Rubik's Cube belong to the experiment zone unless they start serving the mainline path.
 - Put broad product direction in `docs/product-backlog.md`; use `docs/execution-plan.md` for near-term order.
+- For gamification, prefer missions, debugging, construction, and world-map structure over quiz-centric design.
 - Use `docs/release-backlog.md` for release scoping.
 - Check `docs/architecture.md` before moving logic across modules.
+- Treat the World Engine as a gradual contract layer first: add adapters around existing rule modules before rewriting labs.
+- Keep `docs/world-engine.md` and `docs/layers.md` as the migration map for World/Entity/State/Tick/Rule/Scenario/Replay work.
 - For machine-layer integration, prefer Rust core -> WASM bridge -> Vue/TypeScript UI.
 - Keep English and Chinese docs aligned when both versions exist.
 - If a temporary discovery becomes reusable context, write a short doc and link it from this index.

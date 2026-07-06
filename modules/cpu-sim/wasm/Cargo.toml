@@ -1,0 +1,21 @@
+[package]
+name = "cpu-sim-wasm"
+version = "0.1.0"
+edition = "2021"
+description = "WASM facade for the xshow 8-bit teaching CPU core."
+license = "MIT"
+
+[lib]
+name = "cpu_sim_wasm"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+console_error_panic_hook = { version = "0.1", optional = true }
+cpu-sim-core = { path = "../src-tauri/core" }
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"
+
+[features]
+default = ["console_error_panic_hook"]

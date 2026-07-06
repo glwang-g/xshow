@@ -1,7 +1,7 @@
-/**
- * Type definitions mirroring the Rust `CpuState` struct.
- * Keep in lockstep with `src-tauri/src/cpu.rs::CpuState`.
- */
+ /**
+  * Type definitions mirroring the Rust `CpuState` struct.
+ * Keep in lockstep with `src-tauri/core/src/cpu.rs::CpuState`.
+  */
 
 export interface Flags {
   z: boolean;

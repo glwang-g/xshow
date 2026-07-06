@@ -64,6 +64,13 @@ Confirm:
 
 Goal: allow the Web main app to call the CPU core.
 
+Current state:
+
+- `modules/cpu-sim/wasm` now contains a wasm-bindgen facade scaffold.
+- The facade reuses `cpu-sim-core`'s `assembler` and `Cpu`, then serializes snapshots into the camelCase fields the main app expects.
+- `src/lib/computer-core.ts` now exposes `createWasmComputerCore()` for wrapping wasm-bindgen output.
+- The current environment does not have `cargo`, so the Rust scaffold has not been compiled locally yet.
+
 Candidate API:
 
 ```ts
@@ -99,7 +106,15 @@ Outputs:
 - Hub entry under the machine layer
 - `src/lib/computer-core.ts` typed wrapper
 
-The first UI can reuse the current `modules/cpu-sim/src/components` structure, but it must remove the Tauri `invoke()` dependency.
+`/computer-lab` now has an interactive Assembly Console:
+
+- Assembly editor
+- load / step / run / reset controls
+- linked registers, FLAGS, PC, memory, and execution log panels
+- the `ComputerCoreApi` contract in `src/lib/computer-core.ts`
+- a fixed-sample `createPreviewComputerCore()` adapter
+
+The preview adapter exists only to validate the main-app UI and state contract. It is not the real CPU interpreter. The first execution UI should replace `createPreviewComputerCore()` with the WASM bridge, not Tauri `invoke()` and not a TypeScript rewrite of the core.
 
 ### Phase 4: Test And Release Path
 
@@ -137,8 +152,7 @@ After the main-app WASM version stabilizes, decide whether to:
 
 ## Immediate Next Steps
 
-1. Confirm local Rust/Cargo setup and run `cargo test` under `modules/cpu-sim/src-tauri`.
-2. Design the smallest wasm-bindgen facade for the core crate.
-3. Add a planning-state "machine layer" entry to the main hub so users do not assume the CPU simulator is fully integrated yet.
-4. Then build the first Web version of `/computer-lab`.
-
+1. Install or confirm local Rust/Cargo setup and run `cargo test` under `modules/cpu-sim/src-tauri`.
+2. Compile `modules/cpu-sim/wasm`, adding a `wasm-pack` build script if needed.
+3. Wire `/computer-lab` to the minimal WASM load/step/reset/run loop, replacing the current preview adapter.
+4. Add a WASM wrapper smoke test and minimal browser validation for the controls.

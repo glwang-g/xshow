@@ -13,9 +13,11 @@
 | 你要了解的问题 | 优先阅读 |
 | --- | --- |
 | 项目初心、北极星和主线边界 | `docs/product-north-star.zh-CN.md`、`docs/product-backlog.zh-CN.md`、`docs/execution-plan.zh-CN.md` |
+| 游戏化方向、任务世界和主线闯关结构 | `docs/gamified-evolution-plan.zh-CN.md`、`docs/product-north-star.zh-CN.md` |
 | 路线图和阶段性能力 | `docs/ROADMAP.zh-CN.md` |
 | 近期发布收口、公开测试版状态 | `docs/release-backlog.zh-CN.md`、`docs/releases/public-beta-candidate.zh-CN.md` |
 | 架构拆分、代码应该放哪里 | `docs/architecture.zh-CN.md` |
+| Programmable World Engine 迁移与层级归属 | `docs/world-engine.zh-CN.md`、`docs/layers.zh-CN.md`、`src/lib/world-engine.ts` |
 | 云端记录、Supabase、跨设备同步 | `docs/cloud-sync-plan.zh-CN.md`、`docs/supabase-schema.sql` |
 | 部署、服务器和发布流程 | `docs/DEPLOYMENT.zh-CN.md` |
 | 移动端、PWA、QA 记录 | `docs/mobile-qa.zh-CN.md`、`docs/v0.2-qa-report.zh-CN.md` |
@@ -28,11 +30,15 @@
 - 产品北极星是：从信号、电路、机器到算法的交互式计算机科学可视化平台。
 - 主线层次是：信号与电路层、逻辑与存储层、机器层、算法层。
 - 电路工作台和维修任务属于信号与电路层。
-- CPU 模拟器属于机器层主线候选，不再按普通探索实验处理。
+- Logic Lab 已进入逻辑与存储层主线预览，连接电路信号和机器状态。
+- CPU 模拟器已进入机器层主线预览，不再按普通探索实验处理。
 - 战车试验场、3D 魔方这类内容属于探索实验区，不应模糊主入口。
 - 大的产品方向先进入 `docs/product-backlog.zh-CN.md`，近期执行顺序看 `docs/execution-plan.zh-CN.md`。
+- 游戏化方向优先走“任务、调试、构建、世界地图”，不走“刷题游戏平台”。
 - 版本收口看 `docs/release-backlog.zh-CN.md`。
 - 架构位置和拆分方向先查 `docs/architecture.zh-CN.md`。
+- World Engine 先作为渐进契约层：优先围绕现有 Rule Module 做 adapter，不要先重写 Lab。
+- World/Entity/State/Tick/Rule/Scenario/Replay 相关迁移地图看 `docs/world-engine.zh-CN.md` 和 `docs/layers.zh-CN.md`。
 - 机器层融合优先考虑 Rust core -> WASM bridge -> Vue/TypeScript UI。
 - 更新正式文档时，尽量同步维护英文和中文版本。
 - 临时但有复用价值的上下文，可以整理成短文档后从本索引链接。

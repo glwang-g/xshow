@@ -6,9 +6,9 @@ CPU. Built with **Rust + Tauri v2** for the virtual machine kernel and
 
 This module lives inside the `xshow` repository as an *independent* sub-project:
 it has its own `package.json`, its own Rust workspace under `src-tauri/`, and
-does not depend on the outer Vue application in any way — but it uses the
-same tech stack (Vue 3 + Vite + Tailwind) so the two can be merged later if
-the simulator becomes a chapter of the main site.
+still runs as a Tauri prototype. The reusable CPU behavior lives in
+`src-tauri/core`, and a browser-facing WASM facade scaffold now lives in
+`wasm/` so the simulator can become the main app's machine layer.
 
 ## First-run
 
@@ -27,6 +27,19 @@ pnpm tauri dev
 # 4. Produce a release bundle
 pnpm tauri build
 ```
+
+## Main app bridge
+
+The main Web/PWA app integrates this simulator through a staged bridge:
+
+- `src-tauri/core` keeps the authoritative Rust assembler and CPU.
+- `wasm/` exposes a wasm-bindgen facade for browsers.
+- `../../src/lib/computer-core.ts` defines the `ComputerCoreApi` TypeScript
+  contract.
+- `../../src/views/ComputerLab.vue` renders the main app's machine-layer UI.
+
+The current main-app page uses a fixed preview adapter until the WASM package
+is compiled and wired into Vite.
 
 ## Instruction set (v1)
 
@@ -52,18 +65,13 @@ pnpm tauri build
 ## Sample program
 
 ```asm
-; Sum 1..5 into A
-        MOV  A, 0
-        MOV  B, 1
-loop:   ADD  A, B
-        MOV  B, B         ; noop: B stays as counter
-        CMP  A, B
-        JZ   done
-        JMP  loop         ; (trivial demo; real loop uses INC — see roadmap)
-done:   HALT
+; Add 1 + 2 and store the result in memory.
+        MOV   A, #1
+        MOV   B, #2
+        ADD   A, B
+        STORE A, 0x40
+        HALT
 ```
-
-A more useful demo lives in the "Sample" button of the UI.
 
 ## Tauri commands
 
@@ -75,13 +83,14 @@ The Rust side exposes:
 - `get_state() -> CpuState`
 - `run_until_halt(max_steps: u32) -> CpuState`
 
-`CpuState` is `{ a, b, pc, flags, memory: number[], log: string[], halted }`.
+`CpuState` is `{ a, b, pc, flags, flags_byte, memory, log, halted, current_instruction }`.
 
 ## Layout
 
-- `src-tauri/src/cpu.rs`   — the virtual machine (fetch/decode/execute).
-- `src-tauri/src/assembler.rs` — two-pass assembler (source → bytecode).
-- `src-tauri/src/main.rs`  — Tauri commands + shared state.
+- `src-tauri/core/src/cpu.rs` — the virtual machine (fetch/decode/execute).
+- `src-tauri/core/src/assembler.rs` — two-pass assembler (source → bytecode).
+- `src-tauri/src/main.rs` — Tauri commands + shared state.
+- `wasm/src/lib.rs` — browser-facing wasm-bindgen facade scaffold.
 - `src/composables/useCpu.ts` — singleton `ref` shared by every panel.
 - `src/App.vue` and `src/components/*` — the panels.
 

@@ -10,7 +10,8 @@ It assumes the project now has these layers:
 
 - Mainline layers: signal/circuit, logic/memory, machine, and algorithm
 - Current foundation: circuit workbench, repair tasks, and teaching flow
-- Mainline candidate: CPU simulator and future Rust/WASM machine core
+- Logic-layer progress: Logic Lab now has a main-app preview entry covering gates, an SR latch, and a 1-bit register
+- Machine-layer progress: the CPU simulator now has a main-app preview entry; next, wire it to the Rust/WASM machine core
 - Experiment zone: Tank Lab, Rubik's Cube, and future interactive prototypes
 
 The goal is not to freeze exploration. The goal is to make it obvious which work strengthens the core product first.
@@ -84,9 +85,16 @@ These items move the project from a good prototype toward a tool that feels cohe
 
 ### Information architecture and product clarity
 
-- Separate the signal/circuit, machine, algorithm, and experiment areas on the hub page
+- Keep separating the signal/circuit, logic/memory, machine, algorithm, and experiment areas on the hub page
 - Reduce ambiguity about what the project is primarily for
 - Keep side experiments visible without letting them compete with the core entry points
+
+### Gamified mainline and mission world
+
+- Use [gamified-evolution-plan.md](gamified-evolution-plan.md) to turn the mainline into a mission world instead of a module directory
+- Start by turning "light, measure, diagnose, build, run" into explicit mission nodes before adding competitions or growth systems
+- Make Logic Lab and Computer Lab feel like next stages in the same campaign rather than detached tools
+- Add chapter trees, map structure, and visible progression without regressing into a quiz-first platform
 
 ## P2: Expansion
 

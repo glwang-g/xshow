@@ -64,6 +64,13 @@ src/views/ComputerLab.vue
 
 目标：让 Web 主应用可以调用 CPU 核心。
 
+当前状态：
+
+- `modules/cpu-sim/wasm` 已新增 wasm-bindgen facade scaffold。
+- facade 复用 `cpu-sim-core` 的 `assembler` 和 `Cpu`，并把快照序列化成主站需要的 camelCase 字段。
+- `src/lib/computer-core.ts` 已新增 `createWasmComputerCore()`，可以包装 wasm-bindgen 输出的同名函数。
+- 当前环境没有 `cargo`，所以 Rust scaffold 尚未在本机编译验证。
+
 候选 API：
 
 ```ts
@@ -99,7 +106,15 @@ Rust facade 可以先保持单实例 VM，后续再决定是否支持多个机�
 - 大厅“机器层”入口
 - `src/lib/computer-core.ts` typed wrapper
 
-第一版 UI 可以复用当前 `modules/cpu-sim/src/components` 的结构，但需要移除 Tauri `invoke()` 依赖。
+当前 `/computer-lab` 已经接入可操作的 Assembly Console：
+
+- 汇编编辑区
+- load / step / run / reset 控制
+- 寄存器、FLAGS、PC、内存、执行日志联动刷新
+- `src/lib/computer-core.ts` 中的 `ComputerCoreApi` 合同
+- `createPreviewComputerCore()` 固定示例适配层
+
+这层预览适配只用于验证主站 UI 和状态合同，不承担真实 CPU 解释器职责。后续第一版执行 UI 需要把 `createPreviewComputerCore()` 替换为 WASM bridge，而不是 Tauri `invoke()`，也不是 TypeScript 重写核心。
 
 ### 阶段 4：测试和发布链路
 
@@ -137,8 +152,7 @@ Rust facade 可以先保持单实例 VM，后续再决定是否支持多个机�
 
 ## 最近下一步
 
-1. 确认本机 Rust/Cargo 环境，并跑通 `modules/cpu-sim/src-tauri` 的 `cargo test`。
-2. 为 core crate 设计最小 wasm-bindgen facade。
-3. 在主站新增一个只读/规划态“机器层”入口，避免用户以为 CPU 模拟器已经完整接入。
-4. 再实现 `/computer-lab` 的 Web 版第一屏。
-
+1. 安装或确认本机 Rust/Cargo 环境，并跑通 `modules/cpu-sim/src-tauri` 的 `cargo test`。
+2. 编译验证 `modules/cpu-sim/wasm`，必要时补 `wasm-pack` 构建脚本。
+3. 为 `/computer-lab` 接入 WASM 版 load/step/reset/run 最小闭环，替换当前预览适配层。
+4. 增加 WASM wrapper smoke test 和浏览器最小交互验证。

@@ -24,6 +24,16 @@ const router = createRouter({
       component: () => import("@/views/RepairLab.vue"),
     },
     {
+      path: "/logic-lab",
+      name: "logic-lab",
+      component: () => import("@/views/LogicLab.vue"),
+    },
+    {
+      path: "/computer-lab",
+      name: "computer-lab",
+      component: () => import("@/views/ComputerLab.vue"),
+    },
+    {
       path: "/rubiks-cube",
       name: "rubiks-cube",
       component: () => import("@/views/RubiksCube.vue"),

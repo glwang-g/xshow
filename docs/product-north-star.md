@@ -38,10 +38,16 @@ This layer is the foundation of the whole project. `src/lib/circuit.ts` is not j
 
 Goal: turn circuit signals into Boolean logic and remembered state.
 
+Existing foundation:
+
+- `/logic-lab`
+- AND / OR / XOR / NOT truth tables
+- SR latch state-retention preview
+- 1-bit register rising-edge capture preview
+
 Candidate capabilities:
 
-- AND / OR / NOT / XOR
-- Latches and flip-flops
+- Flip-flops
 - Clocks, edges, and registers
 - Small RAM or memory-cell demonstrations
 
@@ -59,7 +65,7 @@ Existing foundation:
 - 256 bytes of memory
 - Assembler, execution log, register panel, and memory panel
 
-This layer should become a mainline candidate, not just another experiment. Long term, it fits best as a Rust/WASM core with a Vue/TypeScript frontend so the machine model stays stable, testable, and embeddable in the Web/PWA product.
+This layer is now a main-app preview, not just another experiment. Long term, it fits best as a Rust/WASM core with a Vue/TypeScript frontend so the machine model stays stable, testable, and embeddable in the Web/PWA product.
 
 ### 4. Algorithm Layer
 
@@ -79,7 +85,8 @@ The ideal experience is not just "watch an algorithm animation"; it is being abl
 | --- | --- | --- |
 | Circuit workbench | Mainline: signal and circuit layer | Foundation |
 | Repair tasks | Mainline: signal diagnosis training | Teaches signal paths and faults |
-| CPU simulator | Mainline: machine layer | Should enter integration design |
+| Logic Lab | Mainline: logic and memory layer | Bridges circuit signals and machine state |
+| CPU simulator | Mainline: machine layer | Main-app preview exists; next, wire Rust/WASM |
 | Algorithm visualization | Mainline: algorithm layer | Future expansion |
 | Tank Lab | Experiment zone | Keep visible, but secondary |
 | 3D Rubik's Cube | Experiment zone | Keep visible, but secondary |
@@ -107,4 +114,3 @@ This preserves:
 - New features should answer: which layer do they make clearer?
 - Make the main path understandable, usable, and testable before expanding too widely.
 - Durable direction changes should be written down so the project does not repeatedly rediscover its origin.
-

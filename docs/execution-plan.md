@@ -11,7 +11,7 @@ Push the project in this order:
 1. Write down the "signals, circuits, machines, algorithms" north star and reflect it in the hub information architecture
 2. Stabilize the circuit workbench and teaching loop as the signal/circuit layer
 3. Close beta unknowns with QA and release hardening
-4. Advance the machine-layer integration design, starting with a Rust/WASM core
+4. Continue the machine-layer integration, starting by wiring the Rust/WASM core
 5. Reevaluate expansion bets such as desktop packaging or hardware integration only after the above is calmer
 
 ## Phase A: Core Stabilization
@@ -88,14 +88,14 @@ Goal: make the project feel more like one product and less like a collection of 
 - Repair-task system expansion
 - Better reports and physical-build deliverables
 - Share/template quality
-- Hub information architecture across signal/circuit, machine, algorithm, and experiment areas
+- Hub information architecture across signal/circuit, logic/memory, machine, algorithm, and experiment areas
 - Clearer product language
 
 ### Concrete outcomes
 
 - Repair tasks feel like a deliberate learning path instead of a side mode
 - Reports and build plans become more useful outside the app
-- The hub makes the signal/circuit, machine, algorithm, and experiment areas visibly distinct
+- The hub makes the signal/circuit, logic/memory, machine, algorithm, and experiment areas visibly distinct
 - Users can understand what the project is for within one screen
 
 ### Candidate tasks
@@ -104,7 +104,7 @@ Goal: make the project feel more like one product and less like a collection of 
 - Improve experiment-report readability and printable usefulness
 - Improve physical build-plan wording, grouping, and export quality
 - Add or refine reusable lesson/demo templates
-- Split the hub into the main learning path and the experiment zone, and mark the CPU simulator as a machine-layer candidate
+- Keep refining the hub's main learning path and experiment zone, and connect the machine-layer preview to the real Rust/WASM bridge
 
 ### Exit criteria
 

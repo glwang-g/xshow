@@ -19,3 +19,8 @@ wasm-bindgen = "0.2"
 
 [features]
 default = ["console_error_panic_hook"]
+
+[package.metadata.wasm-pack.profile.release]
+# Skip binaryen/wasm-opt during wasm-pack builds. The teaching CPU is tiny,
+# and GitHub release downloads for wasm-opt are unreliable in CN networks.
+wasm-opt = false

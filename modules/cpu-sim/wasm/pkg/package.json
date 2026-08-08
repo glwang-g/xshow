@@ -1,0 +1,19 @@
+{
+  "name": "cpu-sim-wasm",
+  "type": "module",
+  "description": "WASM facade for the xshow 8-bit teaching CPU core.",
+  "version": "0.1.0",
+  "license": "MIT",
+  "files": [
+    "cpu_sim_wasm_bg.wasm",
+    "cpu_sim_wasm.js",
+    "cpu_sim_wasm_bg.js",
+    "cpu_sim_wasm.d.ts"
+  ],
+  "main": "cpu_sim_wasm.js",
+  "types": "cpu_sim_wasm.d.ts",
+  "sideEffects": [
+    "./cpu_sim_wasm.js",
+    "./snippets/*"
+  ]
+}

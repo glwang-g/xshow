@@ -94,15 +94,15 @@ export const instructionSetV1: InstructionSummary[] = [
 
 export const integrationSteps: IntegrationStep[] = [
   { title: "Rust core", status: "已起步", detail: "CPU 与 assembler 已在独立 core crate 中，不依赖 Tauri。" },
-  { title: "WASM bridge", status: "下一步", detail: "为 load、step、reset、run 暴露浏览器可调用接口。" },
+  { title: "WASM bridge", status: "已接入", detail: "load、step、reset、run 已通过 wasm-pack 暴露给浏览器；失败时回退预览。" },
   { title: "Vue machine UI", status: "推进中", detail: "主站已提供汇编编辑、运行控制、寄存器、内存和日志面板。" },
 ];
 
 export const computerCoreBridgeStatus: ComputerCoreBridgeStatus = {
-  detail: "当前使用固定示例快照验证主站交互；真实执行仍等待 Rust core 的 WASM facade。",
-  mode: "preview",
-  ready: false,
-  title: "WASM bridge pending",
+  detail: "Rust 8-bit 核心已编译为 WASM；页面优先连接 WASM 核心，加载失败时回退预览适配器。",
+  mode: "wasm",
+  ready: true,
+  title: "WASM bridge connected",
 };
 
 export const sampleAssemblyProgram = ["MOV A, #1", "MOV B, #2", "ADD A, B", "STORE A, 0x40", "HALT"];
@@ -368,4 +368,28 @@ export function createWasmComputerCore(wasmModule: ComputerCoreWasmModule): Comp
       return snapshotFromWasm(wasmModule.step());
     },
   };
+}
+
+export type ComputerCoreBridge = {
+  api: ComputerCoreApi;
+  mode: "preview" | "wasm";
+  message: string;
+};
+
+export async function createComputerCore(): Promise<ComputerCoreBridge> {
+  try {
+    const wasmModule = await import("../../modules/cpu-sim/wasm/pkg/cpu_sim_wasm.js");
+    return {
+      api: createWasmComputerCore(wasmModule),
+      mode: "wasm",
+      message: "Rust/WASM 8-bit 核心已连接。",
+    };
+  } catch (error) {
+    console.warn("WASM bridge unavailable; falling back to preview adapter.", error);
+    return {
+      api: createPreviewComputerCore(),
+      mode: "preview",
+      message: "WASM 核心加载失败，已回退到预览适配层。",
+    };
+  }
 }

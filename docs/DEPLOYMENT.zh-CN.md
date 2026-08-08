@@ -1,6 +1,6 @@
 # 自动部署
 
-项目已经带了一个 GitHub Actions 工作流：每次推送到 `main` 时自动构建 Vite 应用；如果已经配置部署密钥，就会通过 SSH 把 `dist/` 上传到云服务器。
+项目已经带了一个 GitHub Actions 工作流：每次推送到 `master` 时自动构建 Vite 应用；如果已经配置部署密钥，就会通过 SSH 把 `dist/` 上传到云服务器。
 
 ## GitHub Secrets
 
@@ -65,7 +65,7 @@ sudo systemctl reload nginx
 
 ## 流程
 
-1. 推送代码到 `main`。
+1. 推送代码到 `master`。
 2. GitHub Actions 执行 `pnpm install --frozen-lockfile` 和 `pnpm build`。
 3. 工作流用 `rsync --delete` 把 `dist/` 镜像到 `DEPLOY_PATH`。
 4. 云服务器立即托管新的静态文件，用户可以访问最新版本。

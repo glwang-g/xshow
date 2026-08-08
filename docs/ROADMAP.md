@@ -24,7 +24,7 @@ Current focus: **v0.4 simulation calibration and lessons for new components**.
 | Mobile responsive experience | Released in v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |
-| Deployment automation | First slice | Pushes to `main` can build the app and deploy `dist/` to a cloud server over SSH when repository secrets are configured. |
+| Deployment automation | First slice | Pushes to `master` can build the app and deploy `dist/` to a cloud server over SSH when repository secrets are configured. |
 
 ## Near Term
 
@@ -127,7 +127,7 @@ Status: **First slice**
 
 Status: **First slice done**
 
-- [x] Build on pushes to `main`
+- [x] Build on pushes to `master`
 - [x] Deploy static `dist/` output to a cloud server over SSH when secrets are configured
 - [x] Document server and repository secret setup
 - [x] Add a public demo URL after the first production server is configured

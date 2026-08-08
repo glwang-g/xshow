@@ -138,7 +138,7 @@ Keyboard shortcuts:
 
 ## Deployment
 
-Pushes to `main` can automatically build and deploy the static app to a cloud server over SSH. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Pushes to `master` can automatically build and deploy the static app to a cloud server over SSH. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Roadmap
 

@@ -2,7 +2,7 @@
 
 [中文版本](DEPLOYMENT.zh-CN.md)
 
-The project ships with a GitHub Actions workflow that builds the Vite app whenever `main` is pushed and, when deployment secrets are configured, uploads `dist/` to a cloud server over SSH.
+The project ships with a GitHub Actions workflow that builds the Vite app whenever `master` is pushed and, when deployment secrets are configured, uploads `dist/` to a cloud server over SSH.
 
 ## GitHub Secrets
 
@@ -67,7 +67,7 @@ sudo systemctl reload nginx
 
 ## Flow
 
-1. Push to `main`.
+1. Push to `master`.
 2. GitHub Actions runs `pnpm install --frozen-lockfile` and `pnpm build`.
 3. The workflow mirrors `dist/` to `DEPLOY_PATH` with `rsync --delete`.
 4. The cloud server immediately serves the new static files.

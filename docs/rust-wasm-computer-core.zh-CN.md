@@ -4,6 +4,13 @@
 
 目标不是把 Rust 重写成 TypeScript，而是保留 Rust 作为机器模型核心，通过 WASM 暴露给 Vue/TypeScript 前端。
 
+## 状态（2026-08-08）
+
+WASM 桥已接通。`modules/cpu-sim/wasm` 用 `wasm-pack build --target web`
+编译，生成的 `pkg/` 已提交进仓库；`/computer-lab` 通过
+`src/lib/computer-core.ts` 的 `createComputerCore()` 启动：优先加载 Rust
+核心，只有 WASM 模块加载失败时才回退到预览适配层。
+
 ## 背景
 
 当前状态：
@@ -152,7 +159,18 @@ Rust facade 可以先保持单实例 VM，后续再决定是否支持多个机�
 
 ## 最近下一步
 
-1. 安装或确认本机 Rust/Cargo 环境，并跑通 `modules/cpu-sim/src-tauri` 的 `cargo test`。
-2. 编译验证 `modules/cpu-sim/wasm`，必要时补 `wasm-pack` 构建脚本。
-3. 为 `/computer-lab` 接入 WASM 版 load/step/reset/run 最小闭环，替换当前预览适配层。
-4. 增加 WASM wrapper smoke test 和浏览器最小交互验证。
+1. 已完成——facade 已通过 wasm-pack 编译；core crate 保留自己的 `cargo test`。
+2. 已完成——`pnpm build:wasm` 执行 `wasm-pack build --target web --out-dir pkg`。
+3. 已完成——`createComputerCore()` 已把 `/computer-lab` 接到 WASM 核心；预览适配层仅作回退。
+4. 增加 WASM wrapper smoke test 和浏览器最小交互验证（仍未完成）。
+
+## 跨仓库参考
+
+同级的 `swarm-space` 仓库已经走通了同一套模式（权威 Rust 核心 ->
+wasm-bindgen facade -> 轻量浏览器客户端 + 稳定快照 DTO）。构建 CPU WASM
+facade 前可以参考它的 `src/lib.rs` 和 `docs/architecture.md`，以及
+`freexlib-portal` 仓库的 `docs/world-contract.md`。
+
+本地工具链备注：`cargo` 与 `trunk` 可用；`wasm-pack 0.13.1` 通过预编译包安装；
+`wasm32-unknown-unknown` std 从 `static.rust-lang.org` 手动安装，因为国内
+rustup 镜像缺少当前工具链的这个组件。

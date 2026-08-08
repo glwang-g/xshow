@@ -379,6 +379,7 @@ export type ComputerCoreBridge = {
 export async function createComputerCore(): Promise<ComputerCoreBridge> {
   try {
     const wasmModule = await import("../../modules/cpu-sim/wasm/pkg/cpu_sim_wasm.js");
+    await wasmModule.default();
     return {
       api: createWasmComputerCore(wasmModule),
       mode: "wasm",

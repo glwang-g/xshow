@@ -21,6 +21,7 @@ Use this index to quickly find the repository conventions and durable notes that
 | Cloud records, Supabase, cross-device sync | `docs/cloud-sync-plan.md`, `docs/supabase-schema.sql` |
 | Deployment and server release flow | `docs/DEPLOYMENT.md` |
 | Mobile, PWA, and QA notes | `docs/mobile-qa.md`, `docs/v0.2-qa-report.md` |
+| Cross-project Freexlib world contract | sibling repo `freexlib-portal` -> `docs/world-contract.md` |
 | What the latest dev pull added | `docs/dev-pull-summary-2026-07-03.zh-CN.md` |
 | CPU simulator and Rust/WASM integration | `docs/rust-wasm-computer-core.md`, `modules/cpu-sim/README.md` |
 | Issue ideas or scoped task drafts | `docs/issue-drafts/*.md` |
@@ -38,6 +39,7 @@ Use this index to quickly find the repository conventions and durable notes that
 - Use `docs/release-backlog.md` for release scoping.
 - Check `docs/architecture.md` before moving logic across modules.
 - Treat the World Engine as a gradual contract layer first: add adapters around existing rule modules before rewriting labs.
+- Cross-project terms (World, Entity, Observation, Intent, Rule, Event, Replay, Snapshot) follow the Freexlib contract in sibling repo `freexlib-portal/docs/world-contract.md`.
 - Keep `docs/world-engine.md` and `docs/layers.md` as the migration map for World/Entity/State/Tick/Rule/Scenario/Replay work.
 - For machine-layer integration, prefer Rust core -> WASM bridge -> Vue/TypeScript UI.
 - Keep English and Chinese docs aligned when both versions exist.

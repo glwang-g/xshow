@@ -20,4 +20,5 @@ Project-specific reminders:
 - Mainline path: signal/circuit layer -> logic/memory layer -> machine layer -> algorithm layer.
 - Experimental area: tank lab, 3D Rubik's cube, and other standalone prototypes that do not yet serve the mainline path.
 - Keep English and Chinese docs aligned when a document has both versions.
+- Cross-project Freexlib world contract: shared glossary, event shape, and layer mapping live in sibling repo `freexlib-portal/docs/world-contract.md` (中文: `docs/world-contract.zh-CN.md`). Align new rule/action/event concepts with it.
 - Do not read every doc by default; read the index, then the relevant docs.

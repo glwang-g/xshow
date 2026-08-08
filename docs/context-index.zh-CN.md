@@ -20,6 +20,7 @@
 | Programmable World Engine 迁移与层级归属 | `docs/world-engine.zh-CN.md`、`docs/layers.zh-CN.md`、`src/lib/world-engine.ts` |
 | 云端记录、Supabase、跨设备同步 | `docs/cloud-sync-plan.zh-CN.md`、`docs/supabase-schema.sql` |
 | 部署、服务器和发布流程 | `docs/DEPLOYMENT.zh-CN.md` |
+| 跨项目 Freexlib 世界契约 | 同级 `freexlib-portal` 仓库 -> `docs/world-contract.zh-CN.md` |
 | 移动端、PWA、QA 记录 | `docs/mobile-qa.zh-CN.md`、`docs/v0.2-qa-report.zh-CN.md` |
 | 最近一次 dev 拉取做了什么 | `docs/dev-pull-summary-2026-07-03.zh-CN.md` |
 | CPU 模拟器与 Rust/WASM 融合 | `docs/rust-wasm-computer-core.zh-CN.md`、`modules/cpu-sim/README.md` |
@@ -38,6 +39,7 @@
 - 版本收口看 `docs/release-backlog.zh-CN.md`。
 - 架构位置和拆分方向先查 `docs/architecture.zh-CN.md`。
 - World Engine 先作为渐进契约层：优先围绕现有 Rule Module 做 adapter，不要先重写 Lab。
+- 跨项目术语（World、Entity、Observation、Intent、Rule、Event、Replay、Snapshot）统一遵循同级 `freexlib-portal` 仓库的 `docs/world-contract.zh-CN.md`。
 - World/Entity/State/Tick/Rule/Scenario/Replay 相关迁移地图看 `docs/world-engine.zh-CN.md` 和 `docs/layers.zh-CN.md`。
 - 机器层融合优先考虑 Rust core -> WASM bridge -> Vue/TypeScript UI。
 - 更新正式文档时，尽量同步维护英文和中文版本。

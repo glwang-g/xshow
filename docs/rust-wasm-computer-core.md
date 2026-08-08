@@ -156,3 +156,14 @@ After the main-app WASM version stabilizes, decide whether to:
 2. Compile `modules/cpu-sim/wasm`, adding a `wasm-pack` build script if needed.
 3. Wire `/computer-lab` to the minimal WASM load/step/reset/run loop, replacing the current preview adapter.
 4. Add a WASM wrapper smoke test and minimal browser validation for the controls.
+## Cross-Repo Reference
+
+The sibling `swarm-space` repository has already shipped the same pattern
+(authoritative Rust core -> wasm-bindgen facade -> thin browser client with
+stable snapshot DTOs). Before building the CPU WASM facade, read its
+`src/lib.rs` and `docs/architecture.md`, plus the Freexlib contract in
+`freexlib-portal/docs/world-contract.md`.
+
+The local environment currently has `cargo` and `trunk` but no `wasm-pack`.
+Install `wasm-pack` (or use `wasm-bindgen` + `wasm-opt` directly) before
+compiling `modules/cpu-sim/wasm`.

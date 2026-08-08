@@ -135,7 +135,7 @@ pnpm preview
 
 ## 自动部署
 
-推送到 `main` 后，可以通过 GitHub Actions 自动构建，并通过 SSH 把静态产物发布到云服务器。配置方式见 [docs/DEPLOYMENT.zh-CN.md](docs/DEPLOYMENT.zh-CN.md)。
+推送到 `master` 后，可以通过 GitHub Actions 自动构建，并通过 SSH 把静态产物发布到云服务器。配置方式见 [docs/DEPLOYMENT.zh-CN.md](docs/DEPLOYMENT.zh-CN.md)。
 
 ## 路线图
 

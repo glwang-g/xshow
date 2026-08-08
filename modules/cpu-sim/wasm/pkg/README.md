@@ -29,6 +29,15 @@ main app.
 
 ## Verification Note
 
-The current Codex environment does not have `cargo` installed, so this scaffold
-has not been compiled here. The TypeScript-side `ComputerCoreApi` adapter is
-covered by the main app tests.
+The facade has been compiled with `wasm-pack build --target bundler --out-dir pkg`
+and the generated `pkg/` is committed so the main app builds without a local
+Rust toolchain. After changing Rust code, regenerate and commit the package:
+
+```bash
+cd modules/cpu-sim/wasm
+wasm-pack build --target bundler --out-dir pkg
+```
+
+`wasm-opt` is disabled in `Cargo.toml` because binaryen downloads are
+unreliable on CN networks; the small teaching CPU does not need it. The
+TypeScript-side `ComputerCoreApi` adapter is covered by the main app tests.

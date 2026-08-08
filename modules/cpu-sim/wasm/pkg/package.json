@@ -7,13 +7,11 @@
   "files": [
     "cpu_sim_wasm_bg.wasm",
     "cpu_sim_wasm.js",
-    "cpu_sim_wasm_bg.js",
     "cpu_sim_wasm.d.ts"
   ],
   "main": "cpu_sim_wasm.js",
   "types": "cpu_sim_wasm.d.ts",
   "sideEffects": [
-    "./cpu_sim_wasm.js",
     "./snippets/*"
   ]
 }

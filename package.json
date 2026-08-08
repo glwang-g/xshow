@@ -18,6 +18,7 @@
     "dev": "vite --host 127.0.0.1",
     "typecheck": "vue-tsc --noEmit",
     "build": "pnpm typecheck && vite build",
+    "build:wasm": "cd modules/cpu-sim/wasm && wasm-pack build --target bundler --out-dir pkg",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test tests/*.mjs",
     "test:dist": "node --test tests/build-output/*.mjs",

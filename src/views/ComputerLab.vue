@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import {
   ArrowRight,
   Binary,
@@ -20,7 +20,7 @@ import logoUrl from "@/assets/logo.png";
 import {
   canPreviewSource,
   computerCoreBridgeStatus,
-  createPreviewComputerCore,
+  createComputerCore,
   flagChips,
   formatByte,
   formatHex,
@@ -31,14 +31,23 @@ import {
   previewLoadedCpuSnapshot,
   registerRows,
   sampleAssemblySource,
+  type ComputerCoreApi,
 } from "@/lib/computer-core";
 
-const core = createPreviewComputerCore();
+const core = ref<ComputerCoreApi | null>(null);
+const bridgeMode = ref<"preview" | "wasm">("preview");
 const source = ref(sampleAssemblySource);
 const snapshot = ref(previewLoadedCpuSnapshot);
 const isBusy = ref(false);
 const maxSteps = ref(64);
-const actionMessage = ref("示例程序已加载到预览适配层。");
+const actionMessage = ref("正在连接 Rust/WASM 核心…");
+
+onMounted(async () => {
+  const bridge = await createComputerCore();
+  core.value = bridge.api;
+  bridgeMode.value = bridge.mode;
+  actionMessage.value = bridge.message;
+});
 const sampleLines = sampleAssemblySource.split("\n");
 
 const registers = computed(() => registerRows(snapshot.value));
@@ -60,24 +69,45 @@ async function applyCoreAction(message: string, action: () => Promise<typeof sna
 }
 
 async function loadProgram() {
+  const engine = core.value;
+  if (!engine) return;
+  const wasm = bridgeMode.value === "wasm";
   await applyCoreAction(
-    sourcePreviewable.value ? "示例程序已加载。" : "自定义源码等待 WASM bridge；当前预览适配层不会执行它。",
-    () => core.loadProgram(source.value),
+    sourcePreviewable.value
+      ? wasm
+        ? "示例程序已由 Rust/WASM 核心加载。"
+        : "示例程序已加载（预览适配层）。"
+      : wasm
+        ? "程序已由 Rust 核心汇编并加载。"
+        : "自定义源码等待 WASM bridge；当前预览适配层不会执行它。",
+    () => engine.loadProgram(source.value),
   );
 }
 
 async function stepProgram() {
-  await applyCoreAction("已执行一个预览步。", () => core.step());
+  const engine = core.value;
+  if (!engine) return;
+  await applyCoreAction(
+    bridgeMode.value === "wasm" ? "已执行一个机器步。" : "已执行一个预览步。",
+    () => engine.step(),
+  );
 }
 
 async function runProgram() {
-  await applyCoreAction(`已运行到 HALT；最大步数 ${maxSteps.value} 会在 WASM bridge 接入后生效。`, () =>
-    core.runUntilHalt(maxSteps.value),
+  const engine = core.value;
+  if (!engine) return;
+  await applyCoreAction(
+    bridgeMode.value === "wasm"
+      ? `已运行到 HALT；最大步数 ${maxSteps.value}。`
+      : "已运行到 HALT；最大步数会在 WASM bridge 接入后生效。",
+    () => engine.runUntilHalt(maxSteps.value),
   );
 }
 
 async function resetProgram() {
-  await applyCoreAction("机器已复位，内存清空。", () => core.reset());
+  const engine = core.value;
+  if (!engine) return;
+  await applyCoreAction("机器已复位，内存清空。", () => engine.reset());
 }
 
 async function loadSampleProgram() {
@@ -156,7 +186,7 @@ async function loadSampleProgram() {
                 class="rounded px-2 py-1 text-[11px] font-medium"
                 :class="sourcePreviewable ? 'bg-cyan-50 text-cyan-700' : 'bg-amber-50 text-amber-700'"
               >
-                {{ sourcePreviewable ? "示例可预览" : "等待 WASM" }}
+                {{ bridgeMode === "wasm" ? "WASM 已连接" : sourcePreviewable ? "示例可预览" : "等待 WASM" }}
               </span>
             </div>
 
@@ -245,7 +275,7 @@ async function loadSampleProgram() {
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 class="text-sm font-semibold">机器快照</h2>
-                <p class="text-xs text-slate-500">预览态 · 等待 WASM 执行核心接入</p>
+                <p class="text-xs text-slate-500">{{ bridgeMode === "wasm" ? "Rust/WASM 执行核心" : "预览态 · WASM 未连接" }}</p>
               </div>
               <span class="rounded bg-cyan-50 px-2 py-1 text-[11px] font-medium text-cyan-700">
                 PC = 0x{{ formatHex(snapshot.pc) }}
@@ -359,7 +389,7 @@ async function loadSampleProgram() {
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 class="text-sm font-semibold">Execution Log</h2>
-                <p class="text-xs text-slate-500">{{ snapshot.log.length }} lines · 预览态</p>
+                <p class="text-xs text-slate-500">{{ snapshot.log.length }} lines · {{ bridgeMode === "wasm" ? "Rust 核心" : "预览态" }}</p>
               </div>
             </div>
 

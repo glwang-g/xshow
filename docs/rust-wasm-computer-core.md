@@ -4,6 +4,14 @@ This document describes how `modules/cpu-sim` can move from an independent Tauri
 
 The goal is not to rewrite the Rust core in TypeScript. The goal is to keep Rust as the machine-model core and expose it to the Vue/TypeScript frontend through WASM.
 
+## Status (2026-08-08)
+
+The WASM bridge is connected. `modules/cpu-sim/wasm` compiles with
+`wasm-pack build --target web`, the generated `pkg/` is committed to the repo,
+and `/computer-lab` boots through `createComputerCore()` in
+`src/lib/computer-core.ts`: it loads the Rust core first and falls back to the
+preview adapter only when the WASM module cannot load.
+
 ## Background
 
 Current state:
@@ -152,10 +160,10 @@ After the main-app WASM version stabilizes, decide whether to:
 
 ## Immediate Next Steps
 
-1. Install or confirm local Rust/Cargo setup and run `cargo test` under `modules/cpu-sim/src-tauri`.
-2. Compile `modules/cpu-sim/wasm`, adding a `wasm-pack` build script if needed.
-3. Wire `/computer-lab` to the minimal WASM load/step/reset/run loop, replacing the current preview adapter.
-4. Add a WASM wrapper smoke test and minimal browser validation for the controls.
+1. Done — the facade compiles via wasm-pack; the core crate keeps its own `cargo test`.
+2. Done — `pnpm build:wasm` runs `wasm-pack build --target web --out-dir pkg`.
+3. Done — `createComputerCore()` wires `/computer-lab`; the preview adapter remains only as a fallback.
+4. Add a WASM wrapper smoke test and minimal browser validation for the controls (still open).
 ## Cross-Repo Reference
 
 The sibling `swarm-space` repository has already shipped the same pattern
@@ -164,6 +172,7 @@ stable snapshot DTOs). Before building the CPU WASM facade, read its
 `src/lib.rs` and `docs/architecture.md`, plus the Freexlib contract in
 `freexlib-portal/docs/world-contract.md`.
 
-The local environment currently has `cargo` and `trunk` but no `wasm-pack`.
-Install `wasm-pack` (or use `wasm-bindgen` + `wasm-opt` directly) before
-compiling `modules/cpu-sim/wasm`.
+Local tooling note: `cargo` and `trunk` are available; `wasm-pack 0.13.1` was
+installed from a prebuilt release, and the `wasm32-unknown-unknown` std was
+installed manually from `static.rust-lang.org` because the CN rustup mirror
+did not carry that component for the current toolchain.

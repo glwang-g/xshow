@@ -39,11 +39,13 @@ export type PhysicalBuildPlan = {
 const partTypeOrder: PartType[] = [
   "battery",
   "switch",
+  "spring",
   "bulb",
   "resistor",
   "led",
   "diode",
   "capacitor",
+  "coil",
   "ammeter",
   "voltmeter",
   "buzzer",
@@ -56,11 +58,13 @@ const partLabels: Record<PartType, string> = {
   bulb: "小灯泡模块",
   buzzer: "蜂鸣器模块",
   capacitor: "电容模块",
+  coil: "电感线圈/继电器线圈",
   diode: "二极管模块",
   led: "LED 模块",
   motor: "电机模块",
   resistor: "可变电阻/电位器",
   switch: "开关模块",
+  spring: "常开弹簧触点",
   voltmeter: "电压表模块",
 };
 
@@ -70,11 +74,13 @@ const partNotes: Record<PartType, string> = {
   bulb: "用于观察亮度变化",
   buzzer: "通电后可作为声音反馈",
   capacitor: "注意耐压和极性标记",
+  coil: "当前工作台按直流线圈等效电阻计算",
   diode: "注意正向和反向",
   led: "建议搭配限流电阻",
   motor: "通电后观察转速",
   resistor: "用于限流或调节亮度",
   switch: "控制电路通断",
+  spring: "需用控制连杆绑定电感线圈",
   voltmeter: "并联测量两点电压",
 };
 
@@ -84,11 +90,13 @@ const partPurchaseKeywords: Record<PartType, string[]> = {
   bulb: ["小灯泡模块", "电子积木灯泡"],
   buzzer: ["有源蜂鸣器模块", "电子积木蜂鸣器"],
   capacitor: ["电容模块", "电子积木电容"],
+  coil: ["电感线圈模块", "继电器线圈", "电子积木线圈"],
   diode: ["二极管模块", "1N4148 二极管"],
   led: ["LED 模块", "发光二极管模块"],
   motor: ["小电机模块", "直流电机模块"],
   resistor: ["可调电阻模块", "电位器模块"],
   switch: ["拨动开关模块", "电子积木开关"],
+  spring: ["常开簧片开关", "继电器触点", "弹簧片触点"],
   voltmeter: ["直流电压表模块", "电子积木电压表"],
 };
 

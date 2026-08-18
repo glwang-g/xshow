@@ -782,6 +782,14 @@ const repairLevelSpecs: Record<PartType, RepairLevelPartSpec> = {
     },
     width: 156,
   },
+  coil: {
+    height: 112,
+    terminals: {
+      a: { x: 0, y: 56 },
+      b: { x: 176, y: 56 },
+    },
+    width: 176,
+  },
   diode: {
     height: 112,
     terminals: {
@@ -821,6 +829,14 @@ const repairLevelSpecs: Record<PartType, RepairLevelPartSpec> = {
       b: { x: 168, y: 48 },
     },
     width: 168,
+  },
+  spring: {
+    height: 112,
+    terminals: {
+      a: { x: 0, y: 56 },
+      b: { x: 176, y: 56 },
+    },
+    width: 176,
   },
   voltmeter: {
     height: 112,

@@ -74,6 +74,14 @@ function partExportColors(part: CircuitPart) {
     return { background: "#f5f3ff", foreground: "#4c1d95", muted: "#7c3aed" };
   }
 
+  if (part.type === "coil") {
+    return { background: "#f0fdfa", foreground: "#134e4a", muted: "#0f766e" };
+  }
+
+  if (part.type === "spring") {
+    return { background: "#fffbeb", foreground: "#78350f", muted: "#b45309" };
+  }
+
   if (part.type === "ammeter") {
     return { background: "#fff7ed", foreground: "#7c2d12", muted: "#ea580c" };
   }
@@ -190,6 +198,25 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart, op
     context.moveTo(part.x + 88, part.y + 36);
     context.lineTo(part.x + 88, part.y + 80);
     context.stroke();
+  } else if (part.type === "coil") {
+    context.fillText("12 ohm coil", part.x + 18, part.y + spec.height - 18);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 4;
+    for (let index = 0; index < 5; index += 1) {
+      context.beginPath();
+      context.arc(part.x + 50 + index * 19, part.y + 58, 14, Math.PI, 0);
+      context.stroke();
+    }
+  } else if (part.type === "spring") {
+    const closed = options.simulation.coils[part.controlledBy ?? ""]?.energized ?? false;
+    context.fillText(closed ? "pulled in" : "spring open", part.x + 18, part.y + spec.height - 18);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 4;
+    context.beginPath();
+    context.moveTo(part.x + 38, part.y + 66);
+    context.lineTo(part.x + 92, part.y + 66);
+    context.lineTo(part.x + 132, part.y + (closed ? 66 : 42));
+    context.stroke();
   } else if (part.type === "ammeter") {
     const state = options.ammeterStatus(part);
     context.fillText(`${state.currentMilliAmps} mA`, part.x + 18, part.y + spec.height - 18);
@@ -293,6 +320,23 @@ export function exportWorkbenchImage(options: ExportWorkbenchImageOptions) {
 
   context.lineCap = "round";
   context.lineJoin = "round";
+  for (const spring of options.parts.filter((part) => part.type === "spring" && part.controlledBy)) {
+    const coil = options.parts.find((part) => part.id === spring.controlledBy && part.type === "coil");
+    if (!coil) {
+      continue;
+    }
+
+    const coilSpec = getSpec(coil);
+    const springSpec = getSpec(spring);
+    context.setLineDash([7, 7]);
+    context.strokeStyle = "#0f766e";
+    context.lineWidth = 3;
+    context.beginPath();
+    context.moveTo(coil.x + coilSpec.width / 2, coil.y + coilSpec.height / 2);
+    context.lineTo(spring.x + springSpec.width / 2, spring.y + springSpec.height / 2);
+    context.stroke();
+    context.setLineDash([]);
+  }
   for (const wire of options.wires) {
     context.strokeStyle = options.wireStroke(wire);
     context.lineWidth = options.wireStrokeWidth(wire);

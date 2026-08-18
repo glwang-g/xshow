@@ -25,6 +25,7 @@ import {
   Trophy,
   Unplug,
   Volume2,
+  Waves,
   X,
   ZoomIn,
   ZoomOut,
@@ -184,6 +185,17 @@ function bindWorkbench(element: unknown) {
 }
 
 const selectedPart = computed(() => props.parts.find((part) => part.id === props.selectedPartId));
+
+const springControlLinks = computed(() =>
+  props.parts.flatMap((spring) => {
+    if (spring.type !== "spring" || !spring.controlledBy) {
+      return [];
+    }
+
+    const coil = props.parts.find((part) => part.id === spring.controlledBy && part.type === "coil");
+    return coil ? [{ coil, spring }] : [];
+  }),
+);
 
 const selectedPartToolbarStyle = computed(() => {
   if (!selectedPart.value) {
@@ -601,6 +613,23 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               </Button>
             </div>
             <svg class="pointer-events-none absolute inset-0 z-30 h-full w-full">
+            <g v-for="link in springControlLinks" :key="`${link.coil.id}-${link.spring.id}`">
+              <path
+                :d="`M ${link.coil.x + getSpec(link.coil).width / 2} ${link.coil.y + getSpec(link.coil).height / 2} L ${link.spring.x + getSpec(link.spring).width / 2} ${link.spring.y + getSpec(link.spring).height / 2}`"
+                fill="none"
+                stroke="#0f766e"
+                stroke-dasharray="7 7"
+                stroke-linecap="round"
+                stroke-width="3"
+              />
+              <text
+                :x="(link.coil.x + getSpec(link.coil).width / 2 + link.spring.x + getSpec(link.spring).width / 2) / 2"
+                :y="(link.coil.y + getSpec(link.coil).height / 2 + link.spring.y + getSpec(link.spring).height / 2) / 2 - 7"
+                fill="#0f766e"
+                font-size="11"
+                text-anchor="middle"
+              >机械连杆</text>
+            </g>
             <path
               v-if="newWireDrag"
               class="wire-draft"
@@ -706,6 +735,8 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               part.type === 'led' ? 'bg-rose-50' : '',
               part.type === 'diode' ? 'bg-fuchsia-50' : '',
               part.type === 'capacitor' ? 'bg-violet-50' : '',
+              part.type === 'coil' ? 'bg-teal-50' : '',
+              part.type === 'spring' ? 'bg-amber-50' : '',
               part.type === 'ammeter' ? 'bg-orange-50' : '',
               part.type === 'voltmeter' ? 'bg-indigo-50' : '',
               part.type === 'buzzer' ? 'bg-sky-50' : '',
@@ -777,7 +808,7 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               >
                 <span
                   class="absolute top-1 h-6 w-12 rounded-full transition-all"
-                  :class="part.closed ? 'left-[92px] bg-emerald-500' : 'left-1 bg-rose-400'"
+                  :class="part.closed ? 'right-1 bg-emerald-500' : 'left-1 bg-rose-400'"
                 />
                 <span class="relative z-10 flex h-full items-center justify-between text-xs font-medium">
                   <span>断开</span>
@@ -864,6 +895,37 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
                 <div class="text-sm font-semibold text-violet-950">{{ part.name }}</div>
                 <div class="text-xs text-muted-foreground">
                   {{ capacitorStatus(part).connected ? `${capacitorStatus(part).chargePercent}% 充电` : "未接入" }}
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="part.type === 'coil'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
+              <div class="flex h-14 w-24 items-center justify-center gap-0.5 rounded-md border border-teal-300 bg-teal-100 px-2">
+                <span v-for="index in 5" :key="index" class="h-8 w-4 rounded-full border-2 border-teal-800" />
+              </div>
+              <div class="text-center">
+                <div class="text-sm font-semibold text-teal-950">{{ part.name }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ simulation.coils[part.id]?.energized ? '已吸合' : '未吸合' }} · 12 Ω
+                </div>
+              </div>
+              <Waves class="sr-only" />
+            </div>
+
+            <div v-else-if="part.type === 'spring'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
+              <div class="relative h-12 w-28">
+                <span class="absolute left-1 top-6 h-2 w-2 rounded-full bg-amber-900" />
+                <span class="absolute right-1 top-6 h-2 w-2 rounded-full bg-amber-900" />
+                <span class="absolute left-3 top-[27px] h-0.5 w-16 bg-amber-800" />
+                <span
+                  class="absolute left-16 h-0.5 w-10 origin-left bg-amber-800 transition-transform"
+                  :class="simulation.coils[part.controlledBy ?? '']?.energized ? 'top-[27px] rotate-0' : 'top-4 -rotate-[24deg]'"
+                />
+              </div>
+              <div class="text-center">
+                <div class="text-sm font-semibold text-amber-950">{{ part.name }}</div>
+                <div class="text-xs text-muted-foreground">
+                  {{ part.controlledBy ? (simulation.coils[part.controlledBy]?.energized ? '吸合导通' : '弹簧断开') : '请绑定线圈' }}
                 </div>
               </div>
             </div>

@@ -13,6 +13,7 @@ Use this index to quickly find the repository conventions and durable notes that
 | Question | Read First |
 | --- | --- |
 | Product origin, north star, and mainline boundaries | `docs/product-north-star.md`, `docs/product-backlog.md`, `docs/execution-plan.md` |
+| Building circuits into reusable logic, hardware, and algorithm layers | `docs/buildable-computing-stack.md` |
 | Gamified direction, mission world, and campaign structure | `docs/gamified-evolution-plan.md`, `docs/product-north-star.md` |
 | Roadmap and phased capabilities | `docs/ROADMAP.md` |
 | Near-term release scope and public beta status | `docs/release-backlog.md`, `docs/releases/public-beta-candidate.md` |
@@ -31,6 +32,7 @@ Use this index to quickly find the repository conventions and durable notes that
 - Product north star: an interactive computer science visualization platform connecting signals, circuits, machines, and algorithms.
 - Mainline layers: signal/circuit, logic/memory, machine, and algorithm.
 - The circuit workbench and repair tasks belong to the signal/circuit layer.
+- The mainline crosses layers by publishing expandable modules: circuit work becomes logic input, logic work becomes hardware input, then an executable machine and algorithms. See `docs/buildable-computing-stack.md`.
 - Logic Lab is now a mainline logic/memory preview bridging circuit signals and machine state.
 - The CPU simulator is now a mainline machine-layer preview, not just another experiment.
 - Tank Lab and 3D Rubik's Cube belong to the experiment zone unless they start serving the mainline path.

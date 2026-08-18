@@ -13,6 +13,7 @@
 | 你要了解的问题 | 优先阅读 |
 | --- | --- |
 | 项目初心、北极星和主线边界 | `docs/product-north-star.zh-CN.md`、`docs/product-backlog.zh-CN.md`、`docs/execution-plan.zh-CN.md` |
+| 从手搓电路逐层生成逻辑、硬件与算法 | `docs/buildable-computing-stack.zh-CN.md` |
 | 游戏化方向、任务世界和主线闯关结构 | `docs/gamified-evolution-plan.zh-CN.md`、`docs/product-north-star.zh-CN.md` |
 | 路线图和阶段性能力 | `docs/ROADMAP.zh-CN.md` |
 | 近期发布收口、公开测试版状态 | `docs/release-backlog.zh-CN.md`、`docs/releases/public-beta-candidate.zh-CN.md` |
@@ -31,6 +32,7 @@
 - 产品北极星是：从信号、电路、机器到算法的交互式计算机科学可视化平台。
 - 主线层次是：信号与电路层、逻辑与存储层、机器层、算法层。
 - 电路工作台和维修任务属于信号与电路层。
+- 主线的跨层方式是“发布可展开模块”：电路作品成为逻辑输入，逻辑作品成为硬件输入，再到可执行机器与算法。细节见 `docs/buildable-computing-stack.zh-CN.md`。
 - Logic Lab 已进入逻辑与存储层主线预览，连接电路信号和机器状态。
 - CPU 模拟器已进入机器层主线预览，不再按普通探索实验处理。
 - 战车试验场、3D 魔方这类内容属于探索实验区，不应模糊主入口。

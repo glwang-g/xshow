@@ -43,6 +43,12 @@ These items should get the next serious push because they make the main product 
 - Keep lesson starter workspaces easy to load, reset, and compare
 - Tune guided content so users can move from free play into structured experiments without confusion
 
+### Publishable layered construction
+
+- Follow [buildable-computing-stack.md](buildable-computing-stack.md): publish circuit constructions as expandable logic modules, then publish logic modules as hardware modules
+- Finish hand-built relays, contacts, latches, and port marking before progressing to gates, adders, and 8-bit machine composition
+- Keep repair tasks as an introductory and diagnostic path rather than the priority for mainline expansion
+
 ### Local records, export, and recovery
 
 - Polish autosave, restore, named records, JSON import/export, PNG export, and share-link restore

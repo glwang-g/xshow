@@ -117,6 +117,7 @@ defineProps<{
   nextLessonStep: LessonStepState | undefined;
   open: boolean;
   physicalBuildPlan: PhysicalBuildPlan;
+  parts: CircuitPart[];
   physicalBuildPlanCopyState: "copied" | "idle" | "manual";
   primaryBattery: CircuitPart | undefined;
   recordTitle: string;
@@ -939,6 +940,24 @@ function updateInput(event: Event) {
               @input="setResistance(selectedPart, Number(($event.target as HTMLInputElement).value))"
             />
           </label>
+          <label v-if="selectedPart.type === 'spring'" class="block space-y-2">
+            <span class="text-xs font-medium">控制连杆</span>
+            <select v-model="selectedPart.controlledBy" class="h-9 w-full rounded-md border bg-background px-2 text-sm">
+              <option value="">未绑定（弹簧断开）</option>
+              <option v-for="coil in parts.filter((part) => part.type === 'coil')" :key="coil.id" :value="coil.id">
+                {{ coil.name }}
+              </option>
+            </select>
+            <span class="block text-xs text-muted-foreground">选择线圈后，线圈通电会吸合此常开触点。</span>
+          </label>
+          <div v-if="selectedPart.type === 'coil'" class="rounded-md border bg-card px-3 py-2 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-muted-foreground">吸合状态</span>
+              <span class="font-medium" :class="simulation.coils[selectedPart.id]?.energized ? 'text-teal-700' : 'text-muted-foreground'">
+                {{ simulation.coils[selectedPart.id]?.energized ? '已吸合' : '未吸合' }}
+              </span>
+            </div>
+          </div>
           <div v-if="selectedPart.type === 'led'" class="rounded-md border bg-card px-3 py-2 text-xs">
             <div class="mb-2 flex items-center justify-between">
               <span class="text-muted-foreground">方向</span>

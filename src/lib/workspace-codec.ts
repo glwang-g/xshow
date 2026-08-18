@@ -60,6 +60,10 @@ function isWorkspacePart(value: unknown) {
     return false;
   }
 
+  if (value.controlledBy !== undefined && typeof value.controlledBy !== "string") {
+    return false;
+  }
+
   if (value.polarity !== undefined && value.polarity !== "normal" && value.polarity !== "reversed") {
     return false;
   }

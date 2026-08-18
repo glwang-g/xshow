@@ -6,6 +6,7 @@ import {
   CircleDot,
   CloudSync,
   Cog,
+  Waves,
   Gauge,
   Lightbulb,
   PackageCheck,
@@ -115,6 +116,26 @@ export const partSpecs: Record<PartType, PartSpec> = {
       b: { x: 156, y: 56, label: "B" },
     },
   },
+  spring: {
+    icon: ToggleRight,
+    label: "弹簧触点",
+    width: 176,
+    height: 112,
+    terminals: {
+      a: { x: 0, y: 56, label: "COM" },
+      b: { x: 176, y: 56, label: "NO" },
+    },
+  },
+  coil: {
+    icon: Waves,
+    label: "电感线圈",
+    width: 176,
+    height: 112,
+    terminals: {
+      a: { x: 0, y: 56, label: "A" },
+      b: { x: 176, y: 56, label: "B" },
+    },
+  },
   ammeter: {
     icon: Activity,
     label: "电流表",
@@ -167,6 +188,8 @@ export const palette: PaletteItem[] = [
   { type: "led", description: "有正负极" },
   { type: "diode", description: "单向导通" },
   { type: "capacitor", description: "储存电荷" },
+  { type: "coil", description: "线圈控制" },
+  { type: "spring", description: "线圈吸合触点" },
   { type: "ammeter", description: "测量电流" },
   { type: "voltmeter", description: "测量电压" },
 ];

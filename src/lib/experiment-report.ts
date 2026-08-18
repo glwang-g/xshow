@@ -32,11 +32,13 @@ const partTypeLabels: Record<PartType, string> = {
   bulb: "灯泡",
   buzzer: "蜂鸣器",
   capacitor: "电容",
+  coil: "电感线圈",
   diode: "二极管",
   led: "LED",
   motor: "电机",
   resistor: "电阻",
   switch: "开关",
+  spring: "弹簧触点",
   voltmeter: "电压表",
 };
 

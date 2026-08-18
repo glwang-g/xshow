@@ -4,11 +4,13 @@ export const partTypes = [
   "bulb",
   "buzzer",
   "capacitor",
+  "coil",
   "diode",
   "led",
   "motor",
   "resistor",
   "switch",
+  "spring",
   "voltmeter",
 ] as const;
 
@@ -22,6 +24,7 @@ export type TerminalRef = {
 
 export type CircuitPart = {
   closed?: boolean;
+  controlledBy?: string;
   id: string;
   name: string;
   polarity?: "normal" | "reversed";
@@ -84,6 +87,11 @@ export type MotorState = {
   speedPercent: number;
 };
 
+export type CoilState = {
+  energized: boolean;
+  currentMilliAmps: number;
+};
+
 type Edge = {
   from: string;
   partId?: string;
@@ -104,6 +112,10 @@ const ledOhms = 28;
 const ammeterOhms = 1;
 const buzzerOhms = 32;
 const motorOhms = 44;
+// The workbench currently solves steady-state DC circuits, so a coil is
+// represented by its winding resistance rather than transient inductance.
+const coilOhms = 12;
+const coilPullInCurrentMilliAmps = 30;
 const minConductiveOhms = 0.5;
 const bulbBrightCurrentAmps = 0.5;
 const diodeSafeCurrentMilliAmps = 140;
@@ -182,6 +194,7 @@ function buildTopologyEdges(
   sourceWires: Wire[],
   conductiveLedIds = new Set<string>(),
   conductiveDiodeIds = new Set<string>(),
+  closedSpringIds = new Set<string>(),
 ) {
   const edges: Edge[] = sourceWires.map((wire) => ({
     from: terminalId(wire.from),
@@ -195,6 +208,10 @@ function buildTopologyEdges(
     }
 
     if (part.type === "switch" && !part.closed) {
+      continue;
+    }
+
+    if (part.type === "spring" && !closedSpringIds.has(part.id)) {
       continue;
     }
 
@@ -224,7 +241,7 @@ function terminalNode(nodeFinder: UnionFind, part: CircuitPart, terminal: Termin
   return nodeFinder.find(`${part.id}:${terminal}`);
 }
 
-function buildNodeFinder(sourceParts: CircuitPart[], sourceWires: Wire[]) {
+function buildNodeFinder(sourceParts: CircuitPart[], sourceWires: Wire[], closedSpringIds = new Set<string>()) {
   const nodes = new UnionFind();
 
   for (const part of sourceParts) {
@@ -237,7 +254,7 @@ function buildNodeFinder(sourceParts: CircuitPart[], sourceWires: Wire[]) {
   }
 
   for (const part of sourceParts) {
-    if (part.type === "switch" && part.closed) {
+    if ((part.type === "switch" && part.closed) || (part.type === "spring" && closedSpringIds.has(part.id))) {
       nodes.union(`${part.id}:a`, `${part.id}:b`);
     }
   }
@@ -272,6 +289,10 @@ function branchResistance(part: CircuitPart, conductiveLedIds: Set<string>, cond
 
   if (part.type === "motor") {
     return motorOhms;
+  }
+
+  if (part.type === "coil") {
+    return coilOhms;
   }
 
   return null;
@@ -372,8 +393,8 @@ function solveLinearSystem(matrix: number[][], vector: number[]) {
   return augmented.map((row, index) => (Number.isFinite(row[size]) ? row[size] : vector[index] ?? 0));
 }
 
-function solveResistiveNetwork(battery: CircuitPart, sourceParts: CircuitPart[], sourceWires: Wire[], conductiveLedIds: Set<string>, conductiveDiodeIds: Set<string>) {
-  const nodes = buildNodeFinder(sourceParts, sourceWires);
+function solveResistiveNetwork(battery: CircuitPart, sourceParts: CircuitPart[], sourceWires: Wire[], conductiveLedIds: Set<string>, conductiveDiodeIds: Set<string>, closedSpringIds = new Set<string>()) {
+  const nodes = buildNodeFinder(sourceParts, sourceWires, closedSpringIds);
   const positiveNode = terminalNode(nodes, battery, batteryPositiveTerminal(battery));
   const negativeNode = terminalNode(nodes, battery, batteryNegativeTerminal(battery));
   const branches = buildBranches(sourceParts, nodes, conductiveLedIds, conductiveDiodeIds);
@@ -524,6 +545,8 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
   const voltmeters = sourceParts.filter((part) => part.type === "voltmeter");
   const buzzers = sourceParts.filter((part) => part.type === "buzzer");
   const motors = sourceParts.filter((part) => part.type === "motor");
+  const coils = sourceParts.filter((part) => part.type === "coil");
+  const springs = sourceParts.filter((part) => part.type === "spring");
   const bulbStates: Record<string, { brightness: number; brightnessPercent: number }> = {};
   const ledStates: Record<string, LedState> = {};
   const diodeStates: Record<string, DiodeState> = {};
@@ -532,6 +555,7 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
   const voltmeterStates: Record<string, VoltmeterState> = {};
   const buzzerStates: Record<string, BuzzerState> = {};
   const motorStates: Record<string, MotorState> = {};
+  const coilStates: Record<string, CoilState> = {};
   const wireStates: Record<string, { active: boolean; reverse: boolean }> = {};
 
   if (!battery) {
@@ -540,6 +564,7 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
       bulbs: bulbStates,
       buzzers: buzzerStates,
       capacitors: capacitorStates,
+      coils: coilStates,
       closed: false,
       currentMilliAmps: 0,
       diodes: diodeStates,
@@ -553,7 +578,8 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
 
   let conductiveLedIds = new Set(leds.map((part) => part.id));
   let conductiveDiodeIds = new Set(diodes.map((part) => part.id));
-  let network = solveResistiveNetwork(battery, sourceParts, sourceWires, conductiveLedIds, conductiveDiodeIds);
+  let closedSpringIds = new Set<string>();
+  let network = solveResistiveNetwork(battery, sourceParts, sourceWires, conductiveLedIds, conductiveDiodeIds, closedSpringIds);
 
   for (let iteration = 0; iteration < 4; iteration += 1) {
     const nextLedIds = new Set(
@@ -568,15 +594,26 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
         return voltage.b - voltage.a > voltageEpsilon;
       }).map((part) => part.id),
     );
+    const nextSpringIds = new Set(
+      springs
+        .filter((part) => {
+          const coil = coils.find((candidate) => candidate.id === part.controlledBy);
+          return Boolean(coil && partCurrentMagnitude(network, coil) * 1000 >= coilPullInCurrentMilliAmps);
+        })
+        .map((part) => part.id),
+    );
     const stable =
       nextLedIds.size === conductiveLedIds.size &&
       nextDiodeIds.size === conductiveDiodeIds.size &&
       [...nextLedIds].every((id) => conductiveLedIds.has(id)) &&
-      [...nextDiodeIds].every((id) => conductiveDiodeIds.has(id));
+      [...nextDiodeIds].every((id) => conductiveDiodeIds.has(id)) &&
+      nextSpringIds.size === closedSpringIds.size &&
+      [...nextSpringIds].every((id) => closedSpringIds.has(id));
 
     conductiveLedIds = nextLedIds;
     conductiveDiodeIds = nextDiodeIds;
-    network = solveResistiveNetwork(battery, sourceParts, sourceWires, conductiveLedIds, conductiveDiodeIds);
+    closedSpringIds = nextSpringIds;
+    network = solveResistiveNetwork(battery, sourceParts, sourceWires, conductiveLedIds, conductiveDiodeIds, closedSpringIds);
 
     if (stable) {
       break;
@@ -587,7 +624,7 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
   const currentMilliAmps = Math.round(network.totalCurrent * 1000);
   const equivalentResistance =
     closed && network.totalCurrent > 0 ? Math.round((9 / network.totalCurrent) * 10) / 10 : 0;
-  const edges = buildTopologyEdges(sourceParts, sourceWires, conductiveLedIds, conductiveDiodeIds);
+  const edges = buildTopologyEdges(sourceParts, sourceWires, conductiveLedIds, conductiveDiodeIds, closedSpringIds);
 
   for (const wire of sourceWires) {
     const direction = closed ? wireDirectionThroughBattery(wire, battery, edges) : null;
@@ -693,11 +730,20 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
     };
   }
 
+  for (const coil of coils) {
+    const currentMilliAmpsForPart = Math.round(partCurrentMagnitude(network, coil) * 1000);
+    coilStates[coil.id] = {
+      currentMilliAmps: currentMilliAmpsForPart,
+      energized: currentMilliAmpsForPart >= coilPullInCurrentMilliAmps,
+    };
+  }
+
   return {
     ammeters: ammeterStates,
     bulbs: bulbStates,
     buzzers: buzzerStates,
     capacitors: capacitorStates,
+    coils: coilStates,
     closed,
     currentMilliAmps,
     diodes: diodeStates,

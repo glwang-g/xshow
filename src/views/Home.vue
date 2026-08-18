@@ -2166,6 +2166,11 @@ function removeSelectedPart() {
   wires.value = wires.value.filter(
     (wire) => wire.from.partId !== selected.id && wire.to.partId !== selected.id,
   );
+  for (const part of parts.value) {
+    if (part.controlledBy === selected.id) {
+      delete part.controlledBy;
+    }
+  }
   selectedPartId.value = parts.value[0]?.id ?? "";
   clearInteractionState();
 }
@@ -3610,6 +3615,7 @@ onBeforeUnmount(() => {
         :next-lesson-step="nextLessonStep"
         :open="statusPanelOpen"
         :physical-build-plan="physicalBuildPlan"
+        :parts="parts"
         :physical-build-plan-copy-state="buildPlanCopyState"
         :primary-battery="primaryBattery"
         :remove-cloud-record="removeCloudRecord"

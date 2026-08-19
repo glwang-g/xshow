@@ -579,8 +579,20 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
 
   let conductiveLedIds = new Set(leds.map((part) => part.id));
   let conductiveDiodeIds = new Set(diodes.map((part) => part.id));
+  // The introductory relay model deliberately keeps one coil to one contact.
+  // More complex relays with contact banks can be added as a later component.
+  const springByCoilId = new Map<string, string>();
+  for (const spring of springs) {
+    if (spring.controlledBy && coils.some((coil) => coil.id === spring.controlledBy) && !springByCoilId.has(spring.controlledBy)) {
+      springByCoilId.set(spring.controlledBy, spring.id);
+    }
+  }
+  const isControlledSpring = (spring: CircuitPart) =>
+    Boolean(spring.controlledBy && springByCoilId.get(spring.controlledBy) === spring.id);
   let closedSpringIds = new Set(
-    springs.filter((spring) => spring.contactMode === "normally-closed").map((spring) => spring.id),
+    springs
+      .filter((spring) => (isControlledSpring(spring) ? spring.contactMode === "normally-closed" : Boolean(spring.closed)))
+      .map((spring) => spring.id),
   );
   let network = solveResistiveNetwork(battery, sourceParts, sourceWires, conductiveLedIds, conductiveDiodeIds, closedSpringIds);
 
@@ -601,6 +613,9 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
       springs
         .filter((part) => {
           const coil = coils.find((candidate) => candidate.id === part.controlledBy);
+          if (!isControlledSpring(part)) {
+            return Boolean(part.closed);
+          }
           const energized = Boolean(coil && partCurrentMagnitude(network, coil) * 1000 >= coilPullInCurrentMilliAmps);
           return part.contactMode === "normally-closed" ? !energized : energized;
         })

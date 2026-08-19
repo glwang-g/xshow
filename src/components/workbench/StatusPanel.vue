@@ -59,7 +59,7 @@ type CloudRecord = CloudWorkspaceRecord<PersistedWorkspace>;
 type LessonStepState = LessonStep & { complete: boolean };
 type LessonProgress = { completed: number; percent: number; total: number };
 
-defineProps<{
+const props = defineProps<{
   activeAmmeterCount: number;
   activeBuzzerCount: number;
   activeLesson: Lesson;
@@ -68,6 +68,7 @@ defineProps<{
   activeVoltmeterCount: number;
   ammeterStatus: (part: CircuitPart) => AmmeterState;
   batteryPolarityLabel: (part: CircuitPart) => string;
+  bindSpringToCoil: (spring: CircuitPart, coilId: string) => void;
   buzzerStatus: (part: CircuitPart) => BuzzerState;
   capacitorStatus: (part: CircuitPart) => CapacitorState;
   cloudActiveRecordId: string | null;
@@ -119,6 +120,7 @@ defineProps<{
   physicalBuildPlan: PhysicalBuildPlan;
   parts: CircuitPart[];
   physicalBuildPlanCopyState: "copied" | "idle" | "manual";
+  publishRelayModule: (part: CircuitPart) => string;
   primaryBattery: CircuitPart | undefined;
   recordTitle: string;
   removeCloudRecord: (recordId: string) => void | Promise<void>;
@@ -169,9 +171,25 @@ const emit = defineEmits<{
 }>();
 
 const workspaceImportRef = ref<HTMLInputElement | null>(null);
+const relayPublishFeedback = ref("");
 
 function updateInput(event: Event) {
   return (event.target as HTMLInputElement).value;
+}
+
+function publishSelectedRelay(part: CircuitPart | undefined) {
+  if (part) {
+    relayPublishFeedback.value = props.publishRelayModule(part);
+  }
+}
+
+function isRelayAssembly(part: CircuitPart | undefined) {
+  return Boolean(
+    part && (
+      (part.type === "spring" && part.controlledBy) ||
+      (part.type === "coil" && props.parts.some((candidate) => candidate.type === "spring" && candidate.controlledBy === part.id))
+    ),
+  );
 }
 </script>
 
@@ -869,7 +887,8 @@ function updateInput(event: Event) {
               <span class="text-xs text-muted-foreground">X</span>
               <input
                 v-model.number="selectedPart.x"
-                class="h-9 w-full rounded-md border bg-card px-3 text-sm"
+                class="h-9 w-full rounded-md border bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="(selectedPart?.type === 'spring' && Boolean(selectedPart?.controlledBy)) || (selectedPart?.type === 'coil' && parts.some((part) => part.type === 'spring' && part.controlledBy === selectedPart?.id))"
                 type="number"
               />
             </label>
@@ -877,7 +896,8 @@ function updateInput(event: Event) {
               <span class="text-xs text-muted-foreground">Y</span>
               <input
                 v-model.number="selectedPart.y"
-                class="h-9 w-full rounded-md border bg-card px-3 text-sm"
+                class="h-9 w-full rounded-md border bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+                :disabled="(selectedPart?.type === 'spring' && Boolean(selectedPart?.controlledBy)) || (selectedPart?.type === 'coil' && parts.some((part) => part.type === 'spring' && part.controlledBy === selectedPart?.id))"
                 type="number"
               />
             </label>
@@ -930,6 +950,14 @@ function updateInput(event: Event) {
             {{ selectedPart.closed ? "开关已闭合" : "开关已断开" }}
           </Button>
           <Button
+            v-if="selectedPart.type === 'spring' && !selectedPart.controlledBy"
+            class="w-full"
+            :variant="selectedPart.closed ? 'default' : 'outline'"
+            @click="toggleSwitch(selectedPart)"
+          >
+            {{ selectedPart.closed ? "弹簧开关已导通" : "弹簧开关已断开" }}
+          </Button>
+          <Button
             v-if="selectedPart.type === 'battery'"
             class="w-full"
             variant="outline"
@@ -956,14 +984,53 @@ function updateInput(event: Event) {
               <option value="normally-open">常开（NO）</option>
               <option value="normally-closed">常闭（NC）</option>
             </select>
-            <select v-model="selectedPart.controlledBy" class="h-9 w-full rounded-md border bg-background px-2 text-sm">
-              <option value="">未绑定（弹簧断开）</option>
-              <option v-for="coil in parts.filter((part) => part.type === 'coil')" :key="coil.id" :value="coil.id">
+            <select
+              class="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              :value="selectedPart.controlledBy ?? ''"
+              @change="bindSpringToCoil(selectedPart, ($event.target as HTMLSelectElement).value)"
+            >
+              <option value="">未绑定（保持触点默认状态）</option>
+              <option
+                v-for="coil in parts.filter((part) =>
+                  part.type === 'coil' && (
+                    selectedPart?.controlledBy === part.id ||
+                    !parts.some((spring) => spring.type === 'spring' && spring.id !== selectedPart?.id && spring.controlledBy === part.id)
+                  ),
+                )"
+                :key="coil.id"
+                :value="coil.id"
+              >
                 {{ coil.name }}
               </option>
             </select>
-            <span class="block text-xs text-muted-foreground">选择线圈后，线圈通电会改变此触点状态。</span>
+            <span class="block text-xs text-muted-foreground">一条线圈只能组装一个触点；绑定后形成可展开的继电器开关。</span>
           </label>
+          <div
+            v-if="selectedPart.type === 'spring' && selectedPart.controlledBy"
+            class="rounded-md border border-teal-300 bg-teal-50 px-3 py-2 text-xs text-teal-950"
+          >
+            <div class="font-medium">已组装：继电器开关</div>
+            <div class="mt-1 text-teal-800">控制线圈：{{ parts.find((part) => part.id === selectedPart?.controlledBy)?.name ?? '缺失线圈' }}</div>
+          </div>
+          <div
+            v-if="selectedPart?.type === 'coil' && parts.some((part) => part.type === 'spring' && part.controlledBy === selectedPart?.id)"
+            class="rounded-md border border-teal-300 bg-teal-50 px-3 py-2 text-xs text-teal-950"
+          >
+            <div class="font-medium">已组装：继电器开关</div>
+            <div class="mt-1 text-teal-800">输出触点：{{ parts.find((part) => part.type === 'spring' && part.controlledBy === selectedPart?.id)?.name }}</div>
+          </div>
+          <div
+            v-if="isRelayAssembly(selectedPart)"
+            class="space-y-2 rounded-md border border-cyan-200 bg-cyan-50 p-3"
+          >
+            <div class="text-xs font-medium text-cyan-950">下一层模块</div>
+            <p class="text-xs leading-5 text-cyan-800">保存当前完整电路快照，并将线圈输入与 COM / NO（或 NC）触点发布为可展开的 RelaySwitch。</p>
+            <Button class="w-full" size="sm" @click="publishSelectedRelay(selectedPart)">
+              <PackageCheck class="h-4 w-4" />
+              发布为 RelaySwitch
+            </Button>
+            <p v-if="relayPublishFeedback" class="text-xs leading-5 text-cyan-800">{{ relayPublishFeedback }}</p>
+          </div>
           <div v-if="selectedPart.type === 'coil'" class="rounded-md border bg-card px-3 py-2 text-xs">
             <div class="flex items-center justify-between">
               <span class="text-muted-foreground">吸合状态</span>

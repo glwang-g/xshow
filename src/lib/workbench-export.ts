@@ -208,8 +208,9 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart, op
       context.stroke();
     }
   } else if (part.type === "spring") {
-    const closed = options.simulation.coils[part.controlledBy ?? ""]?.energized ?? false;
-    context.fillText(closed ? "pulled in" : "spring open", part.x + 18, part.y + spec.height - 18);
+    const energized = Boolean(part.controlledBy && options.simulation.coils[part.controlledBy]?.energized);
+    const closed = part.contactMode === "normally-closed" ? !energized : energized;
+    context.fillText(`${part.contactMode === "normally-closed" ? "NC" : "NO"}: ${closed ? "closed" : "open"}`, part.x + 18, part.y + spec.height - 18);
     context.strokeStyle = colors.muted;
     context.lineWidth = 4;
     context.beginPath();

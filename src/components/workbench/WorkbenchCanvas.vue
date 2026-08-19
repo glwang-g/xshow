@@ -197,6 +197,37 @@ const springControlLinks = computed(() =>
   }),
 );
 
+function springIsClosed(part: CircuitPart) {
+  if (!part.controlledBy) {
+    return Boolean(part.closed);
+  }
+
+  const energized = Boolean(part.controlledBy && props.simulation.coils[part.controlledBy]?.energized);
+  return part.contactMode === "normally-closed" ? !energized : energized;
+}
+
+function springContactY(part: CircuitPart) {
+  // A closed contact is a straight, continuous conductor from COM to the
+  // fixed contact. Only the open leaf moves away from this horizontal plane.
+  return 38;
+}
+
+function springBladeY(part: CircuitPart) {
+  if (springIsClosed(part)) {
+    return springContactY(part);
+  }
+
+  return springOpenY(part);
+}
+
+function springOpenY(part: CircuitPart) {
+  return part.contactMode === "normally-closed" ? 78 : -2;
+}
+
+function springStateColor(part: CircuitPart) {
+  return springIsClosed(part) ? "#059669" : "#e11d48";
+}
+
 const selectedPartToolbarStyle = computed(() => {
   if (!selectedPart.value) {
     return {};
@@ -614,6 +645,17 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
             </div>
             <svg class="pointer-events-none absolute inset-0 z-30 h-full w-full">
             <g v-for="link in springControlLinks" :key="`${link.coil.id}-${link.spring.id}`">
+              <rect
+                :x="Math.min(link.coil.x, link.spring.x) - 10"
+                :y="Math.min(link.coil.y, link.spring.y) - 10"
+                :width="Math.max(link.coil.x + getSpec(link.coil).width, link.spring.x + getSpec(link.spring).width) - Math.min(link.coil.x, link.spring.x) + 20"
+                :height="Math.max(link.coil.y + getSpec(link.coil).height, link.spring.y + getSpec(link.spring).height) - Math.min(link.coil.y, link.spring.y) + 20"
+                rx="12"
+                fill="rgba(13, 148, 136, 0.08)"
+                stroke="#0f766e"
+                stroke-dasharray="6 5"
+                stroke-width="2"
+              />
               <path
                 :d="`M ${link.coil.x + getSpec(link.coil).width / 2} ${link.coil.y + getSpec(link.coil).height / 2} L ${link.spring.x + getSpec(link.spring).width / 2} ${link.spring.y + getSpec(link.spring).height / 2}`"
                 fill="none"
@@ -622,13 +664,6 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
                 stroke-linecap="round"
                 stroke-width="3"
               />
-              <text
-                :x="(link.coil.x + getSpec(link.coil).width / 2 + link.spring.x + getSpec(link.spring).width / 2) / 2"
-                :y="(link.coil.y + getSpec(link.coil).height / 2 + link.spring.y + getSpec(link.spring).height / 2) / 2 - 7"
-                fill="#0f766e"
-                font-size="11"
-                text-anchor="middle"
-              >机械连杆</text>
             </g>
             <path
               v-if="newWireDrag"
@@ -736,7 +771,7 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               part.type === 'diode' ? 'bg-fuchsia-50' : '',
               part.type === 'capacitor' ? 'bg-violet-50' : '',
               part.type === 'coil' ? 'bg-teal-50' : '',
-              part.type === 'spring' ? 'bg-amber-50' : '',
+              part.type === 'spring' ? (springIsClosed(part) ? 'border-emerald-400 bg-emerald-50' : 'border-rose-300 bg-rose-50') : '',
               part.type === 'ammeter' ? 'bg-orange-50' : '',
               part.type === 'voltmeter' ? 'bg-indigo-50' : '',
               part.type === 'buzzer' ? 'bg-sky-50' : '',
@@ -913,20 +948,80 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
             </div>
 
             <div v-else-if="part.type === 'spring'" class="flex h-full flex-col items-center justify-center gap-2 p-4">
-              <div class="relative h-12 w-28">
-                <span class="absolute left-1 top-6 h-2 w-2 rounded-full bg-amber-900" />
-                <span class="absolute right-1 top-6 h-2 w-2 rounded-full bg-amber-900" />
-                <span class="absolute left-3 top-[27px] h-0.5 w-16 bg-amber-800" />
-                <span
-                  class="absolute left-16 h-0.5 w-10 origin-left bg-amber-800 transition-transform"
-                  :class="simulation.coils[part.controlledBy ?? '']?.energized ? 'top-[27px] rotate-0' : 'top-4 -rotate-[24deg]'"
-                />
+              <div class="relative -mx-4 flex h-full w-[calc(100%+2rem)] items-center justify-center">
+              <div class="pointer-events-none absolute left-3 top-2 rounded bg-white/80 px-1.5 text-xs font-semibold text-amber-950">
+                {{ part.controlledBy ? '继电器开关' : '弹簧开关' }}
               </div>
-              <div class="text-center">
-                <div class="text-sm font-semibold text-amber-950">{{ part.name }}</div>
-                <div class="text-xs text-muted-foreground">
-                  {{ part.controlledBy ? (simulation.coils[part.controlledBy]?.energized ? '吸合导通' : '弹簧断开') : '请绑定线圈' }}
-                </div>
+              <svg class="h-[76px] w-full overflow-visible" viewBox="0 0 176 76" aria-label="弹簧触点示意图">
+                <defs>
+                  <linearGradient :id="`spring-metal-${part.id}`" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0" stop-color="#fde68a" />
+                    <stop offset="0.48" stop-color="#b45309" />
+                    <stop offset="1" stop-color="#78350f" />
+                  </linearGradient>
+                </defs>
+                <line x1="0" y1="38" x2="38" y2="38" :stroke="springStateColor(part)" stroke-width="4" stroke-linecap="round" />
+                <circle cx="38" cy="38" r="6" fill="#ffffff" :stroke="springStateColor(part)" stroke-width="4" />
+                <circle cx="38" cy="38" r="2" :fill="springStateColor(part)" />
+                <line
+                  x1="38"
+                  y1="38"
+                  x2="128"
+                  :y2="springBladeY(part)"
+                  :stroke="springStateColor(part)"
+                  stroke-width="9"
+                  stroke-linecap="round"
+                  class="transition-all duration-200"
+                />
+                <line
+                  x1="38"
+                  y1="38"
+                  x2="128"
+                  :y2="springBladeY(part)"
+                  :stroke="`url(#spring-metal-${part.id})`"
+                  stroke-width="5"
+                  stroke-linecap="round"
+                  class="transition-all duration-200"
+                />
+                <circle cx="128" :cy="springBladeY(part)" fill="#ffffff" r="4" :stroke="springStateColor(part)" stroke-width="2" />
+                <circle cx="128" :cy="springContactY(part)" fill="#ffffff" r="5" :stroke="springStateColor(part)" stroke-width="4" />
+                <line
+                  x1="133"
+                  :y1="springContactY(part)"
+                  x2="176"
+                  y2="38"
+                  :stroke="springStateColor(part)"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                />
+                <circle cx="128" :cy="springOpenY(part)" r="5" fill="#ffffff" :stroke="springStateColor(part)" stroke-width="3">
+                  <title>悬空位</title>
+                </circle>
+                <path
+                  :d="`M 128 ${springOpenY(part)} Q 146 38, 128 ${springContactY(part)}`"
+                  fill="none"
+                  :stroke="springStateColor(part)"
+                  stroke-width="2"
+                  stroke-dasharray="4 4"
+                  opacity="0.75"
+                />
+              </svg>
+              <button
+                v-if="!part.controlledBy"
+                class="absolute left-[21.5%] top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border-2 bg-white shadow-sm transition-transform hover:scale-110"
+                :class="springIsClosed(part) ? 'border-emerald-600 text-emerald-700' : 'border-rose-600 text-rose-700'"
+                :title="springIsClosed(part) ? '点击断开弹簧开关' : '点击闭合弹簧开关'"
+                @pointerdown.stop
+                @click.stop="toggleSwitch(part)"
+              >
+                <span class="h-1.5 w-1.5 rounded-full" :class="springIsClosed(part) ? 'bg-emerald-600' : 'bg-rose-600'" />
+              </button>
+              <div
+                class="pointer-events-none absolute bottom-1 rounded px-1.5 text-[10px] font-medium"
+                :class="springIsClosed(part) ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'"
+              >
+                {{ springIsClosed(part) ? '导通' : '断开' }}
+              </div>
               </div>
             </div>
 

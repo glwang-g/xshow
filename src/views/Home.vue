@@ -69,6 +69,11 @@ import {
 } from "@/lib/physical-build";
 import { formatExperimentReportMarkdown } from "@/lib/experiment-report";
 import { exportWorkbenchImage as exportWorkbenchImageFile } from "@/lib/workbench-export";
+import {
+  createPublishedRelayModule,
+  loadPublishedRelayModules,
+  savePublishedRelayModule,
+} from "@/lib/published-modules";
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
 
@@ -1043,6 +1048,10 @@ function terminalDisplayLabel(part: CircuitPart, terminal: TerminalKey) {
     return batteryPositiveTerminal(part) === terminal ? "+" : "-";
   }
 
+  if (part.type === "spring") {
+    return terminal === "a" ? "COM" : part.contactMode === "normally-closed" ? "NC" : "NO";
+  }
+
   return getSpec(part).terminals[terminal].label;
 }
 
@@ -1811,6 +1820,88 @@ function handlePartPointerDown(event: PointerEvent, part: CircuitPart) {
   (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 }
 
+function relayPartner(part: CircuitPart) {
+  if (part.type === "coil") {
+    return parts.value.find((candidate) => candidate.type === "spring" && candidate.controlledBy === part.id);
+  }
+
+  if (part.type === "spring" && part.controlledBy) {
+    return parts.value.find((candidate) => candidate.id === part.controlledBy && candidate.type === "coil");
+  }
+
+  return undefined;
+}
+
+function snapRelayAssembly(coil: CircuitPart, spring: CircuitPart) {
+  const coilSpec = getSpec(coil);
+  const springSpec = getSpec(spring);
+  const groupX = Math.round(Math.min(workbenchLimitWidth() - coilSpec.width - 16, Math.max(16, coil.x)));
+  const groupY = Math.round(
+    Math.min(
+      workbenchLimitHeight() - coilSpec.height - springSpec.height - 28,
+      Math.max(16, coil.y - springSpec.height - 12),
+    ),
+  );
+  spring.x = groupX;
+  spring.y = groupY;
+  coil.x = groupX;
+  coil.y = groupY + springSpec.height + 12;
+}
+
+function snapBoundRelayAssemblies() {
+  const claimedCoils = new Set<string>();
+  for (const spring of parts.value.filter((part) => part.type === "spring" && part.controlledBy)) {
+    const coil = parts.value.find((part) => part.id === spring.controlledBy && part.type === "coil");
+    if (coil && !claimedCoils.has(coil.id)) {
+      snapRelayAssembly(coil, spring);
+      claimedCoils.add(coil.id);
+    }
+  }
+}
+
+function bindSpringToCoil(spring: CircuitPart, coilId: string) {
+  if (spring.type !== "spring") {
+    return;
+  }
+
+  pushEditorHistory();
+  if (!coilId) {
+    delete spring.controlledBy;
+    return;
+  }
+
+  const coil = parts.value.find((part) => part.id === coilId && part.type === "coil");
+  const alreadyBound = parts.value.find((part) => part.type === "spring" && part.id !== spring.id && part.controlledBy === coilId);
+  if (!coil || alreadyBound) {
+    return;
+  }
+
+  spring.controlledBy = coil.id;
+  snapRelayAssembly(coil, spring);
+}
+
+function publishRelayModule(part: CircuitPart) {
+  const spring = part.type === "spring"
+    ? part
+    : parts.value.find((candidate) => candidate.type === "spring" && candidate.controlledBy === part.id);
+  if (!spring?.controlledBy) {
+    return "请先把弹簧开关绑定到一条线圈，再发布。";
+  }
+
+  const existing = loadPublishedRelayModules();
+  const module = createPublishedRelayModule({
+    name: `RelaySwitch ${existing.length + 1}`,
+    parts: parts.value,
+    springId: spring.id,
+    wires: wires.value,
+  });
+  if (!module || !savePublishedRelayModule(module)) {
+    return "发布未保存。请检查浏览器是否允许本地存储。";
+  }
+
+  return `已发布 ${module.name}，现在可以在 Logic Lab 使用并查看来源。`;
+}
+
 function handleWorkbenchPointerMove(event: PointerEvent) {
   if (newWireDrag.value) {
     updateNewWireDrag(event);
@@ -1840,9 +1931,29 @@ function handleWorkbenchPointerMove(event: PointerEvent) {
   }
 
   const point = boardPoint(event);
-  const position = clampPartPosition(part, point.x - dragging.value.offsetX, point.y - dragging.value.offsetY);
-  part.x = position.x;
-  part.y = position.y;
+  const partner = relayPartner(part);
+  if (!partner) {
+    const position = clampPartPosition(part, point.x - dragging.value.offsetX, point.y - dragging.value.offsetY);
+    part.x = position.x;
+    part.y = position.y;
+    return;
+  }
+
+  const rawX = point.x - dragging.value.offsetX;
+  const rawY = point.y - dragging.value.offsetY;
+  const group = [part, partner];
+  const deltaX = Math.min(
+    ...group.map((item) => workbenchLimitWidth() - getSpec(item).width - 16 - item.x),
+    Math.max(...group.map((item) => 16 - item.x), rawX - part.x),
+  );
+  const deltaY = Math.min(
+    ...group.map((item) => workbenchLimitHeight() - getSpec(item).height - 16 - item.y),
+    Math.max(...group.map((item) => 16 - item.y), rawY - part.y),
+  );
+  for (const item of group) {
+    item.x = Math.round(item.x + deltaX);
+    item.y = Math.round(item.y + deltaY);
+  }
 }
 
 function endDrag() {
@@ -2190,6 +2301,7 @@ function addPart(type: PartType) {
 
   if (type === "spring") {
     nextPart.contactMode = "normally-open";
+    nextPart.closed = false;
   }
 
   parts.value.push(nextPart);
@@ -2299,9 +2411,26 @@ function nudgeSelectedPart(deltaX: number, deltaY: number, shouldRecordHistory =
     pushEditorHistory();
   }
 
-  const position = clampPartPosition(selected, selected.x + deltaX, selected.y + deltaY);
-  selected.x = position.x;
-  selected.y = position.y;
+  const partner = relayPartner(selected);
+  if (!partner) {
+    const position = clampPartPosition(selected, selected.x + deltaX, selected.y + deltaY);
+    selected.x = position.x;
+    selected.y = position.y;
+  } else {
+    const group = [selected, partner];
+    const appliedX = Math.min(
+      ...group.map((item) => workbenchLimitWidth() - getSpec(item).width - 16 - item.x),
+      Math.max(...group.map((item) => 16 - item.x), deltaX),
+    );
+    const appliedY = Math.min(
+      ...group.map((item) => workbenchLimitHeight() - getSpec(item).height - 16 - item.y),
+      Math.max(...group.map((item) => 16 - item.y), deltaY),
+    );
+    for (const item of group) {
+      item.x = Math.round(item.x + appliedX);
+      item.y = Math.round(item.y + appliedY);
+    }
+  }
   selectedWireId.value = null;
 }
 
@@ -2424,6 +2553,7 @@ function loadWorkspace(workspace: LessonWorkspace, options: LoadWorkspaceOptions
   const nextWorkspace = options.adaptMobileStarterLayout ? mobileStarterWorkspace(workspace) : workspace;
 
   parts.value = nextWorkspace.parts.map((part) => ({ ...part }));
+  snapBoundRelayAssemblies();
   wires.value = nextWorkspace.wires.map((wire) => ({
     ...wire,
     from: { ...wire.from },
@@ -3635,6 +3765,7 @@ onBeforeUnmount(() => {
         :active-voltmeter-count="activeVoltmeterCount"
         :ammeter-status="ammeterStatus"
         :battery-polarity-label="batteryPolarityLabel"
+        :bind-spring-to-coil="bindSpringToCoil"
         :buzzer-status="buzzerStatus"
         :capacitor-status="capacitorStatus"
         :cloud-active-record-id="cloudActiveRecordId"
@@ -3682,6 +3813,7 @@ onBeforeUnmount(() => {
         :physical-build-plan="physicalBuildPlan"
         :parts="parts"
         :physical-build-plan-copy-state="buildPlanCopyState"
+        :publish-relay-module="publishRelayModule"
         :primary-battery="primaryBattery"
         :remove-cloud-record="removeCloudRecord"
         :remove-saved-record="removeSavedRecord"

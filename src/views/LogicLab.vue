@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { Activity, ArrowRight, Binary, CircuitBoard, Cpu, Home, RotateCcw, Zap } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import logoUrl from "@/assets/logo.png";
@@ -14,6 +14,11 @@ import {
   type LogicBit,
   type LogicGateKind,
 } from "@/lib/logic-core";
+import {
+  loadPublishedRelayModules,
+  relayOutputForInput,
+  type PublishedRelayModule,
+} from "@/lib/published-modules";
 
 const selectedGate = ref<LogicGateKind>("AND");
 const inputA = ref(true);
@@ -23,6 +28,13 @@ const latchSet = ref(false);
 const latchReset = ref(false);
 const registerData = ref<LogicBit>(1);
 const registerQ = ref<LogicBit>(0);
+const publishedRelays = ref<PublishedRelayModule[]>([]);
+const relayInputs = ref<Record<string, boolean>>({});
+
+onMounted(() => {
+  publishedRelays.value = loadPublishedRelayModules();
+  relayInputs.value = Object.fromEntries(publishedRelays.value.map((module) => [module.id, false]));
+});
 
 const selectedGateSummary = computed(
   () => logicGateSummaries.find((gate) => gate.kind === selectedGate.value) ?? logicGateSummaries[0],
@@ -61,6 +73,14 @@ function pulseRegister() {
 function resetRegister() {
   registerQ.value = 0;
   registerData.value = 1;
+}
+
+function toggleRelayInput(module: PublishedRelayModule) {
+  relayInputs.value[module.id] = !relayInputs.value[module.id];
+}
+
+function relayOutput(module: PublishedRelayModule) {
+  return relayOutputForInput(module, relayInputs.value[module.id] ?? false) ? 1 : 0;
 }
 </script>
 
@@ -133,6 +153,56 @@ function resetRegister() {
                 <div class="mt-2 text-sm font-semibold text-slate-950">Register -> CPU</div>
               </div>
             </div>
+          </section>
+
+          <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-medium text-cyan-700">来自信号与电路层</p>
+                <h2 class="mt-1 text-sm font-semibold">我的电路模块</h2>
+                <p class="mt-1 text-xs leading-5 text-slate-500">已发布的手搓继电器以端口组件进入逻辑层；它们仍保留来源电路快照。</p>
+              </div>
+              <RouterLink
+                to="/workbench"
+                class="inline-flex h-9 items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 text-xs font-medium text-cyan-800 hover:bg-cyan-100"
+              >
+                <CircuitBoard class="h-4 w-4" />
+                去制作继电器
+              </RouterLink>
+            </div>
+
+            <div v-if="publishedRelays.length" class="mt-4 grid gap-3 lg:grid-cols-2">
+              <article v-for="module in publishedRelays" :key="module.id" class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                <div class="flex items-start justify-between gap-3">
+                  <div>
+                    <div class="font-mono text-sm font-semibold text-slate-950">{{ module.name }}</div>
+                    <div class="mt-1 text-xs text-slate-500">{{ module.behavior.contactMode === 'normally-closed' ? 'NC：输入为 0 时触点导通' : 'NO：输入为 1 时触点导通' }}</div>
+                  </div>
+                  <span class="rounded border px-2 py-1 font-mono text-xs font-semibold" :class="relayOutput(module) ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-700'">
+                    OUT {{ relayOutput(module) }}
+                  </span>
+                </div>
+                <div class="mt-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    class="flex h-10 items-center justify-between rounded-md border px-3 text-sm font-medium"
+                    :class="relayInputs[module.id] ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-white text-slate-500'"
+                    @click="toggleRelayInput(module)"
+                  >
+                    线圈输入
+                    <span class="font-mono font-bold">{{ Number(relayInputs[module.id] ?? false) }}</span>
+                  </button>
+                  <div class="flex h-10 items-center rounded-md border border-slate-200 bg-white px-3 font-mono text-xs text-slate-600">
+                    {{ module.ports.map((port) => port.label).join(' · ') }}
+                  </div>
+                </div>
+                <details class="mt-3 text-xs text-slate-500">
+                  <summary class="cursor-pointer text-cyan-700">查看来源快照（{{ module.implementation.parts.length }} 个元件，{{ module.implementation.wires.length }} 根导线）</summary>
+                  <p class="mt-2 leading-5">已保存线圈、触点、接线与端口映射。下一步将支持直接在工作台展开此快照。</p>
+                </details>
+              </article>
+            </div>
+            <p v-else class="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">还没有已发布模块。回到电路层，绑定线圈和弹簧开关后，在属性面板发布 RelaySwitch。</p>
           </section>
 
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

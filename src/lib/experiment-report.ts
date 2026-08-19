@@ -55,6 +55,10 @@ function terminalLabel(part: CircuitPart | undefined, terminal: TerminalKey) {
     return terminal === "b" ? "+" : "-";
   }
 
+  if (part.type === "spring") {
+    return terminal === "a" ? "COM" : part.contactMode === "normally-closed" ? "NC" : "NO";
+  }
+
   return terminal.toUpperCase();
 }
 

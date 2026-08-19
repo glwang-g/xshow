@@ -35,7 +35,17 @@ export type LessonCheckId =
   | "hasSeriesBulbs"
   | "hasParallelBulbs"
   | "hasDimSeriesBulbs"
-  | "hasBrightParallelBulbs";
+  | "hasBrightParallelBulbs"
+  | "hasRelayParts"
+  | "hasRelayLink"
+  | "hasEnergizedRelay"
+  | "hasRelayOutput"
+  | "hasNormallyClosedContact"
+  | "hasNotOutputOn"
+  | "hasNotOutputOff"
+  | "hasTwoInputSwitches"
+  | "hasSeriesRelayInputs"
+  | "hasParallelRelayInputs";
 
 export type LessonPartType = PartType;
 
@@ -43,6 +53,8 @@ export type LessonTerminalKey = "a" | "b";
 
 export type LessonWorkspacePart = {
   closed?: boolean;
+  contactMode?: "normally-open" | "normally-closed";
+  controlledBy?: string;
   id: string;
   name: string;
   polarity?: "normal" | "reversed";
@@ -90,6 +102,11 @@ export type LessonStep = {
 
 export type Lesson = {
   id: string;
+  nextStage?: {
+    moduleKind: "relay" | "logic-gate";
+    moduleName: string;
+    ports: string[];
+  };
   objective: string;
   starterWorkspace: LessonWorkspace;
   steps: LessonStep[];
@@ -263,6 +280,62 @@ function capacitorLessonParts({ switchClosed = false } = {}): LessonWorkspacePar
   ];
 }
 
+function relayLessonParts({
+  contactMode = "normally-open",
+  switchCount = 1,
+  switchesClosed = false,
+}: {
+  contactMode?: "normally-open" | "normally-closed";
+  switchCount?: number;
+  switchesClosed?: boolean;
+} = {}): LessonWorkspacePart[] {
+  const switches = Array.from({ length: switchCount }, (_, index) => ({
+    id: `switch-${index + 1}`,
+    name: `输入开关 ${index + 1}`,
+    type: "switch" as const,
+    x: 220 + index * 190,
+    y: 120,
+    closed: switchesClosed,
+  }));
+
+  return [
+    { id: "battery-1", name: "9V 电池", type: "battery", x: 48, y: 300 },
+    ...switches,
+    { id: "coil-1", name: "继电器线圈", type: "coil", x: 500, y: 120 },
+    { id: "spring-1", name: contactMode === "normally-closed" ? "常闭触点" : "常开触点", type: "spring", contactMode, controlledBy: "coil-1", x: 500, y: 360 },
+    { id: "bulb-1", name: "输出灯泡", type: "bulb", x: 760, y: 360 },
+    { id: "resistor-1", name: "输出限流电阻", type: "resistor", x: 760, y: 520, resistance: 60 },
+  ];
+}
+
+const relayOutputWires: LessonWorkspaceWire[] = [
+  { id: "wire-output-1", from: { partId: "battery-1", terminal: "b" }, to: { partId: "spring-1", terminal: "a" } },
+  { id: "wire-output-2", from: { partId: "spring-1", terminal: "b" }, to: { partId: "bulb-1", terminal: "a" } },
+  { id: "wire-output-3", from: { partId: "bulb-1", terminal: "b" }, to: { partId: "resistor-1", terminal: "b" } },
+  { id: "wire-output-4", from: { partId: "resistor-1", terminal: "a" }, to: { partId: "battery-1", terminal: "a" } },
+];
+
+const relaySingleInputWires: LessonWorkspaceWire[] = [
+  { id: "wire-input-1", from: { partId: "battery-1", terminal: "b" }, to: { partId: "switch-1", terminal: "a" } },
+  { id: "wire-input-2", from: { partId: "switch-1", terminal: "b" }, to: { partId: "coil-1", terminal: "a" } },
+  { id: "wire-input-3", from: { partId: "coil-1", terminal: "b" }, to: { partId: "battery-1", terminal: "a" } },
+];
+
+const relaySeriesInputWires: LessonWorkspaceWire[] = [
+  { id: "wire-input-series-1", from: { partId: "battery-1", terminal: "b" }, to: { partId: "switch-1", terminal: "a" } },
+  { id: "wire-input-series-2", from: { partId: "switch-1", terminal: "b" }, to: { partId: "switch-2", terminal: "a" } },
+  { id: "wire-input-series-3", from: { partId: "switch-2", terminal: "b" }, to: { partId: "coil-1", terminal: "a" } },
+  { id: "wire-input-series-4", from: { partId: "coil-1", terminal: "b" }, to: { partId: "battery-1", terminal: "a" } },
+];
+
+const relayParallelInputWires: LessonWorkspaceWire[] = [
+  { id: "wire-input-parallel-1", from: { partId: "battery-1", terminal: "b" }, to: { partId: "switch-1", terminal: "a" } },
+  { id: "wire-input-parallel-2", from: { partId: "battery-1", terminal: "b" }, to: { partId: "switch-2", terminal: "a" } },
+  { id: "wire-input-parallel-3", from: { partId: "switch-1", terminal: "b" }, to: { partId: "coil-1", terminal: "a" } },
+  { id: "wire-input-parallel-4", from: { partId: "switch-2", terminal: "b" }, to: { partId: "coil-1", terminal: "a" } },
+  { id: "wire-input-parallel-5", from: { partId: "coil-1", terminal: "b" }, to: { partId: "battery-1", terminal: "a" } },
+];
+
 const seriesWires: LessonWorkspaceWire[] = [
   {
     id: "wire-series-1",
@@ -325,6 +398,75 @@ const parallelWires: LessonWorkspaceWire[] = [
 ];
 
 export const lessonCatalog: Lesson[] = [
+  {
+    id: "build-a-relay",
+    title: "主线 1：做一个继电器",
+    objective: "用线圈和弹簧触点搭出一个可重复使用的继电器，并观察控制回路如何驱动输出回路。",
+    nextStage: { moduleKind: "relay", moduleName: "RelaySwitch", ports: ["control.in", "output.out"] },
+    starterWorkspace: {
+      parts: relayLessonParts(),
+      selectedPartId: "coil-1",
+      wires: [...relaySingleInputWires, ...relayOutputWires],
+      zoom: 72,
+    },
+    steps: [
+      { id: "parts", description: "工作台上有线圈、常开触点和输出灯泡。", guide: { partIds: ["coil-1", "spring-1", "bulb-1"] }, hint: "线圈是控制回路，触点和灯泡组成输出回路。", checkId: "hasRelayParts" },
+      { id: "link", description: "把常开触点绑定到继电器线圈。", guide: { partIds: ["spring-1", "coil-1"] }, hint: "选中常开触点，在属性面板选择继电器线圈。", checkId: "hasRelayLink" },
+      { id: "energize", description: "闭合输入开关，让线圈吸合。", guide: { partIds: ["switch-1", "coil-1"] }, hint: "线圈电流达到吸合阈值后，触点会闭合。", checkId: "hasEnergizedRelay" },
+      { id: "output", description: "确认继电器触点接通了输出灯泡。", guide: { partIds: ["spring-1", "bulb-1"] }, hint: "输出回路需要从电池经过触点、灯泡和电阻回到电池。", checkId: "hasRelayOutput" },
+    ],
+  },
+  {
+    id: "build-not-gate",
+    title: "主线 2：用继电器做 NOT",
+    objective: "把常闭触点接入输出回路：输入有电时输出断开，输入无电时输出接通。",
+    nextStage: { moduleKind: "logic-gate", moduleName: "RelayNot", ports: ["input.in", "output.out"] },
+    starterWorkspace: {
+      parts: relayLessonParts({ contactMode: "normally-closed", switchesClosed: false }),
+      selectedPartId: "spring-1",
+      wires: [...relaySingleInputWires, ...relayOutputWires],
+      zoom: 72,
+    },
+    steps: [
+      { id: "contact", description: "把输出触点设置为常闭，并绑定到线圈。", guide: { partIds: ["spring-1", "coil-1"] }, hint: "常闭触点在线圈失电时导通，线圈吸合时断开。", checkId: "hasNormallyClosedContact" },
+      { id: "output-on", description: "输入开关断开时，输出灯泡应点亮。", guide: { partIds: ["switch-1", "bulb-1"] }, hint: "这就是 NOT 的第一组验证：0 输入得到 1 输出。", checkId: "hasNotOutputOn" },
+      { id: "output-off", description: "闭合输入开关，让线圈吸合并使输出灯泡熄灭。", guide: { partIds: ["switch-1", "coil-1", "bulb-1"] }, hint: "这就是 NOT 的第二组验证：1 输入得到 0 输出。", checkId: "hasNotOutputOff" },
+    ],
+  },
+  {
+    id: "build-and-gate",
+    title: "主线 3：用继电器做 AND",
+    objective: "把两个输入开关串联到线圈，只有两个输入同时接通时，输出触点才会闭合。",
+    nextStage: { moduleKind: "logic-gate", moduleName: "RelayAnd", ports: ["input.a", "input.b", "output.out"] },
+    starterWorkspace: {
+      parts: relayLessonParts({ switchCount: 2, switchesClosed: true }),
+      selectedPartId: "coil-1",
+      wires: [...relaySeriesInputWires, ...relayOutputWires],
+      zoom: 68,
+    },
+    steps: [
+      { id: "parts", description: "工作台上有两个输入开关和一个继电器输出。", guide: { partIds: ["switch-1", "switch-2", "coil-1", "spring-1"] }, hint: "两个开关代表 A、B 两个输入。", checkId: "hasTwoInputSwitches" },
+      { id: "series", description: "把两个输入开关串联到线圈。", guide: { partIds: ["switch-1", "switch-2", "coil-1"] }, hint: "串联意味着任意一个输入断开，线圈都无法吸合。", checkId: "hasSeriesRelayInputs" },
+      { id: "both-on", description: "两个输入都闭合时，输出灯泡点亮。", guide: { partIds: ["switch-1", "switch-2", "bulb-1"] }, hint: "验证 A=1、B=1 时输出为 1。", checkId: "hasRelayOutput" },
+    ],
+  },
+  {
+    id: "build-or-gate",
+    title: "主线 4：用继电器做 OR",
+    objective: "把两个输入开关并联到线圈，任意一个输入接通时，输出触点就会闭合。",
+    nextStage: { moduleKind: "logic-gate", moduleName: "RelayOr", ports: ["input.a", "input.b", "output.out"] },
+    starterWorkspace: {
+      parts: relayLessonParts({ switchCount: 2, switchesClosed: true }),
+      selectedPartId: "coil-1",
+      wires: [...relayParallelInputWires, ...relayOutputWires],
+      zoom: 68,
+    },
+    steps: [
+      { id: "parts", description: "工作台上有两个输入开关和一个继电器输出。", guide: { partIds: ["switch-1", "switch-2", "coil-1", "spring-1"] }, hint: "两个开关代表 A、B 两个输入。", checkId: "hasTwoInputSwitches" },
+      { id: "parallel", description: "把两个输入开关并联到线圈。", guide: { partIds: ["switch-1", "switch-2", "coil-1"] }, hint: "并联意味着任意一条输入支路接通，线圈都可以吸合。", checkId: "hasParallelRelayInputs" },
+      { id: "one-on", description: "保持任意一个输入闭合，确认输出灯泡点亮。", guide: { partIds: ["switch-1", "switch-2", "bulb-1"] }, hint: "验证 A=1、B=0 或 A=0、B=1 时输出为 1。", checkId: "hasRelayOutput" },
+    ],
+  },
   {
     id: "light-the-bulb",
     title: "实验 1：点亮小灯泡",

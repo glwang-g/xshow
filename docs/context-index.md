@@ -18,7 +18,7 @@ Use this index to quickly find the repository conventions and durable notes that
 | Roadmap and phased capabilities | `docs/ROADMAP.md` |
 | Near-term release scope and public beta status | `docs/release-backlog.md`, `docs/releases/public-beta-candidate.md` |
 | Architecture boundaries and where code should live | `docs/architecture.md` |
-| Programmable World Engine migration and layer ownership | `docs/world-engine.md`, `docs/layers.md`, `src/lib/world-engine.ts` |
+| Simulation contract migration and layer ownership | `docs/simulation-contract.md`, `docs/layers.md`, `src/lib/simulation-contract.ts` |
 | Cloud records, Supabase, cross-device sync | `docs/cloud-sync-plan.md`, `docs/supabase-schema.sql` |
 | Deployment and server release flow | `docs/DEPLOYMENT.md` |
 | Mobile, PWA, and QA notes | `docs/mobile-qa.md`, `docs/v0.2-qa-report.md` |
@@ -40,9 +40,9 @@ Use this index to quickly find the repository conventions and durable notes that
 - For gamification, prefer missions, debugging, construction, and world-map structure over quiz-centric design.
 - Use `docs/release-backlog.md` for release scoping.
 - Check `docs/architecture.md` before moving logic across modules.
-- Treat the World Engine as a gradual contract layer first: add adapters around existing rule modules before rewriting labs.
+- Treat the simulation contract as a gradual contract layer first: add adapters around existing rule modules before rewriting labs.
 - Cross-project terms (World, Entity, Observation, Intent, Rule, Event, Replay, Snapshot) follow the Freexlib contract in sibling repo `freexlib-portal/docs/world-contract.md`.
-- Keep `docs/world-engine.md` and `docs/layers.md` as the migration map for World/Entity/State/Tick/Rule/Scenario/Replay work.
+- Keep `docs/simulation-contract.md` and `docs/layers.md` as the migration map for Simulation/Entity/State/Tick/Rule/Scenario/Replay work.
 - For machine-layer integration, prefer Rust core -> WASM bridge -> Vue/TypeScript UI.
 - Keep English and Chinese docs aligned when both versions exist.
 - If a temporary discovery becomes reusable context, write a short doc and link it from this index.

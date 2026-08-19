@@ -221,6 +221,15 @@ function updateInput(event: Event) {
         <p class="mb-3 text-xs leading-5 text-muted-foreground">
           {{ activeLesson.objective }}
         </p>
+        <div
+          v-if="activeLesson.nextStage"
+          class="mb-3 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-xs text-violet-950"
+        >
+          <div class="font-medium">完成后可发布为 {{ activeLesson.nextStage.moduleName }}</div>
+          <div class="mt-1 leading-5">
+            下一阶段输入：{{ activeLesson.nextStage.ports.join('、') }}
+          </div>
+        </div>
         <div class="mb-3 grid grid-cols-1 gap-2">
           <button
             v-for="lesson in lessonCatalog"
@@ -942,13 +951,18 @@ function updateInput(event: Event) {
           </label>
           <label v-if="selectedPart.type === 'spring'" class="block space-y-2">
             <span class="text-xs font-medium">控制连杆</span>
+            <span class="text-xs font-medium">触点类型</span>
+            <select v-model="selectedPart.contactMode" class="h-9 w-full rounded-md border bg-background px-2 text-sm">
+              <option value="normally-open">常开（NO）</option>
+              <option value="normally-closed">常闭（NC）</option>
+            </select>
             <select v-model="selectedPart.controlledBy" class="h-9 w-full rounded-md border bg-background px-2 text-sm">
               <option value="">未绑定（弹簧断开）</option>
               <option v-for="coil in parts.filter((part) => part.type === 'coil')" :key="coil.id" :value="coil.id">
                 {{ coil.name }}
               </option>
             </select>
-            <span class="block text-xs text-muted-foreground">选择线圈后，线圈通电会吸合此常开触点。</span>
+            <span class="block text-xs text-muted-foreground">选择线圈后，线圈通电会改变此触点状态。</span>
           </label>
           <div v-if="selectedPart.type === 'coil'" class="rounded-md border bg-card px-3 py-2 text-xs">
             <div class="flex items-center justify-between">

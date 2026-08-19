@@ -173,6 +173,35 @@ test("an energized coil closes its bound spring contact in a separate load circu
   assert.ok(result.bulbs.bulb.brightnessPercent > 0);
 });
 
+test("a normally-closed spring contact opens when its coil is energized", () => {
+  const parts = [
+    part("battery", "battery"),
+    part("control-switch", "switch", { closed: true }),
+    part("coil", "coil"),
+    part("spring", "spring", { contactMode: "normally-closed", controlledBy: "coil" }),
+    part("bulb", "bulb"),
+    part("resistor", "resistor", { resistance: 48 }),
+  ];
+  const wires = [
+    wire("control-1", "battery", "b", "control-switch", "a"),
+    wire("control-2", "control-switch", "b", "coil", "a"),
+    wire("control-3", "coil", "b", "battery", "a"),
+    wire("load-1", "battery", "b", "spring", "a"),
+    wire("load-2", "spring", "b", "bulb", "a"),
+    wire("load-3", "bulb", "b", "resistor", "b"),
+    wire("load-4", "resistor", "a", "battery", "a"),
+  ];
+
+  const energized = circuit.evaluateCircuit(parts, wires);
+  assert.equal(energized.coils.coil.energized, true);
+  assert.equal(energized.bulbs.bulb.brightnessPercent, 0);
+
+  parts.find((item) => item.id === "control-switch").closed = false;
+  const released = circuit.evaluateCircuit(parts, wires);
+  assert.equal(released.coils.coil.energized, false);
+  assert.ok(released.bulbs.bulb.brightnessPercent > 0);
+});
+
 test("series bulbs share one path and are dimmer than a single bulb", () => {
   const single = evaluate(singleBulbCircuit());
   const series = evaluate(seriesBulbsCircuit());

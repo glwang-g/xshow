@@ -24,6 +24,7 @@ export type TerminalRef = {
 
 export type CircuitPart = {
   closed?: boolean;
+  contactMode?: "normally-open" | "normally-closed";
   controlledBy?: string;
   id: string;
   name: string;
@@ -578,7 +579,9 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
 
   let conductiveLedIds = new Set(leds.map((part) => part.id));
   let conductiveDiodeIds = new Set(diodes.map((part) => part.id));
-  let closedSpringIds = new Set<string>();
+  let closedSpringIds = new Set(
+    springs.filter((spring) => spring.contactMode === "normally-closed").map((spring) => spring.id),
+  );
   let network = solveResistiveNetwork(battery, sourceParts, sourceWires, conductiveLedIds, conductiveDiodeIds, closedSpringIds);
 
   for (let iteration = 0; iteration < 4; iteration += 1) {
@@ -598,7 +601,8 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
       springs
         .filter((part) => {
           const coil = coils.find((candidate) => candidate.id === part.controlledBy);
-          return Boolean(coil && partCurrentMagnitude(network, coil) * 1000 >= coilPullInCurrentMilliAmps);
+          const energized = Boolean(coil && partCurrentMagnitude(network, coil) * 1000 >= coilPullInCurrentMilliAmps);
+          return part.contactMode === "normally-closed" ? !energized : energized;
         })
         .map((part) => part.id),
     );

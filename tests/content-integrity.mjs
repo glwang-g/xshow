@@ -45,6 +45,16 @@ const lessonCheckIds = new Set([
   "hasParallelBulbs",
   "hasDimSeriesBulbs",
   "hasBrightParallelBulbs",
+  "hasRelayParts",
+  "hasRelayLink",
+  "hasEnergizedRelay",
+  "hasRelayOutput",
+  "hasNormallyClosedContact",
+  "hasNotOutputOn",
+  "hasNotOutputOff",
+  "hasTwoInputSwitches",
+  "hasSeriesRelayInputs",
+  "hasParallelRelayInputs",
 ]);
 
 function assertUnique(values, label) {

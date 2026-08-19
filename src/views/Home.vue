@@ -723,6 +723,57 @@ function hasForwardDiodeWiring() {
   );
 }
 
+function hasRelayParts() {
+  return ["battery", "switch", "coil", "spring", "bulb", "resistor"].every((type) =>
+    parts.value.some((part) => part.type === type),
+  );
+}
+
+function hasRelayLink() {
+  return parts.value.some((part) => part.type === "spring" && part.controlledBy === "coil-1");
+}
+
+function hasEnergizedRelay() {
+  return hasRelayLink() && Boolean(simulation.value.coils["coil-1"]?.energized);
+}
+
+function hasRelayOutput() {
+  return hasEnergizedRelay() && (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) > 0;
+}
+
+function hasNormallyClosedContact() {
+  return parts.value.some(
+    (part) => part.type === "spring" && part.contactMode === "normally-closed" && part.controlledBy === "coil-1",
+  );
+}
+
+function hasNotOutputOn() {
+  return hasNormallyClosedContact() && parts.value.some((part) => part.id === "switch-1" && !part.closed) &&
+    (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) > 0;
+}
+
+function hasNotOutputOff() {
+  return hasNormallyClosedContact() && parts.value.some((part) => part.id === "switch-1" && part.closed) &&
+    Boolean(simulation.value.coils["coil-1"]?.energized) &&
+    (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) === 0;
+}
+
+function hasTwoInputSwitches() {
+  return parts.value.filter((part) => part.type === "switch").length >= 2 && hasRelayParts();
+}
+
+function hasSeriesRelayInputs() {
+  return hasTwoInputSwitches() &&
+    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "switch-2", terminal: "a" }) &&
+    hasWireBetween({ partId: "switch-2", terminal: "b" }, { partId: "coil-1", terminal: "a" });
+}
+
+function hasParallelRelayInputs() {
+  return hasTwoInputSwitches() &&
+    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "coil-1", terminal: "a" }) &&
+    hasWireBetween({ partId: "switch-2", terminal: "b" }, { partId: "coil-1", terminal: "a" });
+}
+
 const lessonCheckers: Record<LessonCheckId, () => boolean> = {
   hasActiveBuzzer: () =>
     buzzerParts().some((part) => {
@@ -745,6 +796,7 @@ const lessonCheckers: Record<LessonCheckId, () => boolean> = {
       return state.active && state.voltage > 0;
     }),
   hasAdjustedResistor: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) !== 48),
+  hasEnergizedRelay,
   hasBrightBulb: () => mainBulbBrightness.value >= 0.4,
   hasBrightParallelBulbs: () =>
     hasParallelBulbRoute() &&
@@ -781,12 +833,19 @@ const lessonCheckers: Record<LessonCheckId, () => boolean> = {
     ),
   hasOpenCircuit: () => !simulation.value.closed,
   hasOpenSwitch: () => parts.value.some((part) => part.type === "switch" && !part.closed),
+  hasNormallyClosedContact,
+  hasNotOutputOff,
+  hasNotOutputOn,
   hasOutputParts: () =>
     ["battery", "switch", "buzzer", "motor", "resistor"].every((type) =>
       parts.value.some((part) => part.type === type),
     ),
   hasParallelBulbs: () => simulation.value.closed && hasParallelBulbRoute(),
   hasParallelOutputWiring,
+  hasParallelRelayInputs,
+  hasRelayLink,
+  hasRelayOutput,
+  hasRelayParts,
   hasReverseBlockingDiode: () => diodeParts().some((part) => {
     const state = diodeStatus(part);
     return state.reversed && !state.conducting;
@@ -797,10 +856,12 @@ const lessonCheckers: Record<LessonCheckId, () => boolean> = {
   }),
   hasSeriesBulbs: () => simulation.value.closed && hasSeriesBulbRoute(),
   hasSeriesAmmeterWiring,
+  hasSeriesRelayInputs,
   hasStarterParts: () =>
     ["battery", "switch", "bulb", "resistor"].every((type) => parts.value.some((part) => part.type === type)),
   hasSwitchedCapacitorWiring,
   hasTwoBulbs: () => bulbParts().length >= 2,
+  hasTwoInputSwitches,
   hasTwoLitBulbs: () => litBulbParts().length >= 2,
 };
 const activeLesson = computed(() => lessonCatalog.find((lesson) => lesson.id === activeLessonId.value) ?? lessonCatalog[0]);
@@ -2125,6 +2186,10 @@ function addPart(type: PartType) {
 
   if (type === "resistor") {
     nextPart.resistance = 60;
+  }
+
+  if (type === "spring") {
+    nextPart.contactMode = "normally-open";
   }
 
   parts.value.push(nextPart);

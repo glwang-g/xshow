@@ -60,6 +60,10 @@ function isWorkspacePart(value: unknown) {
     return false;
   }
 
+  if (value.contactMode !== undefined && value.contactMode !== "normally-open" && value.contactMode !== "normally-closed") {
+    return false;
+  }
+
   if (value.controlledBy !== undefined && typeof value.controlledBy !== "string") {
     return false;
   }

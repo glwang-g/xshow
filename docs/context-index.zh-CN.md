@@ -18,7 +18,7 @@
 | 路线图和阶段性能力 | `docs/ROADMAP.zh-CN.md` |
 | 近期发布收口、公开测试版状态 | `docs/release-backlog.zh-CN.md`、`docs/releases/public-beta-candidate.zh-CN.md` |
 | 架构拆分、代码应该放哪里 | `docs/architecture.zh-CN.md` |
-| Programmable World Engine 迁移与层级归属 | `docs/world-engine.zh-CN.md`、`docs/layers.zh-CN.md`、`src/lib/world-engine.ts` |
+| Simulation Contract 迁移与层级归属 | `docs/simulation-contract.zh-CN.md`、`docs/layers.zh-CN.md`、`src/lib/simulation-contract.ts` |
 | 云端记录、Supabase、跨设备同步 | `docs/cloud-sync-plan.zh-CN.md`、`docs/supabase-schema.sql` |
 | 部署、服务器和发布流程 | `docs/DEPLOYMENT.zh-CN.md` |
 | 跨项目 Freexlib 世界契约 | 同级 `freexlib-portal` 仓库 -> `docs/world-contract.zh-CN.md` |
@@ -40,9 +40,9 @@
 - 游戏化方向优先走“任务、调试、构建、世界地图”，不走“刷题游戏平台”。
 - 版本收口看 `docs/release-backlog.zh-CN.md`。
 - 架构位置和拆分方向先查 `docs/architecture.zh-CN.md`。
-- World Engine 先作为渐进契约层：优先围绕现有 Rule Module 做 adapter，不要先重写 Lab。
+- Simulation Contract 先作为渐进契约层：优先围绕现有 Rule Module 做 adapter，不要先重写 Lab。
 - 跨项目术语（World、Entity、Observation、Intent、Rule、Event、Replay、Snapshot）统一遵循同级 `freexlib-portal` 仓库的 `docs/world-contract.zh-CN.md`。
-- World/Entity/State/Tick/Rule/Scenario/Replay 相关迁移地图看 `docs/world-engine.zh-CN.md` 和 `docs/layers.zh-CN.md`。
+- Simulation/Entity/State/Tick/Rule/Scenario/Replay 相关迁移地图看 `docs/simulation-contract.zh-CN.md` 和 `docs/layers.zh-CN.md`。
 - 机器层融合优先考虑 Rust core -> WASM bridge -> Vue/TypeScript UI。
 - 更新正式文档时，尽量同步维护英文和中文版本。
 - 临时但有复用价值的上下文，可以整理成短文档后从本索引链接。

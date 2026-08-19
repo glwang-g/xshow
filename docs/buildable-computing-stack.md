@@ -57,3 +57,13 @@ First deliver an explainable, expandable 8-bit loop. 16/32/64-bit machines are e
 ## Current first step
 
 The workbench now includes an inductor coil and a normally-open spring contact. A contact can bind to a coil through a mechanical link: it closes when coil current reaches the pull-in threshold and opens under spring force when power is removed. The next priority is publishing this hand-built structure as a module, rather than growing circuit repair into the product's main path.
+
+## First Course Loop
+
+The first mainline lessons start in the circuit workbench and explicitly name the module and ports that the next layer can consume:
+
+```text
+Relay → NOT → AND / OR → XOR → half adder
+```
+
+The first implementation adds lesson entries for Relay, NOT, AND, and OR, plus normally-open/normally-closed contacts. XOR and half adder remain the next increment because they need a fuller multi-input truth-table and composition workflow.

@@ -8,11 +8,11 @@
 signal/circuit -> logic/memory -> machine -> algorithm/battle
 ```
 
-The world engine contract should serve this path while still allowing experiments to exist in a clearly secondary area.
+The simulation contract should serve this path while still allowing experiments to exist in a clearly secondary area.
 
 ## Layer Ownership
 
-| Layer | Current modules | Current UI | World Engine role |
+| Layer | Current modules | Current UI | Simulation role |
 | --- | --- | --- | --- |
 | Signal/circuit | `src/lib/circuit.ts`, `src/lib/workbench-ui.ts`, lesson data, physical-build helpers | Workbench route and workbench components | Foundational signal propagation rule module. It evaluates a workspace into circuit state. |
 | Logic/memory | `src/lib/logic-core.ts` | `src/views/LogicLab.vue` | Boolean and memory rule module. It bridges circuit signals into retained state. |
@@ -32,7 +32,7 @@ The world engine contract should serve this path while still allowing experiment
 - Workbench lessons and starter workspaces are scenario-like content.
 - Workbench canvas/status rendering is the visualization layer.
 
-This layer should remain framework-agnostic and testable. It should become a `CircuitWorld` adapter only after the shared interfaces have settled.
+This layer should remain framework-agnostic and testable. It should become a `CircuitSimulation` adapter only after the shared interfaces have settled.
 
 ### Logic/Memory Layer
 
@@ -57,9 +57,9 @@ The migration path remains Rust core -> WASM bridge -> Vue/TypeScript UI.
 
 ### Algorithm/Battle Layer
 
-`src/lib/tank-lab.ts` is currently an experiment, but it is also the best working prototype for a programmable world:
+`src/lib/tank-lab.ts` is currently an experiment, but it is also the best working prototype for a programmable simulation:
 
-- `TankLabBattle` is a world state.
+- `TankLabBattle` is a simulation state.
 - `TankAction` is an action.
 - `TankStrategy` is a bot/program interface.
 - `stepTankBattle()` is a tick rule.
@@ -70,8 +70,7 @@ Keep it secondary in product navigation, but reuse its architecture lessons for 
 ## Minimal First Stage
 
 - Keep all existing modules where they are.
-- Add `src/lib/world-engine.ts` as a type-only contract.
-- Use `docs/world-engine.md` for migration rules and `docs/layers.md` for ownership.
+- Add `src/lib/simulation-contract.ts` as a type-only contract.
+- Use `docs/simulation-contract.md` for migration rules and `docs/layers.md` for ownership.
 - Prefer adapters over rewrites.
 - Let each layer keep its domain data shape until a shared runner needs a common envelope.
-

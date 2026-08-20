@@ -8,7 +8,7 @@ It is intentionally narrower than the roadmap. The roadmap explains direction; t
 
 Push the project in this order:
 
-1. Write down the "signals, circuits, machines, algorithms" north star and reflect it in the hub information architecture
+1. Write down the five-unit mainline — signal/circuit -> component workshop -> logic/memory -> machine -> algorithm — and reflect it in the hub information architecture
 2. Stabilize the circuit workbench and teaching loop as the signal/circuit layer
 3. Close beta unknowns with QA and release hardening
 4. Continue the machine-layer integration, starting by wiring the Rust/WASM core
@@ -88,14 +88,14 @@ Goal: make the project feel more like one product and less like a collection of 
 - Repair-task system expansion
 - Better reports and physical-build deliverables
 - Share/template quality
-- Hub information architecture across signal/circuit, logic/memory, machine, algorithm, and experiment areas
+- Hub information architecture across signal/circuit, component workshop, logic/memory, machine, algorithm, and experiment areas
 - Clearer product language
 
 ### Concrete outcomes
 
 - Repair tasks feel like a deliberate learning path instead of a side mode
 - Reports and build plans become more useful outside the app
-- The hub makes the signal/circuit, logic/memory, machine, algorithm, and experiment areas visibly distinct
+- The hub makes the five mainline units and the experiment area visibly distinct
 - Users can understand what the project is for within one screen
 
 ### Candidate tasks

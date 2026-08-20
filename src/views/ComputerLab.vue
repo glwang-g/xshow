@@ -151,7 +151,7 @@ async function loadSampleProgram() {
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:p-7">
             <div class="flex flex-wrap items-start justify-between gap-4">
               <div class="min-w-0">
-                <p class="text-xs font-medium text-cyan-700">主线第二段</p>
+                <p class="text-xs font-medium text-cyan-700">主线第 4 单元</p>
                 <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 lg:text-4xl">
                   从电路信号走向可执行机器
                 </h1>
@@ -458,7 +458,7 @@ async function loadSampleProgram() {
                 to="/workbench"
                 class="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-medium text-white hover:bg-slate-800"
               >
-                信号与电路层
+                回到信号与电路
                 <ArrowRight class="h-4 w-4" />
               </RouterLink>
             </div>

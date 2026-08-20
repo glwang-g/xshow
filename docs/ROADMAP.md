@@ -4,7 +4,7 @@
 
 `xshow circuits` is moving from a friendly electronic brick circuit playground toward an interactive computer science visualization platform that connects signals, circuits, machines, and algorithms.
 
-The project should stay visual, approachable, and immediate: users should be able to build a circuit, see what happens, and then follow the path through signals, logic, machines, and algorithms without needing a full engineering simulator.
+The project should stay visual, approachable, and immediate: users should be able to build a circuit, see what happens, make relays and logic gates in the component workshop, and then follow the path through logic, machines, and algorithms without needing a full engineering simulator.
 
 ## Progress
 

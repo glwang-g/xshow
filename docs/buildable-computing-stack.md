@@ -5,7 +5,7 @@
 The `xshow` mainline is not a set of parallel circuit, logic, CPU, and algorithm tools. A learner's construction at one layer must become a reusable input to the next:
 
 ```text
-Circuit construction → logic module → hardware module → executable machine → algorithm unit
+Signal and circuit → component workshop → logic and memory → machine → algorithm
 ```
 
 Circuit repair remains an introductory, diagnostic, and teaching activity in the signal/circuit layer. It is no longer the center of mainline expansion.
@@ -14,7 +14,8 @@ Circuit repair remains an introductory, diagnostic, and teaching activity in the
 
 | Layer | Learner builds | Published output | Used by next layer |
 | --- | --- | --- | --- |
-| Circuit | Coils, spring contacts, relays, latching circuits | Ported circuit module | Logic gates and latches |
+| Signal and circuit | Circuits, measurement, continuity, and fault diagnosis | Observable circuit behavior and basic connections | Component workshop |
+| Component workshop | Coils, spring contacts, relays, NOT / AND / OR | Ported circuit module | Logic gates and latches |
 | Logic and memory | Gates, latches, registers, adders | Stateful logic module | ALUs, RAM, controllers |
 | Machine | Buses, ALUs, register files, controllers | Executable hardware configuration | Instructions and programs |
 | Algorithm | Instruction sequences, data, algorithm steps | Replayable execution | Observe changes to machine state |
@@ -58,12 +59,12 @@ First deliver an explainable, expandable 8-bit loop. 16/32/64-bit machines are e
 
 The workbench now includes a coil and normally-open/normally-closed spring contacts. A contact can bind to a coil through a mechanical link and switches according to its NO/NC rule once coil current reaches the pull-in threshold. An assembled relay can now be published locally as `RelaySwitch`: it saves the complete parts-and-wires snapshot and exposes coil A/B plus COM and NO/NC ports. Logic Lab reads the module and shows the contact output from a live coil input while retaining its source snapshot. Re-opening that snapshot directly in the workbench is the next step.
 
-## Two Circuit-Layer Modes
+## Signal/Circuit Unit and Component Workshop
 
-The circuit layer does not split into two editors. Its modes share one workbench, component model, and simulation state:
+These two independent learning units do not split into two editors. They share one workbench, component model, and simulation state:
 
-- **Free Experiment** starts with circuit-phenomenon scenarios such as continuity, series/parallel paths, diode polarity, and measurement, then allows free changes to parts, wiring, and parameters.
-- **Component Workshop** starts with construction tasks such as a relay, NOT, AND, and OR. Learners verify ports and behavior, then publish the work as a module consumable by the next layer.
+- **Signal and Circuit** starts with circuit-phenomenon scenarios such as continuity, series/parallel paths, diode polarity, and measurement, then allows free changes to parts, wiring, and parameters.
+- **Component Workshop** starts with construction tasks such as a relay, NOT, AND, and OR. Learners verify ports and behavior, then publish the work as a module consumable by the logic and memory unit.
 
 Repair tasks remain separate diagnostic practice. This makes both “try a circuit” and “build a component” explicit without forcing learners to move work between incompatible models.
 

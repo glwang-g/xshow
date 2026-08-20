@@ -8,7 +8,7 @@ The current north star is in [product-north-star.md](product-north-star.md):
 
 It assumes the project now has these layers:
 
-- Mainline layers: signal/circuit, logic/memory, machine, and algorithm
+- Mainline units: signal/circuit, component workshop, logic/memory, machine, and algorithm
 - Current foundation: circuit workbench, repair tasks, and teaching flow
 - Logic-layer progress: Logic Lab now has a main-app preview entry covering gates, an SR latch, and a 1-bit register
 - Machine-layer progress: the CPU simulator now has a main-app preview entry; next, wire it to the Rust/WASM machine core
@@ -91,7 +91,7 @@ These items move the project from a good prototype toward a tool that feels cohe
 
 ### Information architecture and product clarity
 
-- Keep separating the signal/circuit, logic/memory, machine, algorithm, and experiment areas on the hub page
+- Keep separating the signal/circuit, component workshop, logic/memory, machine, algorithm, and experiment areas on the hub page
 - Reduce ambiguity about what the project is primarily for
 - Keep side experiments visible without letting them compete with the core entry points
 

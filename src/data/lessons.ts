@@ -289,22 +289,25 @@ function relayLessonParts({
   switchCount?: number;
   switchesClosed?: boolean;
 } = {}): LessonWorkspacePart[] {
+  const compactRelay = switchCount === 1;
   const switches = Array.from({ length: switchCount }, (_, index) => ({
     id: `switch-${index + 1}`,
     name: `输入开关 ${index + 1}`,
     type: "switch" as const,
-    x: 220 + index * 190,
-    y: 120,
+    x: (compactRelay ? 250 : 150) + index * 190,
+    y: 288,
     closed: switchesClosed,
   }));
 
   return [
-    { id: "battery-1", name: "9V 电池", type: "battery", x: 48, y: 300 },
+    { id: "battery-1", name: "9V 电池", type: "battery", x: 48, y: 284 },
     ...switches,
-    { id: "coil-1", name: "继电器线圈", type: "coil", x: 500, y: 120 },
-    { id: "spring-1", name: contactMode === "normally-closed" ? "常闭触点" : "常开触点", type: "spring", contactMode, controlledBy: "coil-1", x: 500, y: 360 },
-    { id: "bulb-1", name: "输出灯泡", type: "bulb", x: 760, y: 360 },
-    { id: "resistor-1", name: "输出限流电阻", type: "resistor", x: 760, y: 520, resistance: 60 },
+    { id: "coil-1", name: "继电器线圈", type: "coil", x: compactRelay ? 500 : 590, y: 280 },
+    // Start unbound so the learner actually performs the relay assembly.
+    // The 124px gap precisely matches the post-binding snap geometry.
+    { id: "spring-1", name: contactMode === "normally-closed" ? "常闭触点" : "常开触点", type: "spring", contactMode, x: compactRelay ? 500 : 590, y: 156 },
+    { id: "bulb-1", name: "输出灯泡", type: "bulb", x: compactRelay ? 770 : 820, y: 134 },
+    { id: "resistor-1", name: "输出限流电阻", type: "resistor", x: compactRelay ? 700 : 720, y: 320, resistance: 60 },
   ];
 }
 

@@ -960,13 +960,13 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
                     <stop offset="1" stop-color="#78350f" />
                   </linearGradient>
                 </defs>
-                <line x1="0" y1="38" x2="38" y2="38" :stroke="springStateColor(part)" stroke-width="4" stroke-linecap="round" />
-                <circle cx="38" cy="38" r="6" fill="#ffffff" :stroke="springStateColor(part)" stroke-width="4" />
-                <circle cx="38" cy="38" r="2" :fill="springStateColor(part)" />
+                <line x1="0" y1="38" x2="52" y2="38" :stroke="springStateColor(part)" stroke-width="4" stroke-linecap="round" />
+                <circle v-if="part.controlledBy" cx="52" cy="38" r="6" fill="#ffffff" :stroke="springStateColor(part)" stroke-width="4" />
+                <circle v-if="part.controlledBy" cx="52" cy="38" r="2" :fill="springStateColor(part)" />
                 <line
-                  x1="38"
+                  x1="52"
                   y1="38"
-                  x2="128"
+                  x2="114"
                   :y2="springBladeY(part)"
                   :stroke="springStateColor(part)"
                   stroke-width="9"
@@ -974,19 +974,19 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
                   class="transition-all duration-200"
                 />
                 <line
-                  x1="38"
+                  x1="52"
                   y1="38"
-                  x2="128"
+                  x2="114"
                   :y2="springBladeY(part)"
                   :stroke="`url(#spring-metal-${part.id})`"
                   stroke-width="5"
                   stroke-linecap="round"
                   class="transition-all duration-200"
                 />
-                <circle cx="128" :cy="springBladeY(part)" fill="#ffffff" r="4" :stroke="springStateColor(part)" stroke-width="2" />
-                <circle cx="128" :cy="springContactY(part)" fill="#ffffff" r="5" :stroke="springStateColor(part)" stroke-width="4" />
+                <circle cx="114" :cy="springBladeY(part)" fill="#ffffff" r="4" :stroke="springStateColor(part)" stroke-width="2" />
+                <circle cx="114" :cy="springContactY(part)" fill="#ffffff" r="5" :stroke="springStateColor(part)" stroke-width="4" />
                 <line
-                  x1="133"
+                  x1="119"
                   :y1="springContactY(part)"
                   x2="176"
                   y2="38"
@@ -994,11 +994,11 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
                   stroke-width="4"
                   stroke-linecap="round"
                 />
-                <circle cx="128" :cy="springOpenY(part)" r="5" fill="#ffffff" :stroke="springStateColor(part)" stroke-width="3">
+                <circle cx="114" :cy="springOpenY(part)" r="5" fill="#ffffff" :stroke="springStateColor(part)" stroke-width="3">
                   <title>悬空位</title>
                 </circle>
                 <path
-                  :d="`M 128 ${springOpenY(part)} Q 146 38, 128 ${springContactY(part)}`"
+                  :d="`M 114 ${springOpenY(part)} Q 132 38, 114 ${springContactY(part)}`"
                   fill="none"
                   :stroke="springStateColor(part)"
                   stroke-width="2"
@@ -1008,9 +1008,10 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               </svg>
               <button
                 v-if="!part.controlledBy"
-                class="absolute left-[21.5%] top-1/2 z-10 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full border-2 bg-white shadow-sm transition-transform hover:scale-110"
+                class="pointer-events-auto absolute left-[29.5%] top-1/2 z-10 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border-[3px] bg-white shadow-sm transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
                 :class="springIsClosed(part) ? 'border-emerald-600 text-emerald-700' : 'border-rose-600 text-rose-700'"
                 :title="springIsClosed(part) ? '点击断开弹簧开关' : '点击闭合弹簧开关'"
+                :aria-label="springIsClosed(part) ? 'COM 轴心开关：点击断开弹簧开关' : 'COM 轴心开关：点击闭合弹簧开关'"
                 @pointerdown.stop
                 @click.stop="toggleSwitch(part)"
               >

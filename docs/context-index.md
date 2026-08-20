@@ -31,7 +31,7 @@ Use this index to quickly find the repository conventions and durable notes that
 
 - Product north star: an interactive computer science visualization platform connecting signals, circuits, machines, and algorithms.
 - Mainline layers: signal/circuit, logic/memory, machine, and algorithm.
-- The circuit workbench and repair tasks belong to the signal/circuit layer.
+- The circuit workbench and repair tasks belong to the signal/circuit layer; the workbench offers Free Experiment and Component Workshop entry modes that share one simulation model.
 - The mainline crosses layers by publishing expandable modules: circuit work becomes logic input, logic work becomes hardware input, then an executable machine and algorithms. See `docs/buildable-computing-stack.md`.
 - Logic Lab is now a mainline logic/memory preview bridging circuit signals and machine state.
 - The CPU simulator is now a mainline machine-layer preview, not just another experiment.

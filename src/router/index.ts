@@ -10,7 +10,16 @@ const router = createRouter({
     },
     {
       path: "/workbench",
-      name: "workbench",
+      redirect: "/workbench/free",
+    },
+    {
+      path: "/workbench/free",
+      name: "workbench-free",
+      component: () => import("@/views/Home.vue"),
+    },
+    {
+      path: "/workbench/workshop",
+      name: "workbench-workshop",
       component: () => import("@/views/Home.vue"),
     },
     {

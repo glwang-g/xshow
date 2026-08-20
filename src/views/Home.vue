@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { RouterLink, useRoute } from "vue-router";
 import ComponentPalette from "@/components/workbench/ComponentPalette.vue";
 import StatusPanel from "@/components/workbench/StatusPanel.vue";
 import WorkbenchCanvas from "@/components/workbench/WorkbenchCanvas.vue";
@@ -139,6 +140,8 @@ const mobileFitPadding = {
   horizontal: 24,
 };
 const board = useBoardStore();
+const route = useRoute();
+const workbenchMode = computed<"free" | "workshop">(() => route.name === "workbench-workshop" ? "workshop" : "free");
 const canvasViewportRef = ref<HTMLElement | null>(null);
 const workbenchRef = ref<HTMLElement | null>(null);
 const activeLessonId = ref(lessonCatalog[0].id);
@@ -3296,6 +3299,14 @@ function loadLessonWorkspace(lessonId = activeLesson.value.id) {
   loadWorkspace(lesson.starterWorkspace, { adaptMobileStarterLayout: true });
 }
 
+function loadWorkbenchMode(mode: "free" | "workshop") {
+  const lessonId = mode === "workshop" ? "build-a-relay" : "open-the-circuit";
+  statusPanelTab.value = "lesson";
+  lessonCompletePanelOpen.value = false;
+  dismissedLessonCompletionId.value = null;
+  loadLessonWorkspace(lessonId);
+}
+
 function closeLessonCompletePanel() {
   dismissedLessonCompletionId.value = activeLessonId.value;
   lessonCompletePanelOpen.value = false;
@@ -3361,6 +3372,8 @@ if (!restoredStartupWorkspace) {
 watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], scheduleWorkspaceSave, {
   deep: true,
 });
+
+watch(workbenchMode, loadWorkbenchMode, { immediate: true });
 watch(
   [lessonComplete, activeLessonId],
   ([complete]) => {
@@ -3629,8 +3642,26 @@ onBeforeUnmount(() => {
       :saved-workspace-label="savedWorkspaceLabel"
       :set-zoom="board.setZoom"
       :simulation="simulation"
+      :workbench-mode="workbenchMode"
       :zoom="board.zoom"
     />
+
+    <nav class="flex shrink-0 gap-2 border-b bg-card px-3 py-2 xl:hidden" aria-label="电路层模式">
+      <RouterLink
+        to="/workbench/free"
+        class="flex h-9 flex-1 items-center justify-center rounded-md border text-xs font-medium"
+        :class="workbenchMode === 'free' ? 'border-cyan-300 bg-cyan-50 text-cyan-900' : 'border-border text-muted-foreground'"
+      >
+        自由实验
+      </RouterLink>
+      <RouterLink
+        to="/workbench/workshop"
+        class="flex h-9 flex-1 items-center justify-center rounded-md border text-xs font-medium"
+        :class="workbenchMode === 'workshop' ? 'border-violet-300 bg-violet-50 text-violet-900' : 'border-border text-muted-foreground'"
+      >
+        器件工坊
+      </RouterLink>
+    </nav>
 
     <section class="relative grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[224px_minmax(700px,1fr)_340px]">
       <div
@@ -3835,6 +3866,7 @@ onBeforeUnmount(() => {
         :share-link-state="shareLinkState"
         :shared-workspace-loaded="sharedWorkspaceLoaded"
         :simulation="simulation"
+        :workbench-mode="workbenchMode"
         :start-rewire="startRewire"
         :toggle-battery-polarity="toggleBatteryPolarity"
         :toggle-switch="toggleSwitch"

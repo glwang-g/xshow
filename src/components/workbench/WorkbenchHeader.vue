@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, FileText, GitFork, HelpCircle, Home, RotateCcw, Save, Sparkles, Swords, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
+import { Download, FileText, FlaskConical, GitFork, HelpCircle, Home, PackageCheck, RotateCcw, Save, Sparkles, Swords, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import logoUrl from "@/assets/logo.png";
 import Button from "@/components/ui/Button.vue";
@@ -15,6 +15,7 @@ defineProps<{
   savedWorkspaceLabel: string;
   setZoom: (value: number) => void;
   simulation: CircuitSimulation;
+  workbenchMode: "free" | "workshop";
   zoom: number;
 }>();
 </script>
@@ -54,6 +55,22 @@ defineProps<{
     </div>
 
     <div class="flex items-center gap-2">
+      <RouterLink
+        to="/workbench/free"
+        class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors"
+        :class="workbenchMode === 'free' ? 'border-cyan-300 bg-cyan-50 text-cyan-900' : 'border-border bg-card hover:bg-muted'"
+      >
+        <FlaskConical class="h-4 w-4" />
+        自由实验
+      </RouterLink>
+      <RouterLink
+        to="/workbench/workshop"
+        class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border px-3 text-sm font-medium transition-colors"
+        :class="workbenchMode === 'workshop' ? 'border-violet-300 bg-violet-50 text-violet-900' : 'border-border bg-card hover:bg-muted'"
+      >
+        <PackageCheck class="h-4 w-4" />
+        器件工坊
+      </RouterLink>
       <RouterLink
         to="/"
         class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"

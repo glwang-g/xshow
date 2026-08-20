@@ -77,7 +77,7 @@ function formatProgressDate(value: string) {
 
         <div class="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
           <RouterLink
-            to="/workbench"
+            to="/workbench/free"
             class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-3 sm:text-sm"
           >
             <CircuitBoard class="h-4 w-4" />
@@ -150,11 +150,18 @@ function formatProgressDate(value: string) {
 
                 <div class="mt-5 flex flex-wrap gap-3">
                   <RouterLink
-                    to="/workbench"
+                    to="/workbench/free"
                     class="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-white px-4 text-sm font-medium text-slate-950 transition-colors hover:bg-slate-100"
                   >
                     <CircuitBoard class="h-4 w-4" />
-                    从工作台开始
+                    进入自由实验
+                  </RouterLink>
+                  <RouterLink
+                    to="/workbench/workshop"
+                    class="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-white/15 bg-white/10 px-4 text-sm font-medium text-white transition-colors hover:bg-white/15"
+                  >
+                    <CircuitBoard class="h-4 w-4" />
+                    制作器件
                   </RouterLink>
                   <RouterLink
                     :to="firstRepairRoute"
@@ -190,7 +197,7 @@ function formatProgressDate(value: string) {
 
                 <div class="mt-4 space-y-2.5">
                   <RouterLink
-                    to="/workbench"
+                    to="/workbench/free"
                     class="group grid grid-cols-[34px_minmax(0,1fr)_16px] items-center gap-3 rounded-lg border border-cyan-200 bg-cyan-50/60 px-3 py-3 transition-colors hover:bg-cyan-50"
                   >
                     <div class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white font-mono text-xs font-semibold text-cyan-700">01</div>

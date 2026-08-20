@@ -58,6 +58,15 @@ First deliver an explainable, expandable 8-bit loop. 16/32/64-bit machines are e
 
 The workbench now includes a coil and normally-open/normally-closed spring contacts. A contact can bind to a coil through a mechanical link and switches according to its NO/NC rule once coil current reaches the pull-in threshold. An assembled relay can now be published locally as `RelaySwitch`: it saves the complete parts-and-wires snapshot and exposes coil A/B plus COM and NO/NC ports. Logic Lab reads the module and shows the contact output from a live coil input while retaining its source snapshot. Re-opening that snapshot directly in the workbench is the next step.
 
+## Two Circuit-Layer Modes
+
+The circuit layer does not split into two editors. Its modes share one workbench, component model, and simulation state:
+
+- **Free Experiment** starts with circuit-phenomenon scenarios such as continuity, series/parallel paths, diode polarity, and measurement, then allows free changes to parts, wiring, and parameters.
+- **Component Workshop** starts with construction tasks such as a relay, NOT, AND, and OR. Learners verify ports and behavior, then publish the work as a module consumable by the next layer.
+
+Repair tasks remain separate diagnostic practice. This makes both “try a circuit” and “build a component” explicit without forcing learners to move work between incompatible models.
+
 ## First Course Loop
 
 The first mainline lessons start in the circuit workbench and explicitly name the module and ports that the next layer can consume:

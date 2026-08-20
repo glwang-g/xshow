@@ -105,7 +105,7 @@ function relayOutput(module: PublishedRelayModule) {
             <span class="truncate">学习路径</span>
           </RouterLink>
           <RouterLink
-            to="/workbench"
+            to="/workbench/workshop"
             class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-3 sm:text-sm"
           >
             <CircuitBoard class="h-4 w-4" />
@@ -163,7 +163,7 @@ function relayOutput(module: PublishedRelayModule) {
                 <p class="mt-1 text-xs leading-5 text-slate-500">已发布的手搓继电器以端口组件进入逻辑层；它们仍保留来源电路快照。</p>
               </div>
               <RouterLink
-                to="/workbench"
+                to="/workbench/workshop"
                 class="inline-flex h-9 items-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 text-xs font-medium text-cyan-800 hover:bg-cyan-100"
               >
                 <CircuitBoard class="h-4 w-4" />
@@ -424,7 +424,7 @@ function relayOutput(module: PublishedRelayModule) {
 
             <div class="mt-4 grid gap-2">
               <RouterLink
-                to="/workbench"
+                to="/workbench/workshop"
                 class="inline-flex h-10 items-center justify-between rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
                 信号与电路层

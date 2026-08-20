@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import {
   Activity,
   BatteryMedium,
@@ -148,6 +148,7 @@ const props = defineProps<{
   toggleBatteryPolarity: (part: CircuitPart) => void;
   toggleSwitch: (part: CircuitPart) => void;
   voltmeterStatus: (part: CircuitPart) => VoltmeterState;
+  workbenchMode: "free" | "workshop";
   wireLabel: (wire: Wire) => string;
   wires: Wire[];
 }>();
@@ -172,6 +173,9 @@ const emit = defineEmits<{
 
 const workspaceImportRef = ref<HTMLInputElement | null>(null);
 const relayPublishFeedback = ref("");
+const modeLessons = computed(() => props.workbenchMode === "workshop"
+  ? lessonCatalog.filter((lesson) => Boolean(lesson.nextStage))
+  : lessonCatalog.filter((lesson) => !lesson.nextStage));
 
 function updateInput(event: Event) {
   return (event.target as HTMLInputElement).value;
@@ -229,7 +233,7 @@ function isRelayAssembly(part: CircuitPart | undefined) {
       <section v-if="tab === 'lesson'" class="rounded-md border bg-background p-3">
         <div class="mb-3 flex items-start justify-between gap-3">
           <div>
-            <div class="text-xs text-muted-foreground">Lesson</div>
+            <div class="text-xs text-muted-foreground">{{ workbenchMode === 'workshop' ? 'Component Workshop' : 'Free Experiment' }}</div>
             <div class="text-sm font-semibold">{{ activeLesson.title }}</div>
           </div>
           <div class="rounded-md bg-cyan-100 px-2 py-1 text-xs font-medium text-cyan-900">
@@ -237,7 +241,7 @@ function isRelayAssembly(part: CircuitPart | undefined) {
           </div>
         </div>
         <p class="mb-3 text-xs leading-5 text-muted-foreground">
-          {{ activeLesson.objective }}
+          {{ workbenchMode === 'workshop' ? '用课程给出的线圈、触点和接线目标制作可发布器件。' : '选择一个电路现象作为起点，自由修改元件、接线与参数。' }}
         </p>
         <div
           v-if="activeLesson.nextStage"
@@ -250,7 +254,7 @@ function isRelayAssembly(part: CircuitPart | undefined) {
         </div>
         <div class="mb-3 grid grid-cols-1 gap-2">
           <button
-            v-for="lesson in lessonCatalog"
+            v-for="lesson in modeLessons"
             :key="lesson.id"
             class="rounded-md border px-3 py-2 text-left text-xs transition-colors"
             :class="

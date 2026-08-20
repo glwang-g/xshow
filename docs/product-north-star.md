@@ -34,7 +34,20 @@ Existing foundation:
 
 This layer is the foundation of the whole project. `src/lib/circuit.ts` is not just a circuit toy; it is the first verifiable model in the "from signal upward" path.
 
-### 2. Logic And Memory Layer
+### 2. Component Workshop
+
+Goal: turn circuit phenomena into verifiable, reusable, expandable components.
+
+Existing foundation:
+
+- `/workbench/workshop`
+- Relay coils, normally-open/normally-closed contacts, and mechanical links
+- Relay, NOT, AND, and OR construction lessons
+- Port verification and local module publication
+
+This is not a second editor. It is an independent learning unit that shares the circuit workbench with free experiment mode. It moves learners from understanding circuits to building components the next layer can use.
+
+### 3. Logic And Memory Layer
 
 Goal: turn circuit signals into Boolean logic and remembered state.
 
@@ -53,7 +66,7 @@ Candidate capabilities:
 
 This layer explains why circuits can express logic and why machines can retain state.
 
-### 3. Machine Layer
+### 4. Machine Layer
 
 Goal: let users see how a small computer runs.
 
@@ -67,7 +80,7 @@ Existing foundation:
 
 This layer is now a main-app preview, not just another experiment. Long term, it fits best as a Rust/WASM core with a Vue/TypeScript frontend so the machine model stays stable, testable, and embeddable in the Web/PWA product.
 
-### 4. Algorithm Layer
+### 5. Algorithm Layer
 
 Goal: make algorithms more than code snippets or animations by letting users drill into machine behavior.
 
@@ -84,6 +97,7 @@ The ideal experience is not just "watch an algorithm animation"; it is being abl
 | Content | Role | Notes |
 | --- | --- | --- |
 | Circuit workbench | Mainline: signal and circuit layer | Foundation |
+| Component Workshop | Mainline: component-building unit | Build relays and logic gates, then publish modules |
 | Repair tasks | Mainline: signal diagnosis training | Teaches signal paths and faults |
 | Logic Lab | Mainline: logic and memory layer | Bridges circuit signals and machine state |
 | CPU simulator | Mainline: machine layer | Main-app preview exists; next, wire Rust/WASM |
@@ -109,7 +123,7 @@ This preserves:
 
 ## Prioritization Rules
 
-- Work that strengthens the "signal -> circuit -> machine -> algorithm" path comes first.
+- Work that strengthens the "signal/circuit -> component workshop -> logic/memory -> machine -> algorithm" path comes first.
 - Experiments may remain, but they should be clearly labeled and should not blur the main entry points.
 - New features should answer: which layer do they make clearer?
 - Make the main path understandable, usable, and testable before expanding too widely.

@@ -6,7 +6,7 @@ Can `xshow` evolve toward a gamified learning platform?
 
 The answer is: **yes, and it should, but it should not become another quiz game.**
 
-`xshow` has a stronger direction available: turn the path from signals, circuits, logic, machines, and algorithms into an explorable, challenge-based, debuggable world.
+`xshow` has a stronger direction available: turn the five-unit path — signal/circuit, component workshop, logic/memory, machine, and algorithm — into an explorable, challenge-based, debuggable world.
 
 ## Core Position
 
@@ -85,7 +85,7 @@ Priority order:
 
 The hub should feel like entering a computer, not browsing a menu.
 
-Signals, logic, storage, CPU, and algorithms should gradually become regions in one coherent world.
+Signals and circuits, the component workshop, logic and storage, CPU, and algorithms should gradually become regions in one coherent world.
 
 ### 4. Failure Should Teach
 
@@ -122,14 +122,14 @@ Recommended work:
 
 ### Stage 2: Turn the Campaign Into a World Map
 
-Goal: the four layers feel like connected regions, not separate pages.
+Goal: the five mainline units feel like connected regions, not separate pages.
 
 Recommended work:
 
 - add a readable world map
 - connect layer entrances to mission nodes and unlocks
 - show current location and completed path
-- make signal naturally lead to logic, then machine, then algorithm
+- make signal/circuit naturally lead to the component workshop, logic/memory, then machine and algorithm
 
 ### Stage 3: Make Debugging and Construction the Core Loop
 

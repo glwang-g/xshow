@@ -126,7 +126,7 @@ function relayOutput(module: PublishedRelayModule) {
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:p-7">
             <div class="flex flex-wrap items-start justify-between gap-4">
               <div class="min-w-0">
-                <p class="text-xs font-medium text-cyan-700">主线第二层</p>
+                <p class="text-xs font-medium text-cyan-700">主线第 3 单元</p>
                 <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950 lg:text-4xl">
                   把通断信号组合成可记忆状态
                 </h1>
@@ -158,7 +158,7 @@ function relayOutput(module: PublishedRelayModule) {
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p class="text-xs font-medium text-cyan-700">来自信号与电路层</p>
+                <p class="text-xs font-medium text-cyan-700">来自器件工坊</p>
                 <h2 class="mt-1 text-sm font-semibold">我的电路模块</h2>
                 <p class="mt-1 text-xs leading-5 text-slate-500">已发布的手搓继电器以端口组件进入逻辑层；它们仍保留来源电路快照。</p>
               </div>
@@ -417,7 +417,7 @@ function relayOutput(module: PublishedRelayModule) {
             <div class="flex items-center justify-between gap-2">
               <div>
                 <h2 class="text-sm font-semibold">层级连接</h2>
-                <p class="text-xs text-slate-500">Signal -> Logic -> Machine</p>
+                <p class="text-xs text-slate-500">Signal/Circuit -> Workshop -> Logic -> Machine</p>
               </div>
               <ArrowRight class="h-5 w-5 text-cyan-700" />
             </div>
@@ -427,7 +427,7 @@ function relayOutput(module: PublishedRelayModule) {
                 to="/workbench/workshop"
                 class="inline-flex h-10 items-center justify-between rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
               >
-                信号与电路层
+                器件工坊
                 <CircuitBoard class="h-4 w-4" />
               </RouterLink>
               <RouterLink

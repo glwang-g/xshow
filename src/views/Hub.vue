@@ -31,22 +31,29 @@ const systemMap = [
     detail: "看见通断、方向、亮度和测量结果。",
   },
   {
-    id: "logic",
+    id: "workshop",
     step: "02",
+    title: "器件工坊",
+    question: "怎样把电路做成继电器和逻辑门？",
+    detail: "亲手制作、验证并发布可复用的器件模块。",
+  },
+  {
+    id: "logic",
+    step: "03",
     title: "逻辑与存储层",
     question: "信号怎么变成 0/1 和记忆？",
     detail: "门电路、latch、寄存器把瞬时状态留下来。",
   },
   {
     id: "machine",
-    step: "03",
+    step: "04",
     title: "机器层",
     question: "一台小计算机怎样一步步执行？",
     detail: "寄存器、PC、内存和指令开始形成机器。",
   },
   {
     id: "algorithm",
-    step: "04",
+    step: "05",
     title: "算法层",
     question: "程序和数据结构怎样落到机器上？",
     detail: "排序、搜索和结构变化最终会回到内存与执行过程。",
@@ -96,7 +103,7 @@ function formatProgressDate(value: string) {
               </h1>
               <p class="mt-4 max-w-3xl break-words text-sm leading-6 text-slate-600 sm:text-[15px]">
                 明石空间不是资料堆，也不是孤立的小工具集合。它是一块可上手、可观察、可调试的演示平台，
-                带你从信号、电路、逻辑、存储、CPU 一直走到程序执行和算法行为。
+                带你从信号、电路、器件制作、逻辑、存储、CPU 一直走到程序执行和算法行为。
               </p>
             </div>
 
@@ -108,7 +115,7 @@ function formatProgressDate(value: string) {
                 </div>
 
                 <h2 class="mt-4 text-2xl font-semibold leading-tight tracking-tight text-white">
-                  从一个回路开始，走到逻辑、机器和算法
+                  从一个回路开始，造出器件，再走到逻辑、机器和算法
                 </h2>
                 <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
                   这里最重要的不是“功能多”，而是你能亲手把抽象概念一个个接上。先让信号流起来，后面的 0/1、
@@ -116,7 +123,14 @@ function formatProgressDate(value: string) {
                 </p>
 
                 <div class="mt-6 rounded-xl border border-white/10 bg-white/5 p-4">
-                  <div class="grid gap-3 sm:grid-cols-4">
+                  <div class="grid gap-3 sm:grid-cols-5">
+                    <div class="rounded-lg border border-white/10 bg-white/5 p-3">
+                      <div class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-400/10 text-cyan-200">
+                        <Wrench class="h-5 w-5" />
+                      </div>
+                      <div class="mt-3 text-sm font-semibold text-white">器件</div>
+                      <div class="mt-1 text-xs leading-5 text-slate-300">亲手造继电器和逻辑门。</div>
+                    </div>
                     <div class="rounded-lg border border-white/10 bg-white/5 p-3">
                       <div class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-400/10 text-cyan-200">
                         <CircuitBoard class="h-5 w-5" />
@@ -190,7 +204,7 @@ function formatProgressDate(value: string) {
                 <div class="flex items-center justify-between gap-3">
                   <div>
                     <div class="text-sm font-semibold text-slate-950">新手从这里建立整体观感</div>
-                    <div class="mt-1 text-xs leading-5 text-slate-500">一张卡同时告诉你先走哪一步，以及后面的四层分别在回答什么。</div>
+                    <div class="mt-1 text-xs leading-5 text-slate-500">一张卡同时告诉你先走哪一步，以及后面的五个单元分别在回答什么。</div>
                   </div>
                   <span class="rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-medium text-cyan-700">约 10 分钟</span>
                 </div>
@@ -223,7 +237,7 @@ function formatProgressDate(value: string) {
                 </div>
 
                 <div class="mt-5 border-t border-slate-200 pt-4">
-                  <div class="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">四层地图</div>
+                  <div class="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">五单元地图</div>
                   <div class="mt-3 space-y-2.5">
                     <div
                       v-for="item in systemMap"
@@ -248,7 +262,7 @@ function formatProgressDate(value: string) {
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div class="min-w-0">
                 <p class="text-xs font-medium text-cyan-700">主线学习路径</p>
-                <h2 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 lg:text-3xl">四个入口，一条主线</h2>
+                <h2 class="mt-2 text-2xl font-semibold tracking-tight text-slate-950 lg:text-3xl">五个单元，一条主线</h2>
                 <p class="mt-3 max-w-3xl break-words text-sm leading-6 text-slate-600">
                   每个入口都对应一层理解深度。先抓住它是干什么的，再决定你现在想从哪一层切进去。
                 </p>
@@ -256,7 +270,7 @@ function formatProgressDate(value: string) {
               <img class="h-12 w-12 shrink-0 object-contain" :src="logoUrl" alt="明石空间 logo large" />
             </div>
 
-            <div class="mt-5 grid gap-3 lg:grid-cols-4">
+            <div class="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               <RouterLink
                 to="/workbench"
                 class="group flex min-w-0 flex-col justify-between rounded-xl border border-cyan-200 bg-cyan-50/70 p-4 transition-colors hover:bg-cyan-50"
@@ -289,7 +303,7 @@ function formatProgressDate(value: string) {
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-cyan-700 shadow-sm">
                       <CircuitBoard class="h-5 w-5" />
                     </span>
-                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-cyan-700">第 1 层</span>
+                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-cyan-700">第 1 单元</span>
                   </div>
                   <h3 class="mt-3 text-base font-semibold text-slate-950">信号与电路层</h3>
                   <p class="mt-2 text-xs leading-5 text-slate-600">
@@ -298,6 +312,37 @@ function formatProgressDate(value: string) {
                 </div>
                 <span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-700">
                   进入工作台
+                  <ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </RouterLink>
+
+              <RouterLink
+                to="/workbench/workshop"
+                class="group flex min-w-0 flex-col justify-between rounded-xl border border-amber-200 bg-amber-50/70 p-4 transition-colors hover:bg-amber-50"
+              >
+                <div>
+                  <div class="flex h-24 items-center justify-center gap-2 overflow-hidden rounded-md bg-white/85 px-3 py-3">
+                    <div class="flex h-12 w-8 flex-col justify-between rounded-md border-2 border-slate-700 bg-slate-100 p-1">
+                      <div class="h-1.5 rounded bg-cyan-400"></div>
+                      <div class="h-1.5 rounded bg-slate-300"></div>
+                      <div class="h-1.5 rounded bg-cyan-400"></div>
+                    </div>
+                    <div class="h-0.5 w-5 bg-amber-500"></div>
+                    <div class="inline-flex h-11 w-14 items-center justify-center rounded-md border border-amber-300 bg-amber-100 font-mono text-xs font-semibold text-amber-800">AND</div>
+                  </div>
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-amber-700 shadow-sm">
+                      <Wrench class="h-5 w-5" />
+                    </span>
+                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-amber-700">第 2 单元</span>
+                  </div>
+                  <h3 class="mt-3 text-base font-semibold text-slate-950">器件工坊</h3>
+                  <p class="mt-2 text-xs leading-5 text-slate-600">
+                    亲手制作继电器、NOT、AND、OR 等器件，验证端口行为并发布为模块。
+                  </p>
+                </div>
+                <span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+                  开始制作
                   <ArrowRight class="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </RouterLink>
@@ -329,7 +374,7 @@ function formatProgressDate(value: string) {
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-700 shadow-sm">
                       <Binary class="h-5 w-5" />
                     </span>
-                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-slate-600">第 2 层</span>
+                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-slate-600">第 3 单元</span>
                   </div>
                   <h3 class="mt-3 text-base font-semibold text-slate-950">逻辑与存储层</h3>
                   <p class="mt-2 text-xs leading-5 text-slate-600">
@@ -374,7 +419,7 @@ function formatProgressDate(value: string) {
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-700 shadow-sm">
                       <Cpu class="h-5 w-5" />
                     </span>
-                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-slate-600">第 3 层</span>
+                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-slate-600">第 4 单元</span>
                   </div>
                   <h3 class="mt-3 text-base font-semibold text-slate-950">机器层</h3>
                   <p class="mt-2 text-xs leading-5 text-slate-600">
@@ -414,7 +459,7 @@ function formatProgressDate(value: string) {
                     <span class="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white text-slate-700 shadow-sm">
                       <Sparkles class="h-5 w-5" />
                     </span>
-                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-slate-600">第 4 层</span>
+                    <span class="rounded bg-white px-2 py-1 text-[11px] font-medium text-slate-600">第 5 单元</span>
                   </div>
                   <h3 class="mt-3 text-base font-semibold text-slate-950">算法层</h3>
                   <p class="mt-2 text-xs leading-5 text-slate-600">

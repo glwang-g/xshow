@@ -434,7 +434,14 @@ async function loadSampleProgram() {
             <div class="mt-3 space-y-2">
               <div v-for="slot in machineLogic.slots" :key="slot.gate" class="flex items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                 <div class="min-w-0"><span class="font-mono text-xs font-semibold text-slate-950">{{ slot.gate }}</span><span class="ml-2 text-xs text-slate-500">{{ slot.role }}</span></div>
-                <span v-if="slot.module" class="max-w-32 truncate rounded bg-emerald-50 px-2 py-1 font-mono text-[11px] text-emerald-800" :title="slot.module.name">{{ slot.module.name }}</span>
+                <RouterLink
+                  v-if="slot.module"
+                  :to="{ path: '/workbench/workshop', query: { module: slot.module.id } }"
+                  class="max-w-32 truncate rounded bg-emerald-50 px-2 py-1 font-mono text-[11px] text-emerald-800 hover:bg-emerald-100 hover:underline"
+                  :title="`在器件工坊展开 ${slot.module.name}`"
+                >
+                  {{ slot.module.name }}
+                </RouterLink>
                 <span v-else class="rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-800">待制作</span>
               </div>
             </div>

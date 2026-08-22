@@ -14,3 +14,9 @@ test("algorithm input normalizes visible values before execution", () => {
   assert.match(algorithmLabSource, /@blur="normalizeInputs"/);
   assert.match(algorithmLabSource, /输入会规范为 0–255，再写入 8-bit 寄存器。/);
 });
+
+test("algorithm lab connects verified workshop gates to an eight-bit ripple prediction", () => {
+  assert.match(algorithmLabSource, /composeByteAdder/);
+  assert.match(algorithmLabSource, /我的门级 8-bit 加法器/);
+  assert.match(algorithmLabSource, /8 个可追溯的全加器串接/);
+});

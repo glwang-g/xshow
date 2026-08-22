@@ -47,3 +47,15 @@ test("full adder chains two half adders and merges carries with the published OR
     assert.equal(result.carry, carry);
   }
 });
+
+test("eight-bit ripple adder uses full adders to match byte sum and overflow carry", () => {
+  const modules = [gate("AND"), gate("OR"), gate("NOT")];
+  const normal = logicComposition.composeByteAdder(modules, 14, 27);
+  assert.equal(normal.available, true);
+  assert.equal(normal.sum, 41);
+  assert.equal(normal.carry, false);
+  assert.equal(normal.steps.length, 8);
+  const overflow = logicComposition.composeByteAdder(modules, 255, 1);
+  assert.equal(overflow.sum, 0);
+  assert.equal(overflow.carry, true);
+});

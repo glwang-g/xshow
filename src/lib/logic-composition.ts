@@ -20,6 +20,24 @@ export type FullAdderComposition = {
   sum: boolean;
 };
 
+export type ByteAdderStep = {
+  a: boolean;
+  b: boolean;
+  bit: number;
+  carryIn: boolean;
+  carryOut: boolean;
+  sum: boolean;
+};
+
+export type ByteAdderComposition = {
+  available: boolean;
+  carry: boolean;
+  missing: string[];
+  modules: PublishedRelayModule[];
+  steps: ByteAdderStep[];
+  sum: number;
+};
+
 /**
  * A half adder composed from workshop-built gates. XOR is deliberately not a
  * black box here: (A OR B) AND NOT(A AND B), while the same AND module is
@@ -83,4 +101,27 @@ export function composeFullAdder(modules: PublishedRelayModule[], a: boolean, b:
     secondHalf,
     sum: secondHalf.sum,
   };
+}
+
+/** An eight-bit ripple-carry adder built from the same reusable full adder. */
+export function composeByteAdder(modules: PublishedRelayModule[], left: number, right: number): ByteAdderComposition {
+  const normalizedLeft = Number.isFinite(left) ? Math.max(0, Math.min(255, Math.trunc(left))) : 0;
+  const normalizedRight = Number.isFinite(right) ? Math.max(0, Math.min(255, Math.trunc(right))) : 0;
+  const probe = composeFullAdder(modules, false, false, false);
+  if (!probe.available) {
+    return { available: false, carry: false, missing: probe.missing, modules: probe.modules, steps: [], sum: 0 };
+  }
+
+  let carry = false;
+  let sum = 0;
+  const steps: ByteAdderStep[] = [];
+  for (let bit = 0; bit < 8; bit += 1) {
+    const a = Boolean(normalizedLeft & (1 << bit));
+    const b = Boolean(normalizedRight & (1 << bit));
+    const result = composeFullAdder(modules, a, b, carry);
+    steps.push({ a, b, bit, carryIn: carry, carryOut: result.carry, sum: result.sum });
+    if (result.sum) sum |= 1 << bit;
+    carry = result.carry;
+  }
+  return { available: true, carry, missing: [], modules: probe.modules, steps, sum };
 }

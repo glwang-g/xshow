@@ -121,4 +121,6 @@ test("workbench view records direct manipulation and coalesces continuous proper
   assert.match(homeSource, /timer: window\.setTimeout\(\(\) => \{\s+partEditHistory = null;\s+\}, 400\)/);
   assert.match(homeSource, /function setPartPosition\(part: CircuitPart, axis: "x" \| "y", value: number\)/);
   assert.match(homeSource, /function setSpringContactMode\(part: CircuitPart, value: string\)/);
+  assert.match(homeSource, /if \(!coilId\) \{\s+if \(!spring\.controlledBy\) \{\s+return;/);
+  assert.match(homeSource, /if \(spring\.controlledBy === coil\.id\) \{\s+return;\s+\}\s+\s+pushEditorHistory\(\);/);
 });

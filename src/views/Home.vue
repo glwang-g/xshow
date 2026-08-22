@@ -1875,8 +1875,11 @@ function bindSpringToCoil(spring: CircuitPart, coilId: string) {
     return;
   }
 
-  pushEditorHistory();
   if (!coilId) {
+    if (!spring.controlledBy) {
+      return;
+    }
+    pushEditorHistory();
     delete spring.controlledBy;
     return;
   }
@@ -1887,6 +1890,11 @@ function bindSpringToCoil(spring: CircuitPart, coilId: string) {
     return;
   }
 
+  if (spring.controlledBy === coil.id) {
+    return;
+  }
+
+  pushEditorHistory();
   spring.controlledBy = coil.id;
   snapRelayAssembly(coil, spring);
 }

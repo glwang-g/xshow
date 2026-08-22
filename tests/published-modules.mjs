@@ -118,6 +118,14 @@ test("stored modules retain a safe complete source workspace while keeping the p
   relay.implementation.sourceWorkspace.parts[0].type = "unknown";
   const unsafeStorage = { getItem: () => JSON.stringify([relay]), setItem: () => undefined };
   assert.equal(modules.loadPublishedRelayModules(unsafeStorage)[0].implementation.sourceWorkspace, undefined);
+
+  const malformedTopology = modules.createPublishedRelayModule({ id: "topology-relay", parts, springId: "spring-1", wires });
+  malformedTopology.implementation.sourceWorkspace.wires.push({
+    ...malformedTopology.implementation.sourceWorkspace.wires[0],
+    id: "duplicated-connection",
+  });
+  const malformedTopologyStorage = { getItem: () => JSON.stringify([malformedTopology]), setItem: () => undefined };
+  assert.equal(modules.loadPublishedRelayModules(malformedTopologyStorage)[0].implementation.sourceWorkspace, undefined);
 });
 
 test("published modules can be renamed without accepting blank names", () => {

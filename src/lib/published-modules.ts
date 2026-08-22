@@ -64,31 +64,51 @@ function cloneWires(wires: Wire[]) {
 function isSafeSourceWorkspace(value: unknown): value is { parts: CircuitPart[]; wires: Wire[] } {
   if (!value || typeof value !== "object") return false;
   const workspace = value as { parts?: unknown; wires?: unknown };
-  if (!Array.isArray(workspace.parts) || !Array.isArray(workspace.wires)) return false;
+  if (!Array.isArray(workspace.parts) || workspace.parts.length === 0 || !Array.isArray(workspace.wires)) return false;
   const partIds = new Set<string>();
   const safeParts = workspace.parts.every((part) => {
     if (!part || typeof part !== "object") return false;
     const candidate = part as Partial<CircuitPart>;
     const valid = typeof candidate.id === "string"
+      && candidate.id.trim().length > 0
       && typeof candidate.name === "string"
+      && candidate.name.trim().length > 0
       && typeof candidate.type === "string"
       && partTypes.includes(candidate.type as CircuitPart["type"])
       && Number.isFinite(candidate.x)
-      && Number.isFinite(candidate.y);
+      && Number.isFinite(candidate.y)
+      && (candidate.closed === undefined || typeof candidate.closed === "boolean")
+      && (candidate.contactMode === undefined || candidate.contactMode === "normally-open" || candidate.contactMode === "normally-closed")
+      && (candidate.controlledBy === undefined || typeof candidate.controlledBy === "string")
+      && (candidate.polarity === undefined || candidate.polarity === "normal" || candidate.polarity === "reversed")
+      && (candidate.resistance === undefined || Number.isFinite(candidate.resistance))
+      && (candidate.rotation === undefined || Number.isFinite(candidate.rotation));
     if (valid) partIds.add(candidate.id as string);
     return valid;
   });
   if (!safeParts || partIds.size !== workspace.parts.length) return false;
+  const partsById = new Map(workspace.parts.map((part) => [(part as CircuitPart).id, part as CircuitPart]));
+  if (!workspace.parts.every((part) => !part.controlledBy || (part.type === "spring" && partsById.get(part.controlledBy)?.type === "coil"))) return false;
+
+  const wireIds = new Set<string>();
+  const connections = new Set<string>();
   return workspace.wires.every((wire) => {
     if (!wire || typeof wire !== "object") return false;
     const candidate = wire as Partial<Wire>;
-    const validEnd = (end: unknown) => Boolean(
+    const validEnd = (end: unknown): end is Wire["from"] => Boolean(
       end && typeof end === "object"
       && typeof (end as Partial<Wire>["from"])?.partId === "string"
       && ((end as Partial<Wire>["from"])?.terminal === "a" || (end as Partial<Wire>["from"])?.terminal === "b")
       && partIds.has((end as Partial<Wire>["from"])?.partId as string),
     );
-    return typeof candidate.id === "string" && validEnd(candidate.from) && validEnd(candidate.to);
+    if (!candidate.id?.trim() || !validEnd(candidate.from) || !validEnd(candidate.to) || wireIds.has(candidate.id)) return false;
+    const from = `${candidate.from.partId}:${candidate.from.terminal}`;
+    const to = `${candidate.to.partId}:${candidate.to.terminal}`;
+    const connection = from < to ? `${from}|${to}` : `${to}|${from}`;
+    if (from === to || connections.has(connection)) return false;
+    wireIds.add(candidate.id);
+    connections.add(connection);
+    return true;
   });
 }
 

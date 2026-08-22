@@ -186,15 +186,23 @@ function isStoredPublishedModule(value: unknown): value is PublishedRelayModule 
   }
 
   const module = value as Partial<PublishedRelayModule>;
+  const implementation = module.implementation;
+  const implementationParts = implementation?.parts;
+  const coil = implementationParts?.find((part) => part.id === implementation?.coilId && part.type === "coil");
+  const spring = implementationParts?.find((part) => part.id === implementation?.springId && part.type === "spring");
+  const gate = module.behavior?.gate;
   return (
     (module.kind === "relay" || module.kind === "logic-gate") &&
     typeof module.id === "string" &&
     typeof module.name === "string" &&
     Array.isArray(module.ports) &&
     Boolean(module.behavior && typeof module.behavior === "object") &&
-    Boolean(module.implementation && Array.isArray(module.implementation.parts) && Array.isArray(module.implementation.wires)) &&
-    typeof module.implementation?.coilId === "string" &&
-    typeof module.implementation?.springId === "string"
+    (module.behavior?.contactMode === "normally-open" || module.behavior?.contactMode === "normally-closed") &&
+    (gate === undefined || gate === "AND" || gate === "NOT" || gate === "OR" || gate === "RELAY") &&
+    Boolean(implementation && Array.isArray(implementation.parts) && Array.isArray(implementation.wires)) &&
+    typeof implementation?.coilId === "string" &&
+    typeof implementation?.springId === "string" &&
+    Boolean(coil && spring && spring.controlledBy === coil.id)
   );
 }
 

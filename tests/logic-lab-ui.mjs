@@ -9,4 +9,6 @@ test("logic lab exposes a source-expandable half adder composed from published g
   assert.match(logicLabSource, /SUM = \(A OR B\) AND NOT\(A AND B\)/);
   assert.match(logicLabSource, /query: \{ module: module\.id \}/);
   assert.match(logicLabSource, /缺少 \$\{halfAdder\.missing\.join/);
+  assert.match(logicLabSource, /composeFullAdder/);
+  assert.match(logicLabSource, /两个半加器接力，再用 OR 合并两个进位。/);
 });

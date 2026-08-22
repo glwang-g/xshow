@@ -34,6 +34,7 @@ import {
   type ComputerCoreApi,
 } from "@/lib/computer-core";
 import { buildMachineLogicManifest } from "@/lib/machine-build";
+import { composeFullAdder } from "@/lib/logic-composition";
 import { loadPublishedRelayModules, type PublishedRelayModule } from "@/lib/published-modules";
 
 const core = ref<ComputerCoreApi | null>(null);
@@ -62,6 +63,7 @@ const hasPreviewProgram = computed(
   () => sourcePreviewable.value && snapshot.value.log.some((line) => line.startsWith("Loaded")),
 );
 const machineLogic = computed(() => buildMachineLogicManifest(publishedModules.value));
+const fullAdder = computed(() => composeFullAdder(publishedModules.value, true, true, false));
 
 async function applyCoreAction(message: string, action: () => Promise<typeof snapshot.value>) {
   isBusy.value = true;
@@ -444,6 +446,9 @@ async function loadSampleProgram() {
                 </RouterLink>
                 <span v-else class="rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-800">待制作</span>
               </div>
+            </div>
+            <div class="mt-3 rounded-lg border px-3 py-2 text-xs leading-5" :class="fullAdder.available ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-950'">
+              {{ fullAdder.available ? '全加器已可由两级半加器和 OR 组合；可作为多位 ALU 的基础。' : `全加器仍缺少 ${fullAdder.missing.join(' / ')} 门。` }}
             </div>
             <RouterLink to="/logic-lab" class="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 text-sm font-medium text-cyan-800 hover:bg-cyan-100">
               {{ machineLogic.ready ? '查看已接入的逻辑模块' : '去逻辑层补齐模块' }}

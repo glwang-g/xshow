@@ -31,3 +31,19 @@ test("half adder stays unavailable until all source gates are verified", () => {
   assert.equal(result.available, false);
   assert.deepEqual(result.missing, ["NOT"]);
 });
+
+test("full adder chains two half adders and merges carries with the published OR gate", () => {
+  const modules = [gate("AND"), gate("OR"), gate("NOT")];
+  const rows = [
+    [false, false, false, false, false], [false, false, true, true, false],
+    [false, true, false, true, false], [false, true, true, false, true],
+    [true, false, false, true, false], [true, false, true, false, true],
+    [true, true, false, false, true], [true, true, true, true, true],
+  ];
+  for (const [a, b, cin, sum, carry] of rows) {
+    const result = logicComposition.composeFullAdder(modules, a, b, cin);
+    assert.equal(result.available, true);
+    assert.equal(result.sum, sum);
+    assert.equal(result.carry, carry);
+  }
+});

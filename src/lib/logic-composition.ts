@@ -10,6 +10,16 @@ export type HalfAdderComposition = {
   sum: boolean;
 };
 
+export type FullAdderComposition = {
+  available: boolean;
+  carry: boolean;
+  firstHalf: HalfAdderComposition;
+  missing: string[];
+  modules: PublishedRelayModule[];
+  secondHalf: HalfAdderComposition;
+  sum: boolean;
+};
+
 /**
  * A half adder composed from workshop-built gates. XOR is deliberately not a
  * black box here: (A OR B) AND NOT(A AND B), while the same AND module is
@@ -44,5 +54,33 @@ export function composeHalfAdder(modules: PublishedRelayModule[], a: boolean, b:
     missing: [],
     modules: [andModule, orModule, notModule],
     sum,
+  };
+}
+
+/** Two reusable half adders plus OR form a one-bit full adder. */
+export function composeFullAdder(modules: PublishedRelayModule[], a: boolean, b: boolean, carryIn: boolean): FullAdderComposition {
+  const firstHalf = composeHalfAdder(modules, a, b);
+  const secondHalf = composeHalfAdder(modules, firstHalf.sum, carryIn);
+  if (!firstHalf.available || !secondHalf.available) {
+    return {
+      available: false,
+      carry: false,
+      firstHalf,
+      missing: [...new Set([...firstHalf.missing, ...secondHalf.missing])],
+      modules: firstHalf.modules,
+      secondHalf,
+      sum: false,
+    };
+  }
+
+  const orModule = firstHalf.modules.find((module) => module.behavior.gate === "OR") as PublishedRelayModule;
+  return {
+    available: true,
+    carry: evaluatePublishedModule(orModule, [firstHalf.carry, secondHalf.carry]),
+    firstHalf,
+    missing: [],
+    modules: firstHalf.modules,
+    secondHalf,
+    sum: secondHalf.sum,
   };
 }

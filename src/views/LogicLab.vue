@@ -14,7 +14,7 @@ import {
   type LogicBit,
   type LogicGateKind,
 } from "@/lib/logic-core";
-import { composeHalfAdder } from "@/lib/logic-composition";
+import { composeFullAdder, composeHalfAdder } from "@/lib/logic-composition";
 import {
   evaluatePublishedModule,
   loadPublishedRelayModules,
@@ -36,6 +36,9 @@ const relayInputs = ref<Record<string, boolean[]>>({});
 const moduleMessage = ref("");
 const halfAdderA = ref(false);
 const halfAdderB = ref(false);
+const fullAdderA = ref(false);
+const fullAdderB = ref(false);
+const fullAdderCarryIn = ref(false);
 
 onMounted(() => {
   publishedRelays.value = loadPublishedRelayModules();
@@ -51,6 +54,7 @@ const latchPreview = computed(() => srLatchStep(latchQ.value, { set: latchSet.va
 const latchTrace = computed(() => buildSrLatchTrace());
 const registerTrace = computed(() => buildRegisterTrace());
 const halfAdder = computed(() => composeHalfAdder(publishedRelays.value, halfAdderA.value, halfAdderB.value));
+const fullAdder = computed(() => composeFullAdder(publishedRelays.value, fullAdderA.value, fullAdderB.value, fullAdderCarryIn.value));
 
 function bitClass(bit: LogicBit) {
   return bit === 1 ? "border-cyan-300 bg-cyan-50 text-cyan-800" : "border-slate-200 bg-white text-slate-400";
@@ -317,6 +321,30 @@ function renameModule(module: PublishedRelayModule) {
               先在器件工坊完成并发布 {{ halfAdder.missing.join('、') }} 门的真值表验证，才能把它们组合成可追溯的半加器。
               <RouterLink to="/workbench/workshop" class="ml-1 font-medium text-cyan-800 underline">去器件工坊</RouterLink>
             </div>
+          </section>
+
+          <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-medium text-cyan-700">向机器层再走一步</p>
+                <h2 class="mt-1 text-sm font-semibold">全加器</h2>
+                <p class="mt-1 text-xs leading-5 text-slate-500">两个半加器接力，再用 OR 合并两个进位。</p>
+              </div>
+              <span class="rounded px-2 py-1 font-mono text-[11px] font-semibold" :class="fullAdder.available ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'">{{ fullAdder.available ? '可组合' : `缺少 ${fullAdder.missing.join(' / ')}` }}</span>
+            </div>
+            <template v-if="fullAdder.available">
+              <div class="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_250px]">
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" class="flex h-11 items-center justify-between rounded-md border px-3 text-sm font-medium" :class="fullAdderA ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-slate-50 text-slate-600'" @click="fullAdderA = !fullAdderA">A <span class="font-mono font-bold">{{ Number(fullAdderA) }}</span></button>
+                  <button type="button" class="flex h-11 items-center justify-between rounded-md border px-3 text-sm font-medium" :class="fullAdderB ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-slate-50 text-slate-600'" @click="fullAdderB = !fullAdderB">B <span class="font-mono font-bold">{{ Number(fullAdderB) }}</span></button>
+                  <button type="button" class="flex h-11 items-center justify-between rounded-md border px-3 text-sm font-medium" :class="fullAdderCarryIn ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-slate-50 text-slate-600'" @click="fullAdderCarryIn = !fullAdderCarryIn">Cin <span class="font-mono font-bold">{{ Number(fullAdderCarryIn) }}</span></button>
+                  <div class="rounded-md border border-cyan-200 bg-cyan-50 px-3 py-3"><div class="text-xs text-cyan-700">SUM</div><div class="mt-1 font-mono text-2xl font-semibold text-cyan-950">{{ Number(fullAdder.sum) }}</div></div>
+                  <div class="rounded-md border border-amber-200 bg-amber-50 px-3 py-3"><div class="text-xs text-amber-700">Cout</div><div class="mt-1 font-mono text-2xl font-semibold text-amber-950">{{ Number(fullAdder.carry) }}</div></div>
+                </div>
+                <div class="rounded-lg border border-dashed border-cyan-300 bg-slate-50 p-3 text-xs leading-5 text-slate-600"><div class="font-medium text-slate-800">可展开路径</div><div class="mt-2 font-mono">H1: A + B → S{{ Number(fullAdder.firstHalf.sum) }} C{{ Number(fullAdder.firstHalf.carry) }}</div><div class="font-mono">H2: S + Cin → S{{ Number(fullAdder.secondHalf.sum) }} C{{ Number(fullAdder.secondHalf.carry) }}</div><div class="font-mono">OR(C1, C2) → Cout {{ Number(fullAdder.carry) }}</div></div>
+              </div>
+            </template>
+            <div v-else class="mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-5 text-amber-950">全加器复用同一组已验证门。先完成 {{ fullAdder.missing.join('、') }} 门后即可解锁。</div>
           </section>
 
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

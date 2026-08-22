@@ -172,6 +172,7 @@ const cloudActiveRecordId = ref<string | null>(null);
 const cloudLastSyncedAt = ref<string | null>(null);
 const cloudUserEmail = ref<string | null>(null);
 const sharedWorkspaceLoaded = ref(false);
+const workspaceRecoveryMessage = ref("");
 const suppressCloudDirtyMark = ref(false);
 const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
 const palettePanelOpen = ref(false);
@@ -2643,6 +2644,7 @@ function restoreWorkspaceFromUrl() {
   try {
     const parsed = JSON.parse(base64UrlDecode(sharedWorkspace)) as unknown;
     if (!isPersistedWorkspace(parsed)) {
+      workspaceRecoveryMessage.value = "分享链接中的工作台数据无效，已忽略该链接。";
       return false;
     }
 
@@ -2651,6 +2653,7 @@ function restoreWorkspaceFromUrl() {
     sharedWorkspaceLoaded.value = true;
     return true;
   } catch {
+    workspaceRecoveryMessage.value = "分享链接无法读取，已忽略该链接。";
     return false;
   }
 }
@@ -2673,8 +2676,14 @@ function restoreAutoSavedWorkspace() {
     }
 
     removeLocalStorage(savedWorkspaceKey);
+    if (!workspaceRecoveryMessage.value) {
+      workspaceRecoveryMessage.value = "上次自动保存的数据不完整，已安全回退到默认工作台。";
+    }
   } catch {
     removeLocalStorage(savedWorkspaceKey);
+    if (!workspaceRecoveryMessage.value) {
+      workspaceRecoveryMessage.value = "上次自动保存无法读取，已安全回退到默认工作台。";
+    }
   }
 
   return false;
@@ -3929,6 +3938,7 @@ onBeforeUnmount(() => {
         :set-resistance="setResistance"
         :share-link-state="shareLinkState"
         :shared-workspace-loaded="sharedWorkspaceLoaded"
+        :workspace-recovery-message="workspaceRecoveryMessage"
         :simulation="simulation"
         :workbench-mode="workbenchMode"
         :start-rewire="startRewire"

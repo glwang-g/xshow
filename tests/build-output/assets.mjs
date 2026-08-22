@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -53,4 +53,20 @@ test("dist index and service worker reference assets that exist after build", ()
   for (const asset of [...htmlAssets, ...serviceWorkerAssets]) {
     assertDistFile(asset);
   }
+});
+
+test("optional Rubik renderer and solver stay behind their exploration route", () => {
+  const assets = readdirSync(path.join(distRoot, "assets"));
+  const rubikAsset = assets.find((asset) => asset.startsWith("RubiksCube-") && asset.endsWith(".js"));
+  const rendererAsset = assets.find((asset) => asset.startsWith("three-renderer-") && asset.endsWith(".js"));
+  const solverAsset = assets.find((asset) => asset.startsWith("cube-solver-") && asset.endsWith(".js"));
+
+  assert.ok(rubikAsset);
+  assert.ok(rendererAsset);
+  assert.ok(solverAsset);
+  const rubikSource = readDistText(`assets/${rubikAsset}`);
+  assert.match(rubikSource, new RegExp(`\\./${rendererAsset}`));
+  assert.match(rubikSource, new RegExp(`\\./${solverAsset}`));
+  assert.equal(readDistText("index.html").includes(rendererAsset), false);
+  assert.equal(readDistText("index.html").includes(solverAsset), false);
 });

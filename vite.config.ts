@@ -52,4 +52,17 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Three.js and the cube solver only belong to the optional Rubik's
+        // experiment. Keep them out of that route's component chunk so the
+        // main five-unit path never pays for an exploration-only dependency.
+        manualChunks(id) {
+          if (id.includes("/node_modules/three/")) return "three-renderer";
+          if (id.includes("/node_modules/cubejs/")) return "cube-solver";
+        },
+      },
+    },
+  },
 });

@@ -35,10 +35,14 @@ const startHereTitle = computed(() => firstLesson?.title ?? "点亮第一个回�
           </div>
         </div>
         <div class="rounded-xl border border-white/80 bg-white/80 p-5">
-          <div class="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">你的起点</div><div class="mt-3 text-lg font-semibold text-slate-950">先完成第 1 单元</div>
-          <p class="mt-2 text-sm leading-6 text-slate-600">从信号与电路开始，依次进入器件、逻辑、机器和算法。每一步都留下下一步可使用的产物。</p>
-          <div class="mt-5 flex items-center justify-between text-xs text-slate-500"><span>五个独立单元</span><span class="font-semibold text-cyan-700">主线已开放</span></div>
-          <div class="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div class="h-full w-full rounded-full bg-cyan-500" /></div>
+          <div class="text-xs font-medium uppercase tracking-[0.14em] text-slate-500">学习方式</div>
+          <div class="mt-3 text-lg font-semibold text-slate-950">每一步都留下下一步能用的东西</div>
+          <ol class="mt-4 space-y-3 text-sm">
+            <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-100 font-mono text-xs font-semibold text-cyan-800">1</span><div><div class="font-medium text-slate-800">搭建</div><p class="text-xs leading-5 text-slate-600">让信号流过亲手连接的电路。</p></div></li>
+            <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-100 font-mono text-xs font-semibold text-cyan-800">2</span><div><div class="font-medium text-slate-800">验证</div><p class="text-xs leading-5 text-slate-600">用真值表确认继电器和门的行为。</p></div></li>
+            <li class="flex gap-3"><span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-100 font-mono text-xs font-semibold text-cyan-800">3</span><div><div class="font-medium text-slate-800">使用</div><p class="text-xs leading-5 text-slate-600">在逻辑、机器和算法层继续展开来源。</p></div></li>
+          </ol>
+          <div class="mt-5 border-t border-slate-200/80 pt-3 text-xs font-medium text-cyan-800">五个独立单元 · 每层都可回溯</div>
         </div>
       </section>
 

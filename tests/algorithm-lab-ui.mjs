@@ -19,4 +19,6 @@ test("algorithm lab connects verified workshop gates to an eight-bit ripple pred
   assert.match(algorithmLabSource, /composeByteAdder/);
   assert.match(algorithmLabSource, /我的门级 8-bit 加法器/);
   assert.match(algorithmLabSource, /8 个可追溯的全加器串接/);
+  assert.match(algorithmLabSource, /已验证：门级预测与本次机器运行一致。/);
+  assert.match(algorithmLabSource, /gateMatchesMachine/);
 });

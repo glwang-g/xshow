@@ -77,3 +77,5 @@ Relay → NOT → AND / OR → XOR → half adder
 ```
 
 The first implementation adds lesson entries for Relay, NOT, AND, and OR, plus normally-open/normally-closed contacts. XOR and half adder remain the next increment because they need a fuller multi-input truth-table and composition workflow.
+
+The machine layer now reads published, truth-table-verified AND, OR, and NOT modules into an inspectable “machine logic foundation” manifest. It identifies their carry/control-path roles and links back to the logic layer so their origins remain expandable. Actual instruction execution still belongs to the core adapter; turning this manifest into a composable ALU netlist is the next step, rather than mislabeling preview execution as gate-level execution.

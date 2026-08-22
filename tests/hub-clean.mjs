@@ -11,3 +11,11 @@ test("hub explains the build-verify-use loop without presenting a fake full prog
   assert.match(hubSource, /使用/);
   assert.doesNotMatch(hubSource, /h-full w-full rounded-full bg-cyan-500/);
 });
+
+test("hub derives mainline next steps from published workshop modules", () => {
+  assert.match(hubSource, /loadPublishedRelayModules/);
+  assert.match(hubSource, /buildMachineLogicManifest/);
+  assert.match(hubSource, /workshopNextStep/);
+  assert.match(hubSource, /logicNextStep/);
+  assert.match(hubSource, /machineNextStep/);
+});

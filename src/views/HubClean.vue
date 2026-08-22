@@ -1,16 +1,28 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { ArrowRight, Binary, CircuitBoard, Cpu, Sparkles, Swords, Wrench } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import logoUrl from "@/assets/logo.png";
 import { useRepairProgress } from "@/composables/useRepairProgress";
 import { lessonCatalog } from "@/data/lessons";
+import { buildMachineLogicManifest } from "@/lib/machine-build";
+import { loadPublishedRelayModules, type PublishedRelayModule } from "@/lib/published-modules";
 
 const { hasCurrentRepair, markRepairStarted, missionCount, nextRepairLevel, progressPercent, repairTaskStatusLabel } = useRepairProgress();
 const firstLesson = lessonCatalog.find((lesson) => !lesson.nextStage);
 const firstRepairLevel = computed(() => nextRepairLevel.value);
 const firstRepairRoute = computed(() => ({ path: "/repair-lab", query: { level: firstRepairLevel.value?.id } }));
 const startHereTitle = computed(() => firstLesson?.title ?? "点亮第一个回路");
+const publishedModules = ref<PublishedRelayModule[]>([]);
+const publishedGateCount = computed(() => publishedModules.value.filter((module) => module.kind === "logic-gate").length);
+const machineLogic = computed(() => buildMachineLogicManifest(publishedModules.value));
+const workshopNextStep = computed(() => publishedModules.value.length ? `已发布 ${publishedModules.value.length} 个模块` : "从继电器开始制作");
+const logicNextStep = computed(() => publishedGateCount.value ? `使用 ${publishedGateCount.value} 个已发布逻辑门` : "先在器件工坊发布逻辑门");
+const machineNextStep = computed(() => machineLogic.value.ready ? "逻辑基座已就绪" : `还差 ${machineLogic.value.missing.map((slot) => slot.gate).join(" / ")}`);
+
+onMounted(() => {
+  publishedModules.value = loadPublishedRelayModules();
+});
 </script>
 
 <template>
@@ -50,9 +62,9 @@ const startHereTitle = computed(() => firstLesson?.title ?? "点亮第一个回�
         <div class="flex flex-wrap items-end justify-between gap-2"><div><p class="text-xs font-medium text-cyan-700">主线学习路径</p><h2 class="mt-1 text-2xl font-semibold tracking-tight text-slate-950">五个单元，按顺序深入</h2></div><p class="text-xs text-slate-500">每个单元只回答一个问题</p></div>
         <div class="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <RouterLink to="/workbench/free" class="group rounded-xl border border-cyan-200 bg-cyan-50/70 p-4 hover:bg-cyan-50"><div class="flex items-center justify-between"><CircuitBoard class="h-5 w-5 text-cyan-700" /><span class="font-mono text-xs font-semibold text-cyan-700">01</span></div><h3 class="mt-6 text-sm font-semibold text-slate-950">信号与电路</h3><p class="mt-1 text-xs leading-5 text-slate-600">电怎样流动，哪里断了？</p><span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-cyan-700">开始 <ArrowRight class="h-3.5 w-3.5" /></span></RouterLink>
-          <RouterLink to="/workbench/workshop" class="group rounded-xl border border-amber-200 bg-amber-50/70 p-4 hover:bg-amber-50"><div class="flex items-center justify-between"><Wrench class="h-5 w-5 text-amber-700" /><span class="font-mono text-xs font-semibold text-amber-700">02</span></div><h3 class="mt-6 text-sm font-semibold text-slate-950">器件工坊</h3><p class="mt-1 text-xs leading-5 text-slate-600">怎样做出继电器和逻辑门？</p><span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-amber-700">制作 <ArrowRight class="h-3.5 w-3.5" /></span></RouterLink>
-          <RouterLink to="/logic-lab" class="group rounded-xl border border-slate-200 bg-white p-4 hover:bg-slate-50"><div class="flex items-center justify-between"><Binary class="h-5 w-5 text-slate-600" /><span class="font-mono text-xs font-semibold text-slate-500">03</span></div><h3 class="mt-6 text-sm font-semibold text-slate-950">逻辑与存储</h3><p class="mt-1 text-xs leading-5 text-slate-600">0/1 怎样运算并留下状态？</p><span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-slate-600">探索 <ArrowRight class="h-3.5 w-3.5" /></span></RouterLink>
-          <RouterLink to="/computer-lab" class="group rounded-xl border border-slate-200 bg-white p-4 hover:bg-slate-50"><div class="flex items-center justify-between"><Cpu class="h-5 w-5 text-slate-600" /><span class="font-mono text-xs font-semibold text-slate-500">04</span></div><h3 class="mt-6 text-sm font-semibold text-slate-950">机器</h3><p class="mt-1 text-xs leading-5 text-slate-600">小计算机怎样执行指令？</p><span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-slate-600">查看 <ArrowRight class="h-3.5 w-3.5" /></span></RouterLink>
+          <RouterLink to="/workbench/workshop" class="group rounded-xl border border-amber-200 bg-amber-50/70 p-4 hover:bg-amber-50"><div class="flex items-center justify-between"><Wrench class="h-5 w-5 text-amber-700" /><span class="font-mono text-xs font-semibold text-amber-700">02</span></div><h3 class="mt-6 text-sm font-semibold text-slate-950">器件工坊</h3><p class="mt-1 text-xs leading-5 text-slate-600">怎样做出继电器和逻辑门？</p><span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-amber-700">{{ workshopNextStep }} <ArrowRight class="h-3.5 w-3.5" /></span></RouterLink>
+          <RouterLink to="/logic-lab" class="group rounded-xl border border-slate-200 bg-white p-4 hover:bg-slate-50"><div class="flex items-center justify-between"><Binary class="h-5 w-5 text-slate-600" /><span class="font-mono text-xs font-semibold text-slate-500">03</span></div><h3 class="mt-6 text-sm font-semibold text-slate-950">逻辑与存储</h3><p class="mt-1 text-xs leading-5 text-slate-600">0/1 怎样运算并留下状态？</p><span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-slate-600">{{ logicNextStep }} <ArrowRight class="h-3.5 w-3.5" /></span></RouterLink>
+          <RouterLink to="/computer-lab" class="group rounded-xl border border-slate-200 bg-white p-4 hover:bg-slate-50"><div class="flex items-center justify-between"><Cpu class="h-5 w-5 text-slate-600" /><span class="font-mono text-xs font-semibold text-slate-500">04</span></div><h3 class="mt-6 text-sm font-semibold text-slate-950">机器</h3><p class="mt-1 text-xs leading-5 text-slate-600">小计算机怎样执行指令？</p><span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-slate-600">{{ machineNextStep }} <ArrowRight class="h-3.5 w-3.5" /></span></RouterLink>
           <RouterLink to="/algorithm-lab" class="group rounded-xl border border-slate-200 bg-white p-4 hover:bg-slate-50"><div class="flex items-center justify-between"><Sparkles class="h-5 w-5 text-slate-600" /><span class="font-mono text-xs font-semibold text-slate-500">05</span></div><h3 class="mt-6 text-sm font-semibold text-slate-950">算法</h3><p class="mt-1 text-xs leading-5 text-slate-600">程序如何改变数据和机器状态？</p><span class="mt-4 inline-flex items-center gap-1 text-xs font-medium text-slate-600">运行 <ArrowRight class="h-3.5 w-3.5" /></span></RouterLink>
         </div>
       </section>

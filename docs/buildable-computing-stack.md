@@ -76,6 +76,6 @@ The first mainline lessons start in the circuit workbench and explicitly name th
 Relay → NOT → AND / OR → XOR → half adder
 ```
 
-The first implementation adds lesson entries for Relay, NOT, AND, and OR, plus normally-open/normally-closed contacts. XOR and half adder remain the next increment because they need a fuller multi-input truth-table and composition workflow.
+The first implementation adds lesson entries for Relay, NOT, AND, and OR, plus normally-open/normally-closed contacts. The Logic Lab now composes published, truth-table-verified AND, OR, and NOT modules into a half adder: `SUM = (A OR B) AND NOT(A AND B)` and `CARRY = A AND B`; every participating module remains expandable back in the workshop. XOR and the half adder as independently publishable composition modules/netlists remain the next increment.
 
 The machine layer now reads published, truth-table-verified AND, OR, and NOT modules into an inspectable “machine logic foundation” manifest. It identifies their carry/control-path roles and links back to the logic layer so their origins remain expandable. Actual instruction execution still belongs to the core adapter; turning this manifest into a composable ALU netlist is the next step, rather than mislabeling preview execution as gate-level execution.

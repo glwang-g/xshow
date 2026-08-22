@@ -14,6 +14,7 @@ import {
   type LogicBit,
   type LogicGateKind,
 } from "@/lib/logic-core";
+import { composeHalfAdder } from "@/lib/logic-composition";
 import {
   evaluatePublishedModule,
   loadPublishedRelayModules,
@@ -33,6 +34,8 @@ const registerQ = ref<LogicBit>(0);
 const publishedRelays = ref<PublishedRelayModule[]>([]);
 const relayInputs = ref<Record<string, boolean[]>>({});
 const moduleMessage = ref("");
+const halfAdderA = ref(false);
+const halfAdderB = ref(false);
 
 onMounted(() => {
   publishedRelays.value = loadPublishedRelayModules();
@@ -47,6 +50,7 @@ const liveGateOutput = computed(() => evaluateGate(selectedGate.value, inputA.va
 const latchPreview = computed(() => srLatchStep(latchQ.value, { set: latchSet.value, reset: latchReset.value }));
 const latchTrace = computed(() => buildSrLatchTrace());
 const registerTrace = computed(() => buildRegisterTrace());
+const halfAdder = computed(() => composeHalfAdder(publishedRelays.value, halfAdderA.value, halfAdderB.value));
 
 function bitClass(bit: LogicBit) {
   return bit === 1 ? "border-cyan-300 bg-cyan-50 text-cyan-800" : "border-slate-200 bg-white text-slate-400";
@@ -281,6 +285,38 @@ function renameModule(module: PublishedRelayModule) {
             </div>
             <p v-if="moduleMessage" class="mt-3 text-xs text-slate-500">{{ moduleMessage }}</p>
             <p v-if="!publishedRelays.length" class="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">还没有已发布模块。回到电路层，绑定线圈和弹簧开关后，在属性面板发布 RelaySwitch。</p>
+          </section>
+
+          <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p class="text-xs font-medium text-cyan-700">由我的模块组成</p>
+                <h2 class="mt-1 text-sm font-semibold">半加器</h2>
+                <p class="mt-1 text-xs leading-5 text-slate-500">SUM = (A OR B) AND NOT(A AND B) · CARRY = A AND B</p>
+              </div>
+              <span class="rounded px-2 py-1 font-mono text-[11px] font-semibold" :class="halfAdder.available ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'">
+                {{ halfAdder.available ? '可组合' : `缺少 ${halfAdder.missing.join(' / ')}` }}
+              </span>
+            </div>
+
+            <template v-if="halfAdder.available">
+              <div class="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px]">
+                <div class="grid grid-cols-2 gap-2">
+                  <button type="button" class="flex h-11 items-center justify-between rounded-md border px-3 text-sm font-medium" :class="halfAdderA ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-slate-50 text-slate-600'" @click="halfAdderA = !halfAdderA">A <span class="font-mono font-bold">{{ Number(halfAdderA) }}</span></button>
+                  <button type="button" class="flex h-11 items-center justify-between rounded-md border px-3 text-sm font-medium" :class="halfAdderB ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-slate-50 text-slate-600'" @click="halfAdderB = !halfAdderB">B <span class="font-mono font-bold">{{ Number(halfAdderB) }}</span></button>
+                  <div class="rounded-md border border-cyan-200 bg-cyan-50 px-3 py-3"><div class="text-xs text-cyan-700">SUM</div><div class="mt-1 font-mono text-2xl font-semibold text-cyan-950">{{ Number(halfAdder.sum) }}</div></div>
+                  <div class="rounded-md border border-amber-200 bg-amber-50 px-3 py-3"><div class="text-xs text-amber-700">CARRY</div><div class="mt-1 font-mono text-2xl font-semibold text-amber-950">{{ Number(halfAdder.carry) }}</div></div>
+                </div>
+                <div class="rounded-lg border border-dashed border-cyan-300 bg-slate-50 p-3 text-xs leading-5 text-slate-600"><div class="font-medium text-slate-800">可展开路径</div><div class="mt-2 font-mono">OR → {{ Number(halfAdder.intermediate.eitherInput) }}</div><div class="font-mono">AND → {{ Number(halfAdder.carry) }}</div><div class="font-mono">NOT Carry → {{ Number(halfAdder.intermediate.notCarry) }}</div><div class="font-mono">AND → SUM {{ Number(halfAdder.sum) }}</div></div>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                <RouterLink v-for="module in halfAdder.modules" :key="module.id" :to="{ path: '/workbench/workshop', query: { module: module.id } }" class="rounded border border-cyan-200 bg-cyan-50 px-2 py-1 font-mono text-cyan-800 hover:bg-cyan-100">{{ module.behavior.gate }} · {{ module.name }}</RouterLink>
+              </div>
+            </template>
+            <div v-else class="mt-4 rounded-lg border border-dashed border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-5 text-amber-950">
+              先在器件工坊完成并发布 {{ halfAdder.missing.join('、') }} 门的真值表验证，才能把它们组合成可追溯的半加器。
+              <RouterLink to="/workbench/workshop" class="ml-1 font-medium text-cyan-800 underline">去器件工坊</RouterLink>
+            </div>
           </section>
 
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

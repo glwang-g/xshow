@@ -55,3 +55,9 @@ test("machine logic manifest rejects truth-table records whose output was tamper
   invalid.verification.truthTable[3].output = false;
   assert.deepEqual(machineBuild.buildMachineLogicManifest([invalid]).missing.map((slot) => slot.gate), ["AND", "OR", "NOT"]);
 });
+
+test("machine logic manifest rejects a complete-looking truth table with repeated inputs", () => {
+  const invalid = gate("重复输入 AND", "AND", 4);
+  invalid.verification.truthTable[3] = { ...invalid.verification.truthTable[2] };
+  assert.deepEqual(machineBuild.buildMachineLogicManifest([invalid]).missing.map((slot) => slot.gate), ["AND", "OR", "NOT"]);
+});

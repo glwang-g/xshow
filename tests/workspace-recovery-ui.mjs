@@ -10,5 +10,6 @@ test("invalid share and autosave recovery has a visible records-panel explanatio
   assert.match(homeSource, /上次自动保存的数据不完整，已安全回退到默认工作台。/);
   assert.match(homeSource, /:workspace-recovery-message="workspaceRecoveryMessage"/);
   assert.match(panelSource, /v-if="workspaceRecoveryMessage"/);
-  assert.match(panelSource, /原文件没有被上传或覆盖；你仍可导入正确的 JSON 继续使用。/);
+  assert.match(panelSource, /当前工作台没有覆盖其他记录；你仍可导入正确的 JSON 继续使用。/);
+  assert.match(homeSource, /loadWorkspaceSnapshot\(parsed\);\s+workspaceRecoveryMessage\.value = ""/);
 });

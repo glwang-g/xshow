@@ -61,12 +61,8 @@ import {
   isSavedWorkspaceRecord,
   sanitizeCloudWorkspaceRecords,
 } from "@/lib/workspace-codec";
-import {
-  createPhysicalBuildPlan,
-  formatPhysicalBuildPlanMarkdown,
-  formatPhysicalBuildSheetHtml,
-} from "@/lib/physical-build";
 import { formatExperimentReportMarkdown } from "@/lib/experiment-report";
+import type { PhysicalBuildPlan } from "@/lib/physical-build";
 import { exportWorkbenchImage as exportWorkbenchImageFile } from "@/lib/workbench-export";
 import {
   createPublishedRelayModule,
@@ -144,6 +140,7 @@ const mobileFitPadding = {
   bottomControls: 112,
   horizontal: 24,
 };
+const hiddenPhysicalBuildPlan: PhysicalBuildPlan = { connections: [], items: [], ready: false, summary: "", warnings: [] };
 const board = useBoardStore();
 const route = useRoute();
 const workbenchMode = computed<"free" | "workshop">(() => route.name === "workbench-workshop" ? "workshop" : "free");
@@ -154,7 +151,6 @@ const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
 const savedRecords = ref<SavedWorkspaceRecord[]>([]);
 const shareLinkState = ref<"copied" | "idle" | "manual">("idle");
-const buildPlanCopyState = ref<"copied" | "idle" | "manual">("idle");
 const experimentReportCopyState = ref<"copied" | "idle" | "manual">("idle");
 const cloudAuthBusy = ref(false);
 const cloudAuthError = ref("");
@@ -349,7 +345,6 @@ const activeMotorCount = computed(() => Object.values(simulation.value.motors).f
 const activeAmmeterCount = computed(() => Object.values(simulation.value.ammeters).filter((state) => state.active).length);
 const activeVoltmeterCount = computed(() => Object.values(simulation.value.voltmeters).filter((state) => state.active).length);
 const currentVisualStrength = computed(() => Math.min(1, simulation.value.currentMilliAmps / 180));
-const physicalBuildPlan = computed(() => createPhysicalBuildPlan(parts.value, wires.value));
 const cloudSyncState = computed<CloudSyncState>(() => {
   if (!cloudConfig.configured) {
     return "unconfigured";
@@ -2870,58 +2865,6 @@ async function copyWorkspaceShareLink() {
   }
 }
 
-function showBuildPlanCopyFeedback(state: "copied" | "manual") {
-  buildPlanCopyState.value = state;
-
-  if (buildPlanCopyFeedbackTimer) {
-    window.clearTimeout(buildPlanCopyFeedbackTimer);
-  }
-
-  buildPlanCopyFeedbackTimer = window.setTimeout(() => {
-    buildPlanCopyState.value = "idle";
-    buildPlanCopyFeedbackTimer = null;
-  }, state === "copied" ? 1800 : 3600);
-}
-
-async function copyPhysicalBuildPlan() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const markdown = formatPhysicalBuildPlanMarkdown(physicalBuildPlan.value);
-
-  try {
-    if (!navigator.clipboard?.writeText) {
-      throw new Error("Clipboard API unavailable");
-    }
-
-    await navigator.clipboard.writeText(markdown);
-    showBuildPlanCopyFeedback("copied");
-  } catch {
-    showBuildPlanCopyFeedback("manual");
-    window.prompt("浏览器没有允许自动复制，请手动复制这个实体搭建清单：", markdown);
-  }
-}
-
-function exportPhysicalBuildPlan() {
-  const date = new Date().toISOString().slice(0, 10);
-  downloadTextFile(
-    `xshow-physical-build-${date}.md`,
-    formatPhysicalBuildPlanMarkdown(physicalBuildPlan.value),
-    "text/markdown;charset=utf-8",
-  );
-}
-
-function exportPhysicalBuildSheet() {
-  const generatedAt = new Date().toISOString();
-  const date = generatedAt.slice(0, 10);
-  downloadTextFile(
-    `xshow-assembly-sheet-${date}.html`,
-    formatPhysicalBuildSheetHtml(physicalBuildPlan.value, { generatedAt }),
-    "text/html;charset=utf-8",
-  );
-}
-
 function openExperimentReportPanel() {
   statusPanelTab.value = "records";
   statusPanelOpen.value = true;
@@ -2937,7 +2880,6 @@ function currentExperimentReportMarkdown() {
       description: step.description,
     })),
     lessonTitle: activeLesson.value.title,
-    physicalBuildPlan: physicalBuildPlan.value,
     parts: parts.value,
     simulation: simulation.value,
     wires: wires.value,
@@ -4005,9 +3947,9 @@ onBeforeUnmount(() => {
         :motor-status="motorStatus"
         :next-lesson-step="nextLessonStep"
         :open="statusPanelOpen"
-        :physical-build-plan="physicalBuildPlan"
+        :physical-build-plan="hiddenPhysicalBuildPlan"
         :parts="parts"
-        :physical-build-plan-copy-state="buildPlanCopyState"
+        physical-build-plan-copy-state="idle"
         :publish-relay-module="publishRelayModule"
         :primary-battery="primaryBattery"
         :remove-cloud-record="removeCloudRecord"
@@ -4041,12 +3983,9 @@ onBeforeUnmount(() => {
         :wire-label="wireLabel"
         :wires="wires"
         @close="statusPanelOpen = false"
-        @copy-physical-build-plan="copyPhysicalBuildPlan"
         @copy-experiment-report="copyExperimentReport"
         @copy-workspace-share-link="copyWorkspaceShareLink"
         @export-experiment-report="exportExperimentReport"
-        @export-physical-build-plan="exportPhysicalBuildPlan"
-        @export-physical-build-sheet="exportPhysicalBuildSheet"
         @export-workspace-json="exportWorkspaceJson"
       />
     </section>

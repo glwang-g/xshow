@@ -7,7 +7,6 @@ import {
   type TerminalRef,
   type Wire,
 } from "@/lib/circuit";
-import type { PhysicalBuildPlan } from "@/lib/physical-build";
 
 export type ExperimentReportStep = {
   complete: boolean;
@@ -19,7 +18,6 @@ export type ExperimentReportOptions = {
   lessonObjective: string;
   lessonSteps: ExperimentReportStep[];
   lessonTitle: string;
-  physicalBuildPlan: PhysicalBuildPlan;
   parts: CircuitPart[];
   simulation: CircuitSimulation;
   title?: string;
@@ -107,9 +105,6 @@ export function formatExperimentReportMarkdown(options: ExperimentReportOptions)
         return `- ${index + 1}. ${terminalName(partsById, wire.from)} -> ${terminalName(partsById, wire.to)}`;
       })
     : ["- 暂无导线连接。"];
-  const warningLines = options.physicalBuildPlan.warnings.length
-    ? options.physicalBuildPlan.warnings.map((warning) => `- ${warning.message}`)
-    : ["- 暂无额外提醒。"];
 
   return [
     `# ${title}`,
@@ -141,12 +136,6 @@ export function formatExperimentReportMarkdown(options: ExperimentReportOptions)
     "## 接线记录",
     "",
     ...wireLines,
-    "",
-    "## 实体搭建建议",
-    "",
-    options.physicalBuildPlan.summary,
-    "",
-    ...warningLines,
     "",
     "## 观察记录",
     "",

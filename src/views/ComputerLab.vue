@@ -19,7 +19,6 @@ import { RouterLink } from "vue-router";
 import logoUrl from "@/assets/logo.png";
 import {
   canPreviewSource,
-  computerCoreBridgeStatus,
   createComputerCore,
   flagChips,
   formatByte,
@@ -44,14 +43,21 @@ const snapshot = ref(previewLoadedCpuSnapshot);
 const isBusy = ref(false);
 const maxSteps = ref(64);
 const actionMessage = ref("正在连接 Rust/WASM 核心…");
+const bridgeMessage = ref("正在连接 Rust/WASM 核心…");
 const publishedModules = ref<PublishedRelayModule[]>([]);
 
 onMounted(async () => {
   publishedModules.value = loadPublishedRelayModules();
-  const bridge = await createComputerCore();
-  core.value = bridge.api;
-  bridgeMode.value = bridge.mode;
-  actionMessage.value = bridge.message;
+  try {
+    const bridge = await createComputerCore();
+    core.value = bridge.api;
+    bridgeMode.value = bridge.mode;
+    bridgeMessage.value = bridge.message;
+    actionMessage.value = bridge.message;
+  } catch {
+    bridgeMessage.value = "机器核心暂时不可用，请刷新后重试。";
+    actionMessage.value = bridgeMessage.value;
+  }
 });
 const sampleLines = sampleAssemblySource.split("\n");
 
@@ -70,6 +76,8 @@ async function applyCoreAction(message: string, action: () => Promise<typeof sna
   try {
     snapshot.value = await action();
     actionMessage.value = message;
+  } catch {
+    actionMessage.value = "这次机器操作没有完成；当前状态已保留，可以重试。";
   } finally {
     isBusy.value = false;
   }
@@ -194,7 +202,7 @@ async function loadSampleProgram() {
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="min-w-0">
                 <h2 class="text-sm font-semibold">Assembly Console</h2>
-                <p class="text-xs text-slate-500">{{ computerCoreBridgeStatus.title }}</p>
+                <p class="text-xs text-slate-500">{{ bridgeMode === "wasm" ? "WASM bridge connected" : "Preview adapter active" }}</p>
               </div>
               <span
                 class="rounded px-2 py-1 text-[11px] font-medium"
@@ -214,8 +222,8 @@ async function loadSampleProgram() {
               <div class="flex min-w-0 flex-col gap-3">
                 <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
                   <div class="text-xs font-medium text-slate-500">Bridge</div>
-                  <div class="mt-1 text-sm font-semibold text-slate-950">{{ computerCoreBridgeStatus.mode }}</div>
-                  <p class="mt-2 text-xs leading-5 text-slate-500">{{ computerCoreBridgeStatus.detail }}</p>
+                  <div class="mt-1 text-sm font-semibold text-slate-950">{{ bridgeMode }}</div>
+                  <p class="mt-2 text-xs leading-5 text-slate-500">{{ bridgeMessage }}</p>
                 </div>
 
                 <div class="grid grid-cols-2 gap-2">

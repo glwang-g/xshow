@@ -49,6 +49,8 @@ async function loadAndRun() {
       carry: snapshot.value.flags.c,
     };
     message.value = "已将两个输入相加，并把结果写入内存 0x40。";
+  } catch {
+    message.value = "这次运行没有完成；当前机器状态已保留，可以重试。";
   } finally { isBusy.value = false; }
 }
 async function loadAndStep() {
@@ -68,20 +70,26 @@ async function loadAndStep() {
       : needsLoad
         ? "已执行程序的第一步；继续单步可观察寄存器和内存如何变化。"
         : "已继续执行下一步。";
+  } catch {
+    message.value = "这次单步没有完成；当前机器状态已保留，可以重试。";
   } finally { isBusy.value = false; }
 }
 async function resetMachine() {
   if (!core.value) return;
   isBusy.value = true;
-  try { snapshot.value = await core.value.reset(); loadedSource.value = ""; lastRun.value = null; message.value = "机器已复位。"; } finally { isBusy.value = false; }
+  try { snapshot.value = await core.value.reset(); loadedSource.value = ""; lastRun.value = null; message.value = "机器已复位。"; } catch { message.value = "复位没有完成；当前机器状态已保留，可以重试。"; } finally { isBusy.value = false; }
 }
 onMounted(async () => {
-  const bridge = await createComputerCore();
-  core.value = bridge.api;
   publishedModules.value = loadPublishedRelayModules();
-  message.value = bridge.mode === "wasm"
-    ? "Rust/WASM 核心已就绪。点击单步，从第一条指令开始观察。"
-    : "预览机器核心已就绪。点击单步，从第一条指令开始观察。";
+  try {
+    const bridge = await createComputerCore();
+    core.value = bridge.api;
+    message.value = bridge.mode === "wasm"
+      ? "Rust/WASM 核心已就绪。点击单步，从第一条指令开始观察。"
+      : "预览机器核心已就绪。点击单步，从第一条指令开始观察。";
+  } catch {
+    message.value = "机器核心暂时不可用，请刷新后重试。";
+  }
 });
 </script>
 

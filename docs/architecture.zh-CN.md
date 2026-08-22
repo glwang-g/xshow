@@ -16,6 +16,7 @@
 | 编辑历史 | `src/composables/useWorkbenchHistory.ts` | 负责工作台快照的撤销/重做栈。 |
 | 课程内容 | `src/data/lessons.ts` | 保存课程文案、初始工作台和检查项，避免写死在组件里。 |
 | 云端记录 | `src/lib/cloud.ts` | 封装 Supabase 登录和工作台记录接口。 |
+| 机器逻辑基座 | `src/lib/machine-build.ts` | 将已发布、真值表完整验证的 AND / OR / NOT 模块转换为机器层可检查的逻辑清单；不把 CPU 预览误作门级执行。 |
 | 工作台共享状态 | `src/stores/board.ts` | 管理缩放和视口相关的工作台状态。 |
 | 小型 UI 基础组件 | `src/components/ui` | 本地 shadcn-vue 风格组件。 |
 | 领域回归测试 | `tests/simulation.mjs` | 覆盖单灯、串联、并联、LED/二极管方向、电表读数、电池反转和实体搭建清单输出。 |

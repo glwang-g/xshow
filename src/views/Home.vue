@@ -3353,11 +3353,12 @@ function loadPublishedModuleFromRoute() {
   activeLessonId.value = lessonCatalog.some((lesson) => lesson.id === module.verification?.lessonId)
     ? module.verification?.lessonId as string
     : "build-a-relay";
+  const sourceWorkspace = module.implementation.sourceWorkspace;
   loadWorkspace(
     {
-      parts: module.implementation.parts,
+      parts: sourceWorkspace?.parts ?? module.implementation.parts,
       selectedPartId: module.implementation.springId,
-      wires: module.implementation.wires,
+      wires: sourceWorkspace?.wires ?? module.implementation.wires,
       zoom: 100,
     },
     { adaptMobileStarterLayout: true },

@@ -1,4 +1,4 @@
-import { evaluateCircuit, type CircuitPart, type TerminalKey, type Wire } from "@/lib/circuit";
+import { evaluateCircuit, partTypes, type CircuitPart, type TerminalKey, type Wire } from "@/lib/circuit";
 
 export const publishedModulesStorageKey = "xshow:published-circuit-modules:v1";
 
@@ -26,6 +26,8 @@ export type PublishedRelayModule = {
     coilId: string;
     parts: CircuitPart[];
     springId: string;
+    /** Complete lesson circuit retained for source expansion, not module evaluation. */
+    sourceWorkspace?: { parts: CircuitPart[]; wires: Wire[] };
     wires: Wire[];
   };
   kind: "logic-gate" | "relay";
@@ -53,6 +55,41 @@ export type CreateRelayModuleOptions = {
 
 function cloneParts(parts: CircuitPart[]) {
   return parts.map((part) => ({ ...part }));
+}
+
+function cloneWires(wires: Wire[]) {
+  return wires.map((wire) => ({ ...wire, from: { ...wire.from }, to: { ...wire.to } }));
+}
+
+function isSafeSourceWorkspace(value: unknown): value is { parts: CircuitPart[]; wires: Wire[] } {
+  if (!value || typeof value !== "object") return false;
+  const workspace = value as { parts?: unknown; wires?: unknown };
+  if (!Array.isArray(workspace.parts) || !Array.isArray(workspace.wires)) return false;
+  const partIds = new Set<string>();
+  const safeParts = workspace.parts.every((part) => {
+    if (!part || typeof part !== "object") return false;
+    const candidate = part as Partial<CircuitPart>;
+    const valid = typeof candidate.id === "string"
+      && typeof candidate.name === "string"
+      && typeof candidate.type === "string"
+      && partTypes.includes(candidate.type as CircuitPart["type"])
+      && Number.isFinite(candidate.x)
+      && Number.isFinite(candidate.y);
+    if (valid) partIds.add(candidate.id as string);
+    return valid;
+  });
+  if (!safeParts || partIds.size !== workspace.parts.length) return false;
+  return workspace.wires.every((wire) => {
+    if (!wire || typeof wire !== "object") return false;
+    const candidate = wire as Partial<Wire>;
+    const validEnd = (end: unknown) => Boolean(
+      end && typeof end === "object"
+      && typeof (end as Partial<Wire>["from"])?.partId === "string"
+      && ((end as Partial<Wire>["from"])?.terminal === "a" || (end as Partial<Wire>["from"])?.terminal === "b")
+      && partIds.has((end as Partial<Wire>["from"])?.partId as string),
+    );
+    return typeof candidate.id === "string" && validEnd(candidate.from) && validEnd(candidate.to);
+  });
 }
 
 function createId() {
@@ -136,6 +173,7 @@ export function createPublishedRelayModule(options: CreateRelayModuleOptions): P
       coilId: coil.id,
       parts: relayParts,
       springId: spring.id,
+      sourceWorkspace: { parts: cloneParts(options.parts), wires: cloneWires(options.wires) },
       wires: [],
     },
     kind,
@@ -224,10 +262,16 @@ export function loadPublishedRelayModules(storage: Storage | null = browserStora
         if (!spring || !coil) {
           return module;
         }
+        const sourceWorkspace = isSafeSourceWorkspace(module.implementation.sourceWorkspace)
+          ? {
+              parts: cloneParts(module.implementation.sourceWorkspace.parts),
+              wires: cloneWires(module.implementation.sourceWorkspace.wires),
+            }
+          : undefined;
         return {
           ...module,
           behavior: { ...module.behavior, gate: module.behavior.gate ?? "RELAY" },
-          implementation: { ...module.implementation, parts: cloneParts([coil, spring]), wires: [] },
+          implementation: { ...module.implementation, parts: cloneParts([coil, spring]), sourceWorkspace, wires: [] },
           verification: module.verification && typeof module.verification.lessonId === "string" && typeof module.verification.verifiedAt === "string"
             ? { ...module.verification, truthTable: Array.isArray(module.verification.truthTable) ? module.verification.truthTable : [] }
             : undefined,

@@ -36,10 +36,12 @@ test("publishing a hand-built relay extracts its two-part, four-terminal core", 
   assert.equal(modules.relayOutputForInput(relay, true), false);
   assert.deepEqual(relay.implementation.parts.map((part) => part.id), ["coil-1", "spring-1"]);
   assert.equal(relay.implementation.wires.length, 0);
+  assert.deepEqual(relay.implementation.sourceWorkspace.wires, wires);
   assert.deepEqual(relay.verification, { lessonId: "build-not-gate", truthTable: [{ inputs: [false], output: true }], verifiedAt: "2026-08-20T00:00:00.000Z" });
 
   parts[0].x = 999;
   assert.equal(relay.implementation.parts[0].x, 120);
+  assert.equal(relay.implementation.sourceWorkspace.parts[0].x, 120);
 });
 
 test("published relay lessons must pass the complete circuit truth table", () => {
@@ -104,6 +106,18 @@ test("modules published before truth-table records remain readable", () => {
   };
 
   assert.deepEqual(modules.loadPublishedRelayModules(storage)[0].verification.truthTable, []);
+});
+
+test("stored modules retain a safe complete source workspace while keeping the public relay core small", () => {
+  const relay = modules.createPublishedRelayModule({ id: "source-relay", parts, springId: "spring-1", wires });
+  const storage = { getItem: () => JSON.stringify([relay]), setItem: () => undefined };
+  const loaded = modules.loadPublishedRelayModules(storage)[0];
+  assert.equal(loaded.implementation.parts.length, 2);
+  assert.deepEqual(loaded.implementation.sourceWorkspace.wires, wires);
+
+  relay.implementation.sourceWorkspace.parts[0].type = "unknown";
+  const unsafeStorage = { getItem: () => JSON.stringify([relay]), setItem: () => undefined };
+  assert.equal(modules.loadPublishedRelayModules(unsafeStorage)[0].implementation.sourceWorkspace, undefined);
 });
 
 test("published modules can be renamed without accepting blank names", () => {

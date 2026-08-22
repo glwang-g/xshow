@@ -126,13 +126,41 @@ export function isPersistedWorkspace(value: unknown): value is PersistedWorkspac
     return false;
   }
 
+  const partsById = new Map(candidate.parts.map((part) => [part.id, part]));
+  // A mechanical link is meaningful only from a spring contact to an existing
+  // coil. Rejecting dangling or inverted links keeps imported/share workspaces
+  // from entering an impossible relay state.
+  if (
+    !candidate.parts.every((part) => {
+      if (!part.controlledBy) {
+        return true;
+      }
+      return part.type === "spring" && partsById.get(part.controlledBy)?.type === "coil";
+    })
+  ) {
+    return false;
+  }
+
   const wireIds = new Set<string>();
+  const wireConnections = new Set<string>();
   for (const wire of candidate.wires) {
     if (!isWorkspaceWire(wire, partIds) || wireIds.has(wire.id)) {
       return false;
     }
 
+    if (wire.from.partId === wire.to.partId && wire.from.terminal === wire.to.terminal) {
+      return false;
+    }
+
+    const left = `${wire.from.partId}:${wire.from.terminal}`;
+    const right = `${wire.to.partId}:${wire.to.terminal}`;
+    const connectionKey = left < right ? `${left}|${right}` : `${right}|${left}`;
+    if (wireConnections.has(connectionKey)) {
+      return false;
+    }
+
     wireIds.add(wire.id);
+    wireConnections.add(connectionKey);
   }
 
   return true;

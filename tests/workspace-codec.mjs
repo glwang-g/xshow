@@ -106,6 +106,50 @@ test("persisted workspace validator rejects malformed parts and dangling wires",
     }),
     false,
   );
+  assert.equal(
+    codec.isPersistedWorkspace({
+      ...valid,
+      wires: [{ id: "self-wire", from: { partId: "battery-1", terminal: "a" }, to: { partId: "battery-1", terminal: "a" } }],
+    }),
+    false,
+  );
+  assert.equal(
+    codec.isPersistedWorkspace({
+      ...valid,
+      wires: [
+        valid.wires[0],
+        { id: "duplicate-reversed", from: { ...valid.wires[0].to }, to: { ...valid.wires[0].from } },
+      ],
+    }),
+    false,
+  );
+  assert.equal(
+    codec.isPersistedWorkspace({
+      ...valid,
+      parts: [{ ...valid.parts[0], controlledBy: "switch-1" }, ...valid.parts.slice(1)],
+    }),
+    false,
+  );
+  assert.equal(
+    codec.isPersistedWorkspace({
+      ...valid,
+      parts: [{ ...valid.parts[0], controlledBy: "missing-coil" }, ...valid.parts.slice(1)],
+    }),
+    false,
+  );
+});
+
+test("persisted workspace validator accepts an intact spring-to-coil link", () => {
+  const workspace = persistedWorkspace({
+    parts: [
+      { id: "coil-1", name: "线圈", type: "coil", x: 120, y: 180 },
+      { id: "spring-1", name: "弹簧触点", type: "spring", x: 360, y: 180, controlledBy: "coil-1" },
+    ],
+    selectedPartId: "spring-1",
+    wires: [{ id: "wire-1", from: { partId: "coil-1", terminal: "a" }, to: { partId: "spring-1", terminal: "a" } }],
+  });
+
+  assert.equal(codec.isPersistedWorkspace(workspace), true);
 });
 
 test("saved workspace record validator requires record metadata", () => {

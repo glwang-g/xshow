@@ -143,6 +143,7 @@ const props = defineProps<{
   setResistance: (part: CircuitPart, value: number) => void;
   shareLinkState: "copied" | "idle" | "manual";
   sharedWorkspaceLoaded: boolean;
+  workspaceRecoveryMessage: string;
   simulation: CircuitSimulation;
   startRewire: (wireId: string, end: WireEnd) => void;
   tab: StatusPanelTab;
@@ -450,6 +451,12 @@ function isRelayAssembly(part: CircuitPart | undefined) {
             <FileDown class="h-4 w-4" />
             导出 JSON
           </Button>
+        </div>
+        <div
+          v-if="workspaceRecoveryMessage"
+          class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-950"
+        >
+          {{ workspaceRecoveryMessage }} 原文件没有被上传或覆盖；你仍可导入正确的 JSON 继续使用。
         </div>
         <div class="mb-3 rounded-md border border-cyan-100 bg-cyan-50/70 p-2">
           <div class="mb-2 text-xs font-medium text-cyan-950">实验报告</div>

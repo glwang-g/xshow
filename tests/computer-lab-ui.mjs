@@ -9,6 +9,7 @@ test("machine lab presents the runtime bridge mode instead of a fixed WASM claim
   assert.match(computerLabSource, /\{\{ bridgeMode \}\}/);
   assert.match(computerLabSource, /Preview adapter active/);
   assert.doesNotMatch(computerLabSource, /computerCoreBridgeStatus/);
+  assert.match(computerLabSource, /若本机 WASM 加载失败/);
 });
 
 test("machine actions preserve the visible state and explain a failed operation", () => {

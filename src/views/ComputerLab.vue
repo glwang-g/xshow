@@ -178,7 +178,7 @@ async function loadSampleProgram() {
                   从电路信号走向可执行机器
                 </h1>
                 <p class="mt-4 max-w-3xl break-words text-sm leading-6 text-slate-600">
-                  当前 8-bit CPU 原型已经验证了寄存器、内存、指令和执行日志。下一步是把 Rust 核心通过 WASM 接入主站，让机器状态成为学习路径里的可观察对象。
+                  当前 8-bit CPU 原型已经验证了寄存器、内存、指令和执行日志，并会优先通过 WASM 接入主站。这里把机器状态放进学习路径；若本机 WASM 加载失败，页面会明确切换到可执行的预览适配层。
                 </p>
               </div>
               <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">

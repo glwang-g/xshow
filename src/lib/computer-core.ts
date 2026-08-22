@@ -34,13 +34,6 @@ export type ComputerCoreWasmModule = {
   step(): MaybePromise<CpuSnapshot>;
 };
 
-export type ComputerCoreBridgeStatus = {
-  detail: string;
-  mode: "preview" | "wasm";
-  ready: boolean;
-  title: string;
-};
-
 export type MachineStat = {
   label: string;
   value: string;
@@ -97,13 +90,6 @@ export const integrationSteps: IntegrationStep[] = [
   { title: "WASM bridge", status: "已接入", detail: "load、step、reset、run 已通过 wasm-pack 暴露给浏览器；失败时回退预览。" },
   { title: "Vue machine UI", status: "推进中", detail: "主站已提供汇编编辑、运行控制、寄存器、内存和日志面板。" },
 ];
-
-export const computerCoreBridgeStatus: ComputerCoreBridgeStatus = {
-  detail: "Rust 8-bit 核心已编译为 WASM；页面优先连接 WASM 核心，加载失败时回退到可执行参数化加法示例的预览适配器。",
-  mode: "wasm",
-  ready: true,
-  title: "WASM bridge connected",
-};
 
 export const sampleAssemblyProgram = ["MOV A, #1", "MOV B, #2", "ADD A, B", "STORE A, 0x40", "HALT"];
 

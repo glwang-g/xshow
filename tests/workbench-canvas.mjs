@@ -17,4 +17,6 @@ test("workbench defers closed palette and status panel code while keeping the ca
   assert.match(homeSource, /defineAsyncComponent\(\(\) => import\("@\/components\/workbench\/ComponentPalette\.vue"\)\)/);
   assert.match(homeSource, /defineAsyncComponent\(\(\) => import\("@\/components\/workbench\/StatusPanel\.vue"\)\)/);
   assert.match(homeSource, /import WorkbenchCanvas from "@\/components\/workbench\/WorkbenchCanvas\.vue"/);
+  assert.match(homeSource, /<ComponentPalette\s+v-if="palettePanelOpen"/);
+  assert.match(homeSource, /<StatusPanel\s+v-if="statusPanelOpen"/);
 });

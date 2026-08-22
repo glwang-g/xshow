@@ -3749,6 +3749,7 @@ onBeforeUnmount(() => {
       />
 
       <ComponentPalette
+        v-if="palettePanelOpen"
         :open="palettePanelOpen"
         @add-part="addPart"
         @close="palettePanelOpen = false"
@@ -3862,6 +3863,7 @@ onBeforeUnmount(() => {
       />
 
       <StatusPanel
+        v-if="statusPanelOpen"
         v-model:active-lesson-id="activeLessonId"
         v-model:cloud-email="cloudEmail"
         v-model:cloud-password="cloudPassword"

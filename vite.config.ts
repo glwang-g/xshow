@@ -53,6 +53,10 @@ export default defineConfig({
     },
   },
   build: {
+    // The optional Three.js renderer is intentionally isolated and currently
+    // sits just above Vite's generic 500 KiB warning. Keep a narrow ceiling
+    // so genuine growth still surfaces without obscuring normal builds.
+    chunkSizeWarningLimit: 550,
     rollupOptions: {
       output: {
         // Three.js and the cube solver only belong to the optional Rubik's

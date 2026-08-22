@@ -1,4 +1,4 @@
-import type { PublishedRelayModule } from "@/lib/published-modules";
+import { evaluatePublishedModule, type PublishedRelayModule } from "@/lib/published-modules";
 
 export type MachineLogicGate = "AND" | "OR" | "NOT";
 
@@ -25,7 +25,19 @@ export const machineLogicSlots: MachineLogicSlot[] = [
 
 function hasCompleteVerification(module: PublishedRelayModule) {
   const expectedRows = module.behavior.gate === "AND" || module.behavior.gate === "OR" ? 4 : 2;
-  return Boolean(module.verification && module.verification.truthTable.length === expectedRows);
+  const rows = module.verification?.truthTable;
+  const inputCount = expectedRows === 4 ? 2 : 1;
+  return Boolean(
+    rows
+      && rows.length === expectedRows
+      && rows.every(
+        (row) => Array.isArray(row.inputs)
+          && row.inputs.length === inputCount
+          && row.inputs.every((input) => typeof input === "boolean")
+          && typeof row.output === "boolean"
+          && evaluatePublishedModule(module, row.inputs) === row.output,
+      ),
+  );
 }
 
 export function buildMachineLogicManifest(modules: PublishedRelayModule[]): MachineLogicManifest {

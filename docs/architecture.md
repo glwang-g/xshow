@@ -16,6 +16,7 @@
 | Editor history | `src/composables/useWorkbenchHistory.ts` | Owns undo/redo stacks for workspace snapshots. |
 | Lesson content | `src/data/lessons.ts` | Keeps lesson text, starter workspaces, and checks data-editable. |
 | Cloud records | `src/lib/cloud.ts` | Wraps Supabase auth and workspace record calls. |
+| Machine logic foundation | `src/lib/machine-build.ts` | Turns published, fully truth-table-verified AND / OR / NOT modules into an inspectable machine-layer logic manifest; it does not misrepresent CPU preview as gate-level execution. |
 | Shared board state | `src/stores/board.ts` | Tracks zoom and viewport-related workbench state. |
 | Small UI primitives | `src/components/ui` | Local shadcn-vue inspired components. |
 | Domain regression tests | `tests/simulation.mjs` | Covers single-loop, series, parallel, LED/diode polarity, meter readings, battery reversal, and physical build-plan output. |

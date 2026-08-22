@@ -2976,6 +2976,7 @@ async function importWorkspaceJson(event: Event) {
 
     pushEditorHistory();
     loadWorkspaceSnapshot(parsed);
+    workspaceRecoveryMessage.value = "";
     saveWorkspaceToStorage();
     statusPanelOpen.value = false;
   } catch {
@@ -2986,6 +2987,7 @@ async function importWorkspaceJson(event: Event) {
 function loadSavedRecord(record: SavedWorkspaceRecord) {
   pushEditorHistory();
   loadWorkspaceSnapshot(record);
+  workspaceRecoveryMessage.value = "";
   saveWorkspaceToStorage();
 }
 
@@ -3229,6 +3231,7 @@ function loadCloudRecord(record: CloudRecord) {
   suppressCloudDirtyMark.value = true;
   pushEditorHistory();
   loadWorkspaceSnapshot(record.workspace);
+  workspaceRecoveryMessage.value = "";
   saveWorkspaceToStorage();
   cloudActiveRecordId.value = record.id;
   cloudLastSyncedAt.value = record.updated_at;

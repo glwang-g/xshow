@@ -108,6 +108,7 @@ const props = defineProps<{
   ledStatus: (part: CircuitPart) => LedState;
   ledWarnings: LedState[];
   lessonProgress: LessonProgress;
+  lessonComplete: boolean;
   lessonStepStates: LessonStepState[];
   loadCloudRecord: (record: CloudRecord) => void;
   loadCloudRecords: () => void | Promise<void>;
@@ -1028,10 +1029,10 @@ function isRelayAssembly(part: CircuitPart | undefined) {
             class="space-y-2 rounded-md border border-cyan-200 bg-cyan-50 p-3"
           >
             <div class="text-xs font-medium text-cyan-950">下一层模块</div>
-            <p class="text-xs leading-5 text-cyan-800">保存当前完整电路快照，并将线圈输入与 COM / NO（或 NC）触点发布为可展开的 RelaySwitch。</p>
-            <Button class="w-full" size="sm" @click="publishSelectedRelay(selectedPart)">
+            <p class="text-xs leading-5 text-cyan-800">模块只会在当前课程的结构与行为验证全部通过后发布；课程外的验证用电源、开关、灯泡和导线不会带入模块核心。</p>
+            <Button class="w-full" size="sm" :disabled="workbenchMode !== 'workshop' || !activeLesson.nextStage || !lessonComplete" @click="publishSelectedRelay(selectedPart)">
               <PackageCheck class="h-4 w-4" />
-              发布为 RelaySwitch
+              {{ lessonComplete ? '发布当前模块' : '完成课程后可发布' }}
             </Button>
             <p v-if="relayPublishFeedback" class="text-xs leading-5 text-cyan-800">{{ relayPublishFeedback }}</p>
           </div>
@@ -1163,28 +1164,24 @@ function isRelayAssembly(part: CircuitPart | undefined) {
         </div>
       </section>
 
-      <section v-else-if="tab === 'selection'" class="rounded-md border border-dashed bg-background px-3 py-6 text-center text-sm text-muted-foreground">
-        点击元器件或导线后，这里会显示可编辑属性。
-      </section>
-
-      <section v-if="tab === 'wires'">
-        <div class="mb-3 flex items-center justify-between">
-          <div class="text-xs font-medium uppercase text-muted-foreground">Wires</div>
-          <span class="text-xs text-muted-foreground">{{ wires.length }}</span>
-        </div>
-        <div class="space-y-2">
-          <div
-            v-for="wire in wires"
-            :key="wire.id"
-            class="flex items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors"
-            :class="selectedWireId === wire.id ? 'border-amber-300 bg-amber-50' : 'bg-background hover:bg-muted'"
-            @click="selectWire(wire.id)"
-          >
-            <span class="truncate">
-              {{ wireLabel(wire) }}
-            </span>
-            <button class="ml-2 text-muted-foreground hover:text-foreground" @click.stop="removeWire(wire.id)">
-              <Trash2 class="h-4 w-4" />
+      <section v-else-if="tab === 'selection'" class="rounded-md border border-dashed bg-background p-3">
+        <p class="text-center text-sm text-muted-foreground">点击元器件或导线后，在这里检查状态并编辑属性。</p>
+        <div v-if="wires.length" class="mt-4 border-t pt-3">
+          <div class="mb-2 flex items-center justify-between">
+            <div class="text-xs font-medium text-muted-foreground">导线</div>
+            <span class="text-xs text-muted-foreground">{{ wires.length }}</span>
+          </div>
+          <div class="space-y-2">
+            <button
+              v-for="wire in wires"
+              :key="wire.id"
+              type="button"
+              class="flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition-colors"
+              :class="selectedWireId === wire.id ? 'border-amber-300 bg-amber-50' : 'bg-background hover:bg-muted'"
+              @click="selectWire(wire.id)"
+            >
+              <span class="truncate">{{ wireLabel(wire) }}</span>
+              <Cable class="ml-2 h-4 w-4 shrink-0 text-muted-foreground" />
             </button>
           </div>
         </div>

@@ -9,7 +9,7 @@ The current north star is in [product-north-star.md](product-north-star.md):
 It assumes the project now has these layers:
 
 - Mainline units: signal/circuit, component workshop, logic/memory, machine, and algorithm
-- Current foundation: circuit workbench, repair tasks, and teaching flow
+- Current foundation: circuit workbench and teaching flow
 - Logic-layer progress: Logic Lab now has a main-app preview entry covering gates, an SR latch, and a 1-bit register
 - Machine-layer progress: the CPU simulator now has a main-app preview entry; next, wire it to the Rust/WASM machine core
 - Experiment zone: Tank Lab, Rubik's Cube, and future interactive prototypes
@@ -65,17 +65,20 @@ These items should get the next serious push because they make the main product 
 
 These items move the project from a good prototype toward a tool that feels coherent and repeatable for teaching use.
 
-### Repair task system
+### Side story: repair tasks
 
-- Expand task count, failure patterns, hint levels, and progression pacing
-- Add stronger replay, review, and "try again" loops
-- Clarify the relationship between repair tasks and the free-form circuit workbench
+- Keep them as standalone fault-diagnosis levels; do not place them in the five-unit mainline or workbench navigation.
+- Only expand task count, fault patterns, and replay feedback after the mainline is stable.
 
 ### Reports, build plans, and classroom deliverables
 
 - Improve experiment report quality so it is more useful for review, submission, or printing
-- Improve physical build plans with clearer wiring steps, inventory grouping, and better educational language
 - Add printable output formats where they help teachers or students use results outside the app
+
+### Deferred: Physical Build Plans
+
+- Do not expose physical build plans, Markdown export, or printable assembly sheets in the workbench yet; retain the underlying generation capability and tests until the product is ready to reopen it.
+- Before reopening, provide reliable component/material mapping, wiring steps, safety guidance, and validated classroom use cases.
 
 ### Sharing and templates
 

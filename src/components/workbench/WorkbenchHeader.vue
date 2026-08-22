@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Download, FileText, FlaskConical, GitFork, HelpCircle, Home, PackageCheck, RotateCcw, Save, Sparkles, Swords, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
+import { ArrowLeft, ArrowRight, Binary, Download, FileText, FlaskConical, GitFork, HelpCircle, Home, PackageCheck, RotateCcw, Save, Unplug, X, ZoomIn, ZoomOut } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import logoUrl from "@/assets/logo.png";
 import Button from "@/components/ui/Button.vue";
@@ -26,7 +26,7 @@ defineProps<{
       <img class="h-8 w-8 object-contain" :src="logoUrl" alt="明石空间 logo" />
       <div class="leading-tight">
         <div class="text-sm font-semibold">明石空间</div>
-        <div class="text-xs text-muted-foreground">xshow circuits · 电子积木实验台</div>
+        <div class="text-xs text-muted-foreground">{{ workbenchMode === 'workshop' ? '第 2 单元 · 制作并发布器件' : '第 1 单元 · 观察信号与电路' }}</div>
       </div>
     </div>
 
@@ -76,21 +76,15 @@ defineProps<{
         class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"
       >
         <Home class="h-4 w-4" />
-        大厅
+        学习路径
       </RouterLink>
       <RouterLink
-        to="/tank-lab"
-        class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"
+        v-if="workbenchMode === 'workshop'"
+        to="/logic-lab"
+        class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-cyan-200 bg-cyan-50 px-3 text-sm font-medium text-cyan-900 transition-colors hover:bg-cyan-100"
       >
-        <Swords class="h-4 w-4" />
-        战车
-      </RouterLink>
-      <RouterLink
-        to="/repair-lab"
-        class="inline-flex h-8 shrink-0 items-center justify-center gap-2 rounded-md border border-border bg-card px-3 text-sm font-medium transition-colors hover:bg-muted"
-      >
-        <Sparkles class="h-4 w-4" />
-        修理
+        <ArrowRight class="h-4 w-4" />
+        下一步：逻辑层
       </RouterLink>
       <Button variant="outline" size="sm" @click="openGuideAssistant()">
         <HelpCircle class="h-4 w-4" />

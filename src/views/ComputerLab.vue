@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import {
+  ArrowLeft,
   ArrowRight,
   Binary,
-  CircuitBoard,
   Cpu,
   Database,
   FastForward,
@@ -79,7 +79,7 @@ async function loadProgram() {
         : "示例程序已加载（预览适配层）。"
       : wasm
         ? "程序已由 Rust 核心汇编并加载。"
-        : "自定义源码等待 WASM bridge；当前预览适配层不会执行它。",
+        : "预览适配层仅执行 A + B 教学程序；其他自定义源码等待 WASM bridge。",
     () => engine.loadProgram(source.value),
   );
 }
@@ -137,11 +137,18 @@ async function loadSampleProgram() {
             <span class="truncate">学习路径</span>
           </RouterLink>
           <RouterLink
-            to="/workbench"
+            to="/logic-lab"
             class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-3 sm:text-sm"
           >
-            <CircuitBoard class="h-4 w-4" />
-            <span class="truncate">电路层</span>
+            <ArrowLeft class="h-4 w-4" />
+            <span class="truncate">上一步：逻辑层</span>
+          </RouterLink>
+          <RouterLink
+            to="/algorithm-lab"
+            class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-md border border-cyan-200 bg-cyan-50 px-2 text-xs font-medium text-cyan-800 hover:bg-cyan-100 sm:gap-2 sm:px-3 sm:text-sm"
+          >
+            <ArrowRight class="h-4 w-4" />
+            <span class="truncate">下一步：算法层</span>
           </RouterLink>
         </div>
       </header>

@@ -15,7 +15,6 @@ The `xshow circuits` public beta candidate is for teachers, students, parents, a
 - Local autosave, JSON import/export, PNG export, and share links.
 - PWA installation, offline relaunch, and update prompts/manual update checks.
 - Optional Supabase cloud records: sign-in, save, load, rename, delete, and conflict handling.
-- First-pass physical build plans, purchase keywords, wiring steps, and Markdown export.
 
 ## Must Verify Before Release
 
@@ -30,7 +29,7 @@ The `xshow circuits` public beta candidate is for teachers, students, parents, a
 - The circuit model is an educational approximation, not a SPICE-level simulator.
 - Series/parallel brightness comparisons provide teaching feedback but are not full physical precision.
 - Cloud records depend on Supabase environment variables at production build time; without them, the local workbench remains fully usable.
-- Physical build bridge currently provides part types, purchase keywords, and wiring steps, but no real SKU mapping or printable assembly sheet yet.
+- The physical-build capability remains in the codebase, but it is not displayed in the public workbench until real SKU mapping, safety validation, and classroom use are established.
 - The workbench archive format may still be adjusted during public beta; share links and JSON archives should be treated as teaching/demo artifacts.
 
 ## Feedback

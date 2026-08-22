@@ -57,7 +57,7 @@ First deliver an explainable, expandable 8-bit loop. 16/32/64-bit machines are e
 
 ## Current first step
 
-The workbench now includes a coil and normally-open/normally-closed spring contacts. A contact can bind to a coil through a mechanical link and switches according to its NO/NC rule once coil current reaches the pull-in threshold. An assembled relay can now be published locally as `RelaySwitch`: it saves the complete parts-and-wires snapshot and exposes coil A/B plus COM and NO/NC ports. Logic Lab reads the module and shows the contact output from a live coil input while retaining its source snapshot. Re-opening that snapshot directly in the workbench is the next step.
+The workbench now includes a coil and normally-open/normally-closed spring contacts. A contact can bind to a coil through a mechanical link and switches according to its NO/NC rule once coil current reaches the pull-in threshold. An assembled relay can now be published locally as `RelaySwitch`: publishing is available only after every structural and observable step of the active Component Workshop lesson has passed and the current complete circuit passes every input combination in its truth-table verification; the record retains the lesson source and verification rows. It extracts the relay itself from the lesson verification circuit, saving only the coil and contact, their four terminals, and their mechanical link. The battery, switches, bulb, and verification wires do not become part of the module. Logic Lab reads the module and shows the contact output from a live coil input; its core can be reopened directly in the Component Workshop for editing.
 
 ## Signal/Circuit Unit and Component Workshop
 

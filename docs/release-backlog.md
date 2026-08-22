@@ -8,7 +8,7 @@ For the broader near-term execution order across product work, see [execution-pl
 
 Status: **in hardening; freeze large features and accept only blocking fixes, verification notes, and release-documentation updates**.
 
-The current main branch has enough product surface for a public beta: mobile/PWA layout, free dragging and arbitrary part rotation, guided workspaces, more components, node/branch simulation, physical build plans, local records, share links, and cloud records. The remaining work is mostly reducing unknowns rather than adding scope.
+The current main branch has enough product surface for a public beta: mobile/PWA layout, free dragging and arbitrary part rotation, guided workspaces, more components, node/branch simulation, local records, share links, and cloud records. The physical-build capability remains in the codebase but is not exposed in the workbench because it is not ready. The remaining work is mostly reducing unknowns rather than adding scope.
 
 ### Must Finish
 
@@ -103,6 +103,8 @@ Status: **first slice implemented, pending regression QA**.
 - [x] Support arbitrary part rotation and keep terminal positions, wire endpoints, and PNG export aligned with the rotated parts.
 
 ### Physical Build Bridge
+
+Status: **underlying capability retained; public entry deferred**. The items below describe implemented groundwork, not a public-beta promise.
 
 - [x] Generate a first-pass component list from the current workspace.
 - [x] Add purchase keywords for each virtual part before real SKU mapping.

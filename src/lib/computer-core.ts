@@ -99,7 +99,7 @@ export const integrationSteps: IntegrationStep[] = [
 ];
 
 export const computerCoreBridgeStatus: ComputerCoreBridgeStatus = {
-  detail: "Rust 8-bit 核心已编译为 WASM；页面优先连接 WASM 核心，加载失败时回退预览适配器。",
+  detail: "Rust 8-bit 核心已编译为 WASM；页面优先连接 WASM 核心，加载失败时回退到可执行参数化加法示例的预览适配器。",
   mode: "wasm",
   ready: true,
   title: "WASM bridge connected",
@@ -109,11 +109,11 @@ export const sampleAssemblyProgram = ["MOV A, #1", "MOV B, #2", "ADD A, B", "STO
 
 export const sampleAssemblySource = sampleAssemblyProgram.join("\n");
 
-function previewMemory(storedResult = false): number[] {
+function previewMemory(storedResult = false, left = 1, right = 2): number[] {
   const memory = Array.from({ length: 256 }, () => 0);
   const program = [
-    0x01, 0x00, 0x01,
-    0x01, 0x01, 0x02,
+    0x01, 0x00, left,
+    0x01, 0x01, right,
     0x03, 0x00, 0x01,
     0x06, 0x00, 0x40,
     0xff,
@@ -122,7 +122,7 @@ function previewMemory(storedResult = false): number[] {
     memory[index] = byte;
   });
   if (storedResult) {
-    memory[0x40] = 0x03;
+    memory[0x40] = (left + right) & 0xff;
   }
   return memory;
 }
@@ -152,8 +152,6 @@ function previewFrame(
   };
 }
 
-const loadedLog = ["Loaded 13-byte program at 0x00"];
-
 export const blankCpuSnapshot: CpuSnapshot = {
   a: 0,
   b: 0,
@@ -171,76 +169,52 @@ export const unsupportedProgramSnapshot: CpuSnapshot = {
   currentInstruction: "WASM bridge pending",
   halted: true,
   log: [
-    "Preview adapter can only step through the bundled sample program.",
-    "Custom assembly will run here after the Rust/WASM bridge is connected.",
+    "Preview adapter supports only the parameterized A + B teaching program.",
+    "Other custom assembly will run here after the Rust/WASM bridge is connected.",
   ],
 };
 
-export const previewCpuTimeline: CpuSnapshot[] = [
-  previewFrame({
-    a: 0,
-    b: 0,
-    currentInstruction: "MOV A, #1",
-    halted: false,
-    log: loadedLog,
-    pc: 0x00,
-  }),
-  previewFrame({
-    a: 1,
-    b: 0,
-    currentInstruction: "MOV B, #2",
-    halted: false,
-    log: [...loadedLog, "[  1] 0x00: MOV A, #1"],
-    pc: 0x03,
-  }),
-  previewFrame({
-    a: 1,
-    b: 2,
-    currentInstruction: "ADD A, B",
-    halted: false,
-    log: [...loadedLog, "[  1] 0x00: MOV A, #1", "[  2] 0x03: MOV B, #2"],
-    pc: 0x06,
-  }),
-  previewFrame({
-    a: 3,
-    b: 2,
-    currentInstruction: "STORE A, 0x40",
-    halted: false,
-    log: [...loadedLog, "[  1] 0x00: MOV A, #1", "[  2] 0x03: MOV B, #2", "[  3] 0x06: ADD A, B"],
-    pc: 0x09,
-  }),
-  previewFrame({
-    a: 3,
-    b: 2,
-    currentInstruction: "HALT",
-    halted: false,
-    log: [
-      ...loadedLog,
-      "[  1] 0x00: MOV A, #1",
-      "[  2] 0x03: MOV B, #2",
-      "[  3] 0x06: ADD A, B",
-      "[  4] 0x09: STORE A, 0x40",
-    ],
-    memory: previewMemory(true),
-    pc: 0x0c,
-  }),
-  previewFrame({
-    a: 3,
-    b: 2,
-    currentInstruction: "HALT",
-    halted: true,
-    log: [
-      ...loadedLog,
-      "[  1] 0x00: MOV A, #1",
-      "[  2] 0x03: MOV B, #2",
-      "[  3] 0x06: ADD A, B",
-      "[  4] 0x09: STORE A, 0x40",
-      "[  5] 0x0C: HALT",
-    ],
-    memory: previewMemory(true),
-    pc: 0x0c,
-  }),
-];
+type PreviewAdditionProgram = { left: number; right: number };
+
+function parsePreviewAdditionProgram(source: string): PreviewAdditionProgram | null {
+  const lines = source
+    .split("\n")
+    .map((line) => line.trim().toUpperCase())
+    .filter(Boolean);
+  if (lines.length !== 5 || lines[2] !== "ADD A, B" || lines[3] !== "STORE A, 0X40" || lines[4] !== "HALT") {
+    return null;
+  }
+
+  const left = /^MOV A, #(\d+)$/.exec(lines[0])?.[1];
+  const right = /^MOV B, #(\d+)$/.exec(lines[1])?.[1];
+  if (left === undefined || right === undefined) {
+    return null;
+  }
+
+  const values = [Number(left), Number(right)];
+  return values.every((value) => Number.isInteger(value) && value >= 0 && value <= 0xff)
+    ? { left: values[0], right: values[1] }
+    : null;
+}
+
+function previewAdditionTimeline(left: number, right: number): CpuSnapshot[] {
+  const sum = left + right;
+  const result = sum & 0xff;
+  const flags = { c: sum > 0xff, n: Boolean(result & 0x80), z: result === 0 };
+  const flagsByte = (flags.c ? 1 : 0) | (flags.n ? 2 : 0) | (flags.z ? 4 : 0);
+  const loaded = [`Loaded 13-byte program at 0x00`];
+
+  return [
+    previewFrame({ a: 0, b: 0, currentInstruction: `MOV A, #${left}`, halted: false, log: loaded, pc: 0x00, memory: previewMemory(false, left, right) }),
+    previewFrame({ a: left, b: 0, currentInstruction: `MOV B, #${right}`, halted: false, log: [...loaded, `[  1] 0x00: MOV A, #${left}`], pc: 0x03, memory: previewMemory(false, left, right) }),
+    previewFrame({ a: left, b: right, currentInstruction: "ADD A, B", halted: false, log: [...loaded, `[  1] 0x00: MOV A, #${left}`, `[  2] 0x03: MOV B, #${right}`], pc: 0x06, memory: previewMemory(false, left, right) }),
+    previewFrame({ a: result, b: right, currentInstruction: "STORE A, 0x40", halted: false, log: [...loaded, `[  1] 0x00: MOV A, #${left}`, `[  2] 0x03: MOV B, #${right}`, "[  3] 0x06: ADD A, B"], pc: 0x09, flags, flagsByte, memory: previewMemory(false, left, right) }),
+    previewFrame({ a: result, b: right, currentInstruction: "HALT", halted: false, log: [...loaded, `[  1] 0x00: MOV A, #${left}`, `[  2] 0x03: MOV B, #${right}`, "[  3] 0x06: ADD A, B", "[  4] 0x09: STORE A, 0x40"], pc: 0x0c, flags, flagsByte, memory: previewMemory(true, left, right) }),
+    previewFrame({ a: result, b: right, currentInstruction: "HALT", halted: true, log: [...loaded, `[  1] 0x00: MOV A, #${left}`, `[  2] 0x03: MOV B, #${right}`, "[  3] 0x06: ADD A, B", "[  4] 0x09: STORE A, 0x40", "[  5] 0x0C: HALT"], pc: 0x0c, flags, flagsByte, memory: previewMemory(true, left, right) }),
+  ];
+}
+
+export const previewCpuTimeline = previewAdditionTimeline(1, 2);
 
 export const previewLoadedCpuSnapshot = previewCpuTimeline[0];
 export const previewCpuSnapshot = previewCpuTimeline[previewCpuTimeline.length - 1];
@@ -285,21 +259,13 @@ export function memoryRows(snapshot: CpuSnapshot): MemoryRow[] {
   return rows;
 }
 
-function normalizedSource(source: string): string {
-  return source
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .join("\n")
-    .toUpperCase();
-}
-
 export function canPreviewSource(source: string): boolean {
-  return normalizedSource(source) === normalizedSource(sampleAssemblySource);
+  return parsePreviewAdditionProgram(source) !== null;
 }
 
 export function createPreviewComputerCore(): ComputerCoreApi {
   let timelineIndex = 0;
+  let timeline = previewCpuTimeline;
   let programLoaded = true;
   let current = cloneSnapshot(previewLoadedCpuSnapshot);
 
@@ -308,7 +274,8 @@ export function createPreviewComputerCore(): ComputerCoreApi {
       return cloneSnapshot(current);
     },
     async loadProgram(source: string) {
-      if (!canPreviewSource(source)) {
+      const program = parsePreviewAdditionProgram(source);
+      if (!program) {
         programLoaded = false;
         current = cloneSnapshot(unsupportedProgramSnapshot);
         return cloneSnapshot(current);
@@ -316,7 +283,8 @@ export function createPreviewComputerCore(): ComputerCoreApi {
 
       programLoaded = true;
       timelineIndex = 0;
-      current = cloneSnapshot(previewCpuTimeline[timelineIndex]);
+      timeline = previewAdditionTimeline(program.left, program.right);
+      current = cloneSnapshot(timeline[timelineIndex]);
       return cloneSnapshot(current);
     },
     async reset() {
@@ -330,8 +298,8 @@ export function createPreviewComputerCore(): ComputerCoreApi {
         return cloneSnapshot(current);
       }
 
-      timelineIndex = previewCpuTimeline.length - 1;
-      current = cloneSnapshot(previewCpuTimeline[timelineIndex]);
+      timelineIndex = timeline.length - 1;
+      current = cloneSnapshot(timeline[timelineIndex]);
       return cloneSnapshot(current);
     },
     async step() {
@@ -339,8 +307,8 @@ export function createPreviewComputerCore(): ComputerCoreApi {
         return cloneSnapshot(current);
       }
 
-      timelineIndex = Math.min(timelineIndex + 1, previewCpuTimeline.length - 1);
-      current = cloneSnapshot(previewCpuTimeline[timelineIndex]);
+      timelineIndex = Math.min(timelineIndex + 1, timeline.length - 1);
+      current = cloneSnapshot(timeline[timelineIndex]);
       return cloneSnapshot(current);
     },
   };

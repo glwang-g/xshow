@@ -52,7 +52,13 @@ async function resetMachine() {
   isBusy.value = true;
   try { snapshot.value = await core.value.reset(); loadedSource.value = ""; message.value = "机器已复位。"; } finally { isBusy.value = false; }
 }
-onMounted(async () => { const bridge = await createComputerCore(); core.value = bridge.api; message.value = bridge.mode === "wasm" ? "Rust/WASM 核心已就绪。" : "正在使用预览机器核心。"; await loadAndRun(); });
+onMounted(async () => {
+  const bridge = await createComputerCore();
+  core.value = bridge.api;
+  message.value = bridge.mode === "wasm"
+    ? "Rust/WASM 核心已就绪。点击单步，从第一条指令开始观察。"
+    : "预览机器核心已就绪。点击单步，从第一条指令开始观察。";
+});
 </script>
 
 <template>

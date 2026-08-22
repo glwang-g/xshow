@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
-import ComponentPalette from "@/components/workbench/ComponentPalette.vue";
-import StatusPanel from "@/components/workbench/StatusPanel.vue";
 import WorkbenchCanvas from "@/components/workbench/WorkbenchCanvas.vue";
 import WorkbenchHeader from "@/components/workbench/WorkbenchHeader.vue";
 import { useWorkbenchHistory } from "@/composables/useWorkbenchHistory";
@@ -78,6 +76,12 @@ import {
 } from "@/lib/published-modules";
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
+
+// The canvas and header are needed immediately. The palette and side panel
+// are opened on demand, so keeping them async reduces the first workbench
+// transfer without changing any editor interaction.
+const ComponentPalette = defineAsyncComponent(() => import("@/components/workbench/ComponentPalette.vue"));
+const StatusPanel = defineAsyncComponent(() => import("@/components/workbench/StatusPanel.vue"));
 
 type TerminalHit = {
   distance: number;

@@ -77,6 +77,18 @@ test("malformed locally stored modules are ignored instead of breaking the logic
   assert.deepEqual(modules.loadPublishedRelayModules(storage), []);
 });
 
+test("stored modules must retain a valid relay core and supported gate declaration", () => {
+  const relay = modules.createPublishedRelayModule({ id: "stored-relay", parts, springId: "spring-1", wires });
+  const brokenCore = { ...relay, implementation: { ...relay.implementation, parts: relay.implementation.parts.map((part) => part.id === "spring-1" ? { ...part, controlledBy: "missing" } : part) } };
+  const unknownGate = { ...relay, behavior: { ...relay.behavior, gate: "XOR" } };
+  const storage = {
+    getItem: () => JSON.stringify([brokenCore, unknownGate, relay]),
+    setItem: () => undefined,
+  };
+
+  assert.deepEqual(modules.loadPublishedRelayModules(storage).map((module) => module.id), ["stored-relay"]);
+});
+
 test("modules published before truth-table records remain readable", () => {
   const relay = modules.createPublishedRelayModule({
     id: "legacy-relay",

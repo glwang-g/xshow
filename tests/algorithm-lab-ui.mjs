@@ -8,3 +8,9 @@ test("algorithm lab starts in an observable idle state instead of auto-running t
   assert.match(algorithmLabSource, /点击单步，从第一条指令开始观察。/);
   assert.doesNotMatch(algorithmLabSource, /onMounted[\s\S]*await loadAndRun\(\)/);
 });
+
+test("algorithm input normalizes visible values before execution", () => {
+  assert.match(algorithmLabSource, /function normalizeInputs\(\)/);
+  assert.match(algorithmLabSource, /@blur="normalizeInputs"/);
+  assert.match(algorithmLabSource, /输入会规范为 0–255，再写入 8-bit 寄存器。/);
+});

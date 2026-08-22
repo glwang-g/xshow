@@ -110,3 +110,15 @@ test("workbench history caps undo and redo stacks to the configured size", () =>
     ["latest", "snapshot-3"],
   );
 });
+
+test("workbench view records direct manipulation and coalesces continuous property edits", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const homeSource = await readFile(new URL("../src/views/Home.vue", import.meta.url), "utf8");
+
+  assert.match(homeSource, /historyRecorded: false/);
+  assert.match(homeSource, /if \(!dragging\.value\.historyRecorded\) \{\s+pushEditorHistory\(\);/);
+  assert.match(homeSource, /function pushPartEditHistory\(part: CircuitPart, field: string\)/);
+  assert.match(homeSource, /timer: window\.setTimeout\(\(\) => \{\s+partEditHistory = null;\s+\}, 400\)/);
+  assert.match(homeSource, /function setPartPosition\(part: CircuitPart, axis: "x" \| "y", value: number\)/);
+  assert.match(homeSource, /function setSpringContactMode\(part: CircuitPart, value: string\)/);
+});

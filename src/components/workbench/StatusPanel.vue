@@ -139,8 +139,10 @@ const props = defineProps<{
   selectedWire: Wire | undefined;
   selectedWireId: string | null;
   setCloudAuthMode: (mode: CloudAuthMode) => void;
+  setPartPosition: (part: CircuitPart, axis: "x" | "y", value: number) => void;
   setPartRotation: (part: CircuitPart, value: number) => void;
   setResistance: (part: CircuitPart, value: number) => void;
+  setSpringContactMode: (part: CircuitPart, value: string) => void;
   shareLinkState: "copied" | "idle" | "manual";
   sharedWorkspaceLoaded: boolean;
   workspaceRecoveryMessage: string;
@@ -898,19 +900,21 @@ function isRelayAssembly(part: CircuitPart | undefined) {
             <label class="space-y-1">
               <span class="text-xs text-muted-foreground">X</span>
               <input
-                v-model.number="selectedPart.x"
+                :value="selectedPart.x"
                 class="h-9 w-full rounded-md border bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="(selectedPart?.type === 'spring' && Boolean(selectedPart?.controlledBy)) || (selectedPart?.type === 'coil' && parts.some((part) => part.type === 'spring' && part.controlledBy === selectedPart?.id))"
                 type="number"
+                @input="setPartPosition(selectedPart, 'x', Number(($event.target as HTMLInputElement).value))"
               />
             </label>
             <label class="space-y-1">
               <span class="text-xs text-muted-foreground">Y</span>
               <input
-                v-model.number="selectedPart.y"
+                :value="selectedPart.y"
                 class="h-9 w-full rounded-md border bg-card px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
                 :disabled="(selectedPart?.type === 'spring' && Boolean(selectedPart?.controlledBy)) || (selectedPart?.type === 'coil' && parts.some((part) => part.type === 'spring' && part.controlledBy === selectedPart?.id))"
                 type="number"
+                @input="setPartPosition(selectedPart, 'y', Number(($event.target as HTMLInputElement).value))"
               />
             </label>
           </div>
@@ -992,7 +996,11 @@ function isRelayAssembly(part: CircuitPart | undefined) {
           <label v-if="selectedPart.type === 'spring'" class="block space-y-2">
             <span class="text-xs font-medium">控制连杆</span>
             <span class="text-xs font-medium">触点类型</span>
-            <select v-model="selectedPart.contactMode" class="h-9 w-full rounded-md border bg-background px-2 text-sm">
+            <select
+              class="h-9 w-full rounded-md border bg-background px-2 text-sm"
+              :value="selectedPart.contactMode"
+              @change="setSpringContactMode(selectedPart, ($event.target as HTMLSelectElement).value)"
+            >
               <option value="normally-open">常开（NO）</option>
               <option value="normally-closed">常闭（NC）</option>
             </select>

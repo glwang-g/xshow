@@ -200,7 +200,7 @@ const rewiring = ref<{ wireId: string; end: WireEnd } | null>(null);
 const endpointDrag = ref<{ wireId: string; end: WireEnd; x: number; y: number; over: TerminalRef | null } | null>(
   null,
 );
-const dragging = ref<{ id: string; offsetX: number; offsetY: number } | null>(null);
+const dragging = ref<{ historyRecorded: boolean; id: string; offsetX: number; offsetY: number } | null>(null);
 const viewportPointers = new Map<number, { x: number; y: number }>();
 const viewportGesture = ref<
   | { mode: "pan"; lastX: number; lastY: number }
@@ -981,6 +981,7 @@ let buildPlanCopyFeedbackTimer: number | null = null;
 let cloudAuthUnsubscribe: (() => void) | null = null;
 let experimentReportCopyFeedbackTimer: number | null = null;
 let shareLinkFeedbackTimer: number | null = null;
+let partEditHistory: { key: string; timer: number } | null = null;
 
 function readLocalStorage(key: string) {
   if (typeof window === "undefined") {
@@ -1822,6 +1823,7 @@ function handlePartPointerDown(event: PointerEvent, part: CircuitPart) {
   statusPanelTab.value = "selection";
   const point = boardPoint(event);
   dragging.value = {
+    historyRecorded: false,
     id: part.id,
     offsetX: point.x - part.x,
     offsetY: point.y - part.y,
@@ -1958,6 +1960,13 @@ function handleWorkbenchPointerMove(event: PointerEvent) {
   const partner = relayPartner(part);
   if (!partner) {
     const position = clampPartPosition(part, point.x - dragging.value.offsetX, point.y - dragging.value.offsetY);
+    if (position.x === part.x && position.y === part.y) {
+      return;
+    }
+    if (!dragging.value.historyRecorded) {
+      pushEditorHistory();
+      dragging.value.historyRecorded = true;
+    }
     part.x = position.x;
     part.y = position.y;
     return;
@@ -1974,6 +1983,13 @@ function handleWorkbenchPointerMove(event: PointerEvent) {
     ...group.map((item) => workbenchLimitHeight() - getSpec(item).height - 16 - item.y),
     Math.max(...group.map((item) => 16 - item.y), rawY - part.y),
   );
+  if (deltaX === 0 && deltaY === 0) {
+    return;
+  }
+  if (!dragging.value.historyRecorded) {
+    pushEditorHistory();
+    dragging.value.historyRecorded = true;
+  }
   for (const item of group) {
     item.x = Math.round(item.x + deltaX);
     item.y = Math.round(item.y + deltaY);
@@ -3430,11 +3446,60 @@ function toggleBatteryPolarity(part: CircuitPart) {
 }
 
 function setResistance(part: CircuitPart, value: number) {
-  part.resistance = clampResistorOhms(value, part.resistance);
+  const nextValue = clampResistorOhms(value, part.resistance);
+  if (part.resistance === nextValue) {
+    return;
+  }
+  pushPartEditHistory(part, "resistance");
+  part.resistance = nextValue;
 }
 
 function setPartRotation(part: CircuitPart, value: number) {
-  part.rotation = normalizePartRotation(value, part.rotation);
+  const nextValue = normalizePartRotation(value, part.rotation);
+  if ((part.rotation ?? 0) === nextValue) {
+    return;
+  }
+  pushPartEditHistory(part, "rotation");
+  part.rotation = nextValue;
+}
+
+function pushPartEditHistory(part: CircuitPart, field: string) {
+  const key = `${part.id}:${field}`;
+  if (partEditHistory?.key !== key) {
+    if (partEditHistory) {
+      window.clearTimeout(partEditHistory.timer);
+    }
+    pushEditorHistory();
+  } else {
+    window.clearTimeout(partEditHistory.timer);
+  }
+  partEditHistory = {
+    key,
+    timer: window.setTimeout(() => {
+      partEditHistory = null;
+    }, 400),
+  };
+}
+
+function setPartPosition(part: CircuitPart, axis: "x" | "y", value: number) {
+  if (!Number.isFinite(value)) {
+    return;
+  }
+  const nextPosition = clampPartPosition(part, axis === "x" ? value : part.x, axis === "y" ? value : part.y);
+  if (nextPosition.x === part.x && nextPosition.y === part.y) {
+    return;
+  }
+  pushPartEditHistory(part, "position");
+  part.x = nextPosition.x;
+  part.y = nextPosition.y;
+}
+
+function setSpringContactMode(part: CircuitPart, value: string) {
+  if (part.type !== "spring" || (value !== "normally-open" && value !== "normally-closed") || part.contactMode === value) {
+    return;
+  }
+  pushPartEditHistory(part, "contact-mode");
+  part.contactMode = value;
 }
 
 loadSavedRecords();
@@ -3677,6 +3742,11 @@ onBeforeUnmount(() => {
   if (cloudStartupTimer !== null) {
     window.clearTimeout(cloudStartupTimer);
     cloudStartupTimer = null;
+  }
+
+  if (partEditHistory) {
+    window.clearTimeout(partEditHistory.timer);
+    partEditHistory = null;
   }
 
   cloudAuthUnsubscribe?.();
@@ -3947,8 +4017,10 @@ onBeforeUnmount(() => {
         :selected-wire="selectedWire"
         :selected-wire-id="selectedWireId"
         :set-cloud-auth-mode="setCloudAuthMode"
+        :set-part-position="setPartPosition"
         :set-part-rotation="setPartRotation"
         :set-resistance="setResistance"
+        :set-spring-contact-mode="setSpringContactMode"
         :share-link-state="shareLinkState"
         :shared-workspace-loaded="sharedWorkspaceLoaded"
         :workspace-recovery-message="workspaceRecoveryMessage"

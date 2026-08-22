@@ -21,6 +21,8 @@ test("algorithm lab connects verified workshop gates to an eight-bit ripple pred
   assert.match(algorithmLabSource, /8 个可追溯的全加器串接/);
   assert.match(algorithmLabSource, /已验证：门级预测与本次机器运行一致。/);
   assert.match(algorithmLabSource, /gateMatchesMachine/);
+  assert.match(algorithmLabSource, /门来源：/);
+  assert.match(algorithmLabSource, /query: \{ module: module\.id \}/);
 });
 
 test("algorithm lab retains a recoverable message when a machine action fails", () => {

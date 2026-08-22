@@ -74,6 +74,7 @@ import {
   createPublishedRelayModule,
   loadPublishedRelayModules,
   savePublishedRelayModule,
+  verifyRelayPublication,
 } from "@/lib/published-modules";
 import { pwaUpdateAvailableEvent } from "@/pwa";
 import { useBoardStore } from "@/stores/board";
@@ -1891,11 +1892,26 @@ function publishRelayModule(part: CircuitPart) {
     return "请先把弹簧开关绑定到一条线圈，再发布。";
   }
 
+  if (workbenchMode.value !== "workshop" || !activeLesson.value.nextStage) {
+    return "请在器件工坊的发布课程中制作模块。";
+  }
+
+  if (!lessonComplete.value) {
+    return `先完成“${activeLesson.value.title}”的全部验证步骤，再发布模块。`;
+  }
+
   const existing = loadPublishedRelayModules();
+  const nextStage = activeLesson.value.nextStage;
+  const verification = verifyRelayPublication(parts.value, wires.value, nextStage?.moduleName);
+  if (!verification.passed) {
+    return verification.reason;
+  }
   const module = createPublishedRelayModule({
-    name: `RelaySwitch ${existing.length + 1}`,
+    kind: nextStage?.moduleKind === "logic-gate" ? "logic-gate" : "relay",
+    name: nextStage?.moduleName ?? `RelaySwitch ${existing.length + 1}`,
     parts: parts.value,
     springId: spring.id,
+    verification: { lessonId: activeLesson.value.id, truthTable: verification.rows, verifiedAt: new Date().toISOString() },
     wires: wires.value,
   });
   if (!module || !savePublishedRelayModule(module)) {
@@ -1965,7 +1981,19 @@ function endDrag() {
   finishNewWireDrag();
 }
 
+function finishTerminalDrag() {
+  // Terminal buttons stop propagation, so they must explicitly complete an
+  // endpoint rewire. Ignore the following click only for this terminal path:
+  // otherwise a successful drag would immediately start click-to-wire mode.
+  const rewired = Boolean(endpointDrag.value);
+  endDrag();
+  if (rewired) {
+    suppressNextTerminalClick.value = true;
+  }
+}
+
 function clearCanvasSelection() {
+  selectedPartId.value = "";
   hoveredEndpoint.value = null;
   hoveredWireId.value = null;
   selectedTerminal.value = null;
@@ -3299,7 +3327,40 @@ function loadLessonWorkspace(lessonId = activeLesson.value.id) {
   loadWorkspace(lesson.starterWorkspace, { adaptMobileStarterLayout: true });
 }
 
+function loadPublishedModuleFromRoute() {
+  const moduleId = typeof route.query.module === "string" ? route.query.module : "";
+  if (!moduleId) {
+    return false;
+  }
+
+  const module = loadPublishedRelayModules().find((item) => item.id === moduleId);
+  if (!module) {
+    return false;
+  }
+
+  activeLessonId.value = lessonCatalog.some((lesson) => lesson.id === module.verification?.lessonId)
+    ? module.verification?.lessonId as string
+    : "build-a-relay";
+  loadWorkspace(
+    {
+      parts: module.implementation.parts,
+      selectedPartId: module.implementation.springId,
+      wires: module.implementation.wires,
+      zoom: 100,
+    },
+    { adaptMobileStarterLayout: true },
+  );
+  statusPanelTab.value = "selection";
+  return true;
+}
+
 function loadWorkbenchMode(mode: "free" | "workshop") {
+  if (mode === "workshop" && loadPublishedModuleFromRoute()) {
+    lessonCompletePanelOpen.value = false;
+    dismissedLessonCompletionId.value = null;
+    return;
+  }
+
   const lessonId = mode === "workshop" ? "build-a-relay" : "open-the-circuit";
   statusPanelTab.value = "lesson";
   lessonCompletePanelOpen.value = false;
@@ -3373,7 +3434,7 @@ watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], schedule
   deep: true,
 });
 
-watch(workbenchMode, loadWorkbenchMode, { immediate: true });
+watch([workbenchMode, () => route.query.module], ([mode]) => loadWorkbenchMode(mode), { immediate: true });
 watch(
   [lessonComplete, activeLessonId],
   ([complete]) => {
@@ -3697,6 +3758,7 @@ onBeforeUnmount(() => {
         :duplicate-selected-part="duplicateSelectedPart"
         :end-canvas-gesture="endCanvasGesture"
         :end-drag="endDrag"
+        :finish-terminal-drag="finishTerminalDrag"
         :endpoint-drag="endpointDrag"
         :endpoint-fill="endpointFill"
         :endpoint-radius="endpointRadius"
@@ -3775,6 +3837,7 @@ onBeforeUnmount(() => {
         :wire-path="wirePath"
         :wire-stroke="wireStroke"
         :wire-stroke-width="wireStrokeWidth"
+        :workbench-mode="workbenchMode"
         :zoom="board.zoom"
         @open-palette="palettePanelOpen = true; statusPanelOpen = false"
         @open-status-tab="openMobileStatusPanel"
@@ -3831,6 +3894,7 @@ onBeforeUnmount(() => {
         :diode-warnings="diodeWarnings"
         :led-status="ledStatus"
         :led-warnings="ledWarnings"
+        :lesson-complete="lessonComplete"
         :lesson-progress="lessonProgress"
         :lesson-step-states="lessonStepStates"
         :load-cloud-record="loadCloudRecord"

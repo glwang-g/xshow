@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { RouterLink } from "vue-router";
 import {
   Activity,
   BatteryCharging,
@@ -90,6 +91,7 @@ const props = defineProps<{
   duplicateSelectedPart: () => void;
   endCanvasGesture: (event: PointerEvent) => void;
   endDrag: () => void;
+  finishTerminalDrag: () => void;
   endpointDrag: EndpointDrag | null;
   endpointFill: (wire: Wire, end: WireEnd) => string;
   endpointRadius: (wire: Wire, end: WireEnd) => number;
@@ -167,6 +169,7 @@ const props = defineProps<{
   wirePath: (wire: Wire) => string;
   wireStroke: (wire: Wire) => string;
   wireStrokeWidth: (wire: Wire) => number;
+  workbenchMode: "free" | "workshop";
   zoom: number;
 }>();
 
@@ -182,6 +185,25 @@ function bindCanvasViewport(element: unknown) {
 
 function bindWorkbench(element: unknown) {
   props.setWorkbenchElement(element instanceof HTMLElement ? element : null);
+}
+
+function startTerminalDrag(event: PointerEvent, part: CircuitPart, terminal: TerminalKey) {
+  const matchesTerminal = (wire: Wire, end: WireEnd) =>
+    wire[end].partId === part.id && wire[end].terminal === terminal;
+  const selectedEndpoint = props.selectedWire
+    ? (["from", "to"] as WireEnd[]).find((end) => matchesTerminal(props.selectedWire as Wire, end))
+    : undefined;
+  const wire = selectedEndpoint
+    ? props.selectedWire
+    : props.renderedWires.find((candidate) => matchesTerminal(candidate, "from") || matchesTerminal(candidate, "to"));
+  const end = selectedEndpoint ?? (wire && matchesTerminal(wire, "from") ? "from" : "to");
+
+  if (wire) {
+    props.startEndpointDrag(event, wire, end);
+    return;
+  }
+
+  props.startNewWireDrag(event, part, terminal);
 }
 
 const selectedPart = computed(() => props.parts.find((part) => part.id === props.selectedPartId));
@@ -315,6 +337,16 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
             >
               <Gauge class="h-4 w-4" />
             </Button>
+            <RouterLink
+              v-if="workbenchMode === 'workshop'"
+              to="/logic-lab"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-cyan-800 transition-colors hover:bg-cyan-100"
+              title="下一步：逻辑层"
+              aria-label="下一步：逻辑层"
+              data-circuit-interactive="true"
+            >
+              <CircuitBoard class="h-4 w-4" />
+            </RouterLink>
             <Button
               :class="`h-8 w-8 ${guideAssistantOpen ? 'bg-amber-100 text-amber-950 hover:bg-amber-100' : ''}`"
               :aria-pressed="guideAssistantOpen"
@@ -758,11 +790,11 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
           <div
             v-for="part in parts"
             :key="part.id"
-            class="absolute z-10 cursor-grab touch-none select-none rounded-md border bg-card shadow-sm transition-shadow active:cursor-grabbing"
+            class="absolute z-40 cursor-grab touch-none select-none rounded-md border bg-card shadow-sm transition-shadow active:cursor-grabbing"
             data-circuit-interactive="true"
             :class="[
               selectedPartId === part.id ? 'border-primary shadow-panel' : 'border-border',
-              isLessonPartTarget(part) ? 'lesson-workbench-target z-20' : '',
+              isLessonPartTarget(part) ? 'lesson-workbench-target z-50' : '',
               part.type === 'battery' ? 'bg-slate-950 text-white' : '',
               part.type === 'switch' ? 'bg-white' : '',
               part.type === 'bulb' ? (bulbBrightness(part) > 0 ? 'bg-amber-50' : 'bg-slate-100') : '',
@@ -776,7 +808,7 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               part.type === 'voltmeter' ? 'bg-indigo-50' : '',
               part.type === 'buzzer' ? 'bg-sky-50' : '',
               part.type === 'motor' ? 'bg-emerald-50' : '',
-              isBeginnerSwitchTarget(part) ? 'z-30 ring-4 ring-amber-300 ring-offset-2 ring-offset-white' : '',
+              isBeginnerSwitchTarget(part) ? 'z-60 ring-4 ring-amber-300 ring-offset-2 ring-offset-white' : '',
             ]"
             :style="partStyle(part)"
             @pointerdown="handlePartPointerDown($event, part)"
@@ -794,10 +826,10 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               ]"
               :style="terminalStyle(part, terminal)"
               :title="terminalDisplayLabel(part, terminal)"
-              @pointerdown.stop="startNewWireDrag($event, part, terminal)"
-              @pointermove.stop="updateNewWireDrag"
-              @pointerup.stop="finishNewWireDrag"
-              @pointercancel.stop="finishNewWireDrag"
+              @pointerdown.stop="startTerminalDrag($event, part, terminal)"
+              @pointermove.stop="handleWorkbenchPointerMove"
+              @pointerup.stop="finishTerminalDrag"
+              @pointercancel.stop="endDrag"
               @click.stop="handleTerminalClick(part, terminal)"
             >
               {{ terminalDisplayLabel(part, terminal) }}
@@ -1120,6 +1152,30 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               </div>
             </div>
           </div>
+          <svg v-if="selectedWire" class="pointer-events-none absolute inset-0 z-[70] h-full w-full">
+            <circle
+              class="pointer-events-auto cursor-grab touch-none active:cursor-grabbing"
+              data-circuit-interactive="true"
+              :cx="wireEndpointPosition(selectedWire, 'from').x"
+              :cy="wireEndpointPosition(selectedWire, 'from').y"
+              fill="transparent"
+              r="14"
+              stroke="#f59e0b"
+              stroke-width="3"
+              @pointerdown.stop="startEndpointDrag($event, selectedWire, 'from')"
+            />
+            <circle
+              class="pointer-events-auto cursor-grab touch-none active:cursor-grabbing"
+              data-circuit-interactive="true"
+              :cx="wireEndpointPosition(selectedWire, 'to').x"
+              :cy="wireEndpointPosition(selectedWire, 'to').y"
+              fill="transparent"
+              r="14"
+              stroke="#f59e0b"
+              stroke-width="3"
+              @pointerdown.stop="startEndpointDrag($event, selectedWire, 'to')"
+            />
+          </svg>
         </div>
         </div>
       </section>

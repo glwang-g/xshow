@@ -17,10 +17,10 @@ Current focus: **v0.4 simulation calibration and lessons for new components**.
 | Current direction animation | Done | Closed circuits now show animated current flow on energized wires. Further polish remains possible. |
 | Guided lesson mode | Expanding | Lesson content, hints, visual targets, and starter workspaces live in editable data; basic, open-circuit, brightness, series, parallel, and LED experiments are available. |
 | Logic/memory Logic Lab | Preview | `/logic-lab` is now in the main app with gate truth tables, SR latch state retention, and 1-bit register rising-edge capture previews. |
-| Machine-layer Computer Lab | Preview | `/computer-lab` is now in the main app with an assembly editor, load/step/run/reset controls, registers, memory, and execution-log preview; real execution should next connect to the Rust/WASM bridge. |
+| Machine-layer Computer Lab | Mainline preview | `/computer-lab` is now in the main app with an assembly editor, load/step/run/reset controls, registers, memory, and execution logs; it prefers the Rust/WASM core and can still run the parameterized addition lesson when it falls back to preview. |
 | Workspace records | v0.3 feature complete | The browser automatically restores local workspaces; v0.3 adds Supabase email/password auth, explicit cloud records, renaming, conflict handling, and visible sync states. |
 | More components | v0.4 first slice | Buzzer, motor, diode, capacitor, ammeter, and voltmeter components are available with first-pass educational feedback driven by the node/branch model. |
-| Physical build bridge | First slice | The current workspace can generate, copy, and export a component list, purchase keywords, wiring steps, safety notes, printable assembly sheets, and Markdown experiment reports. |
+| Physical build bridge | Public entry deferred | The underlying code can generate component lists, purchase keywords, wiring steps, and exports, but it is not exposed in the workbench until SKU mapping, safety validation, and classroom use are reliable. |
 | Mobile responsive experience | Released in v0.2 | Small screens now use a canvas-first HUD, component drawer, floating status panel, touch pan/zoom, and larger hit targets. |
 | Workbench image export | First slice | The current workbench can be exported as a PNG image for saving and sharing experiment results. |
 | PWA and cross-device archives | First slice | Manifest, service worker, offline fallback, and current-workbench JSON import/export are available. |

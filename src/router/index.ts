@@ -6,7 +6,7 @@ const router = createRouter({
     {
       path: "/",
       name: "home",
-      component: () => import("@/views/Hub.vue"),
+      component: () => import("@/views/HubClean.vue"),
     },
     {
       path: "/workbench",
@@ -41,6 +41,11 @@ const router = createRouter({
       path: "/computer-lab",
       name: "computer-lab",
       component: () => import("@/views/ComputerLab.vue"),
+    },
+    {
+      path: "/algorithm-lab",
+      name: "algorithm-lab",
+      component: () => import("@/views/AlgorithmLab.vue"),
     },
     {
       path: "/rubiks-cube",

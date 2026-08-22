@@ -60,6 +60,20 @@ test("computer core preview adapter steps through the bundled sample", async () 
   assert.equal(snapshot.log.at(-1), "[  5] 0x0C: HALT");
 });
 
+test("computer core preview adapter also runs the algorithm lab's parameterized addition program", async () => {
+  const core = computerCore.createPreviewComputerCore();
+  const source = "MOV A, #250\nMOV B, #10\nADD A, B\nSTORE A, 0x40\nHALT";
+
+  assert.equal(computerCore.canPreviewSource(source), true);
+  await core.loadProgram(source);
+  const snapshot = await core.runUntilHalt(16);
+
+  assert.equal(snapshot.a, 4);
+  assert.equal(snapshot.b, 10);
+  assert.equal(snapshot.memory[0x40], 4);
+  assert.equal(snapshot.flags.c, true);
+});
+
 test("computer core preview adapter keeps reset and custom source honest", async () => {
   const core = computerCore.createPreviewComputerCore();
 
@@ -79,7 +93,7 @@ test("computer core preview adapter keeps reset and custom source honest", async
   snapshot = await core.loadProgram("MOV A, #7\nHALT");
   assert.equal(snapshot.halted, true);
   assert.equal(snapshot.currentInstruction, "WASM bridge pending");
-  assert.match(snapshot.log.join("\n"), /Custom assembly/);
+  assert.match(snapshot.log.join("\n"), /Other custom assembly/);
 });
 
 test("computer core wasm adapter wraps a wasm-shaped module", async () => {

@@ -85,7 +85,7 @@ Goal: make the project feel more like one product and less like a collection of 
 
 ### Focus
 
-- Repair-task system expansion
+- Side-story boundaries: repair tasks do not occupy mainline entry points
 - Better reports and physical-build deliverables
 - Share/template quality
 - Hub information architecture across signal/circuit, component workshop, logic/memory, machine, algorithm, and experiment areas
@@ -93,14 +93,14 @@ Goal: make the project feel more like one product and less like a collection of 
 
 ### Concrete outcomes
 
-- Repair tasks feel like a deliberate learning path instead of a side mode
+- Repair tasks, Tank Lab, and Rubik's Cube remain clearly labeled side stories that do not interrupt the five-unit mainline
 - Reports and build plans become more useful outside the app
 - The hub makes the five mainline units and the experiment area visibly distinct
 - Users can understand what the project is for within one screen
 
 ### Candidate tasks
 
-- Add more repair tasks with a clearer difficulty ladder and review loop
+- Only after the mainline is stable, add a clearer difficulty ladder and review loop to repair tasks
 - Improve experiment-report readability and printable usefulness
 - Improve physical build-plan wording, grouping, and export quality
 - Add or refine reusable lesson/demo templates

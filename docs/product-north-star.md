@@ -86,6 +86,7 @@ Goal: make algorithms more than code snippets or animations by letting users dri
 
 Candidate capabilities:
 
+- `/algorithm-lab`: a minimal two-number addition slice that synchronizes program, registers, and a memory write
 - Stacks, queues, linked lists, trees, and hash tables
 - Sorting, searching, recursion, backtracking, and graph algorithms
 - Synchronized views of array changes, memory reads/writes, register updates, and instruction execution
@@ -98,10 +99,10 @@ The ideal experience is not just "watch an algorithm animation"; it is being abl
 | --- | --- | --- |
 | Circuit workbench | Mainline: signal and circuit layer | Foundation |
 | Component Workshop | Mainline: component-building unit | Build relays and logic gates, then publish modules |
-| Repair tasks | Mainline: signal diagnosis training | Teaches signal paths and faults |
+| Repair tasks | Side story: signal diagnosis | Standalone fault-diagnosis levels outside the five-unit mainline |
 | Logic Lab | Mainline: logic and memory layer | Bridges circuit signals and machine state |
 | CPU simulator | Mainline: machine layer | Main-app preview exists; next, wire Rust/WASM |
-| Algorithm visualization | Mainline: algorithm layer | Future expansion |
+| Algorithm Lab | Mainline: algorithm layer | Minimal program, register, and memory-linked slice is available |
 | Tank Lab | Experiment zone | Keep visible, but secondary |
 | 3D Rubik's Cube | Experiment zone | Keep visible, but secondary |
 

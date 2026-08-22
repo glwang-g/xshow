@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { Activity, ArrowRight, Binary, CircuitBoard, Cpu, Home, RotateCcw, Zap } from "@lucide/vue";
+import { Activity, ArrowLeft, ArrowRight, Binary, CircuitBoard, Cpu, Home, Pencil, RotateCcw, Trash2, Zap } from "@lucide/vue";
 import { RouterLink } from "vue-router";
 import logoUrl from "@/assets/logo.png";
 import {
@@ -15,8 +15,10 @@ import {
   type LogicGateKind,
 } from "@/lib/logic-core";
 import {
+  evaluatePublishedModule,
   loadPublishedRelayModules,
-  relayOutputForInput,
+  removePublishedRelayModule,
+  renamePublishedRelayModule,
   type PublishedRelayModule,
 } from "@/lib/published-modules";
 
@@ -29,11 +31,12 @@ const latchReset = ref(false);
 const registerData = ref<LogicBit>(1);
 const registerQ = ref<LogicBit>(0);
 const publishedRelays = ref<PublishedRelayModule[]>([]);
-const relayInputs = ref<Record<string, boolean>>({});
+const relayInputs = ref<Record<string, boolean[]>>({});
+const moduleMessage = ref("");
 
 onMounted(() => {
   publishedRelays.value = loadPublishedRelayModules();
-  relayInputs.value = Object.fromEntries(publishedRelays.value.map((module) => [module.id, false]));
+  relayInputs.value = Object.fromEntries(publishedRelays.value.map((module) => [module.id, Array(module.behavior.gate === "AND" || module.behavior.gate === "OR" ? 2 : 1).fill(false)]));
 });
 
 const selectedGateSummary = computed(
@@ -75,12 +78,44 @@ function resetRegister() {
   registerData.value = 1;
 }
 
-function toggleRelayInput(module: PublishedRelayModule) {
-  relayInputs.value[module.id] = !relayInputs.value[module.id];
+function moduleInputCount(module: PublishedRelayModule) {
+  return module.behavior.gate === "AND" || module.behavior.gate === "OR" ? 2 : 1;
+}
+
+function toggleRelayInput(module: PublishedRelayModule, index: number) {
+  const inputs = [...(relayInputs.value[module.id] ?? Array(moduleInputCount(module)).fill(false))];
+  inputs[index] = !inputs[index];
+  relayInputs.value[module.id] = inputs;
 }
 
 function relayOutput(module: PublishedRelayModule) {
-  return relayOutputForInput(module, relayInputs.value[module.id] ?? false) ? 1 : 0;
+  return evaluatePublishedModule(module, relayInputs.value[module.id] ?? []) ? 1 : 0;
+}
+
+function removeModule(module: PublishedRelayModule) {
+  if (!window.confirm(`删除“${module.name}”？这不会影响工作台中的原始电路。`)) {
+    return;
+  }
+  if (removePublishedRelayModule(module.id)) {
+    publishedRelays.value = publishedRelays.value.filter((item) => item.id !== module.id);
+    delete relayInputs.value[module.id];
+    moduleMessage.value = `已删除 ${module.name}。`;
+    return;
+  }
+  moduleMessage.value = "删除失败，请稍后重试。";
+}
+
+function renameModule(module: PublishedRelayModule) {
+  const name = window.prompt("给这个模块起一个名字：", module.name);
+  if (name === null) {
+    return;
+  }
+  if (renamePublishedRelayModule(module.id, name)) {
+    publishedRelays.value = publishedRelays.value.map((item) => item.id === module.id ? { ...item, name: name.trim().slice(0, 80) } : item);
+    moduleMessage.value = "模块名称已更新。";
+    return;
+  }
+  moduleMessage.value = name.trim() ? "改名失败，请稍后重试。" : "名称不能为空。";
 }
 </script>
 
@@ -109,14 +144,15 @@ function relayOutput(module: PublishedRelayModule) {
             class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-3 sm:text-sm"
           >
             <CircuitBoard class="h-4 w-4" />
-            <span class="truncate">电路层</span>
+            <ArrowLeft class="h-4 w-4" />
+            <span class="truncate">上一步：器件工坊</span>
           </RouterLink>
           <RouterLink
             to="/computer-lab"
             class="inline-flex h-9 min-w-0 items-center justify-center gap-1.5 rounded-md border border-slate-200 bg-white px-2 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:gap-2 sm:px-3 sm:text-sm"
           >
-            <Cpu class="h-4 w-4" />
-            <span class="truncate">机器层</span>
+            <ArrowRight class="h-4 w-4" />
+            <span class="truncate">下一步：机器层</span>
           </RouterLink>
         </div>
       </header>
@@ -176,33 +212,75 @@ function relayOutput(module: PublishedRelayModule) {
                 <div class="flex items-start justify-between gap-3">
                   <div>
                     <div class="font-mono text-sm font-semibold text-slate-950">{{ module.name }}</div>
-                    <div class="mt-1 text-xs text-slate-500">{{ module.behavior.contactMode === 'normally-closed' ? 'NC：输入为 0 时触点导通' : 'NO：输入为 1 时触点导通' }}</div>
+                    <div class="mt-1 text-xs text-slate-500">{{ module.behavior.gate ?? (module.behavior.contactMode === 'normally-closed' ? 'NOT' : 'RELAY') }} · {{ module.kind === 'logic-gate' ? '来自器件工坊课程' : '继电器端口模块' }}</div>
                   </div>
-                  <span class="rounded border px-2 py-1 font-mono text-xs font-semibold" :class="relayOutput(module) ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-700'">
-                    OUT {{ relayOutput(module) }}
-                  </span>
+                  <div class="flex items-center gap-1">
+                    <span class="rounded border px-2 py-1 font-mono text-xs font-semibold" :class="relayOutput(module) ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-700'">
+                      OUT {{ relayOutput(module) }}
+                    </span>
+                    <button
+                      type="button"
+                      class="inline-flex h-7 w-7 items-center justify-center rounded border border-transparent text-slate-400 hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700"
+                      :title="`重命名 ${module.name}`"
+                      @click="renameModule(module)"
+                    >
+                      <Pencil class="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      class="inline-flex h-7 w-7 items-center justify-center rounded border border-transparent text-slate-400 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                      :title="`删除 ${module.name}`"
+                      @click="removeModule(module)"
+                    >
+                      <Trash2 class="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-                <div class="mt-3 grid grid-cols-2 gap-2">
+                <div class="mt-3 grid gap-2" :class="moduleInputCount(module) === 2 ? 'grid-cols-3' : 'grid-cols-2'">
                   <button
+                    v-for="inputIndex in moduleInputCount(module)"
+                    :key="inputIndex"
                     type="button"
                     class="flex h-10 items-center justify-between rounded-md border px-3 text-sm font-medium"
-                    :class="relayInputs[module.id] ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-white text-slate-500'"
-                    @click="toggleRelayInput(module)"
+                    :class="relayInputs[module.id]?.[inputIndex - 1] ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-white text-slate-500'"
+                    @click="toggleRelayInput(module, inputIndex - 1)"
                   >
-                    线圈输入
-                    <span class="font-mono font-bold">{{ Number(relayInputs[module.id] ?? false) }}</span>
+                    {{ moduleInputCount(module) === 1 ? '输入' : `输入 ${inputIndex === 1 ? 'A' : 'B'}` }}
+                    <span class="font-mono font-bold">{{ Number(relayInputs[module.id]?.[inputIndex - 1] ?? false) }}</span>
                   </button>
                   <div class="flex h-10 items-center rounded-md border border-slate-200 bg-white px-3 font-mono text-xs text-slate-600">
                     {{ module.ports.map((port) => port.label).join(' · ') }}
                   </div>
                 </div>
-                <details class="mt-3 text-xs text-slate-500">
-                  <summary class="cursor-pointer text-cyan-700">查看来源快照（{{ module.implementation.parts.length }} 个元件，{{ module.implementation.wires.length }} 根导线）</summary>
-                  <p class="mt-2 leading-5">已保存线圈、触点、接线与端口映射。下一步将支持直接在工作台展开此快照。</p>
-                </details>
+                <div class="relative mt-3 rounded-md border border-dashed border-cyan-300 bg-white/70 px-3 pb-3 pt-5">
+                  <span class="absolute -top-2 left-2 rounded bg-cyan-50 px-1.5 text-[10px] font-medium text-cyan-800">继电器核心 · 2 个器件 / 4 个端点</span>
+                  <div class="grid grid-cols-[1fr_20px_1fr] items-center gap-2 text-xs">
+                    <div class="rounded border border-teal-200 bg-teal-50 px-2 py-2 text-center text-teal-900">
+                      <div class="font-medium">线圈</div>
+                      <div class="mt-1 font-mono text-[10px] text-teal-700">A · B</div>
+                    </div>
+                    <div class="h-px bg-cyan-400"></div>
+                    <div class="rounded border border-amber-200 bg-amber-50 px-2 py-2 text-center text-amber-900">
+                      <div class="font-medium">触点</div>
+                      <div class="mt-1 font-mono text-[10px] text-amber-700">COM · {{ module.behavior.contactMode === 'normally-closed' ? 'NC' : 'NO' }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                  <span>{{ module.verification ? `已通过 ${module.verification.lessonId} · ${module.verification.truthTable.length}/${module.verification.truthTable.length} 组输入` : '早期模块：未记录课程验证' }}</span>
+                  <span>核心：{{ module.implementation.parts.length }} 个元件，{{ module.implementation.wires.length }} 根导线</span>
+                  <RouterLink
+                    :to="{ path: '/workbench/workshop', query: { module: module.id } }"
+                    class="inline-flex h-8 items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-2 text-xs font-medium text-cyan-800 hover:bg-cyan-100"
+                  >
+                    在工坊展开
+                    <ArrowRight class="h-3.5 w-3.5" />
+                  </RouterLink>
+                </div>
               </article>
             </div>
-            <p v-else class="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">还没有已发布模块。回到电路层，绑定线圈和弹簧开关后，在属性面板发布 RelaySwitch。</p>
+            <p v-if="moduleMessage" class="mt-3 text-xs text-slate-500">{{ moduleMessage }}</p>
+            <p v-if="!publishedRelays.length" class="mt-4 rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-4 text-sm text-slate-500">还没有已发布模块。回到电路层，绑定线圈和弹簧开关后，在属性面板发布 RelaySwitch。</p>
           </section>
 
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">

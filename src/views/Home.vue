@@ -3354,6 +3354,9 @@ function loadPublishedModuleFromRoute() {
     return false;
   }
 
+  // Expanding a module is a navigation action, but it still replaces the
+  // editable board. Keep the caller's work recoverable with Undo.
+  pushEditorHistory();
   activeLessonId.value = lessonCatalog.some((lesson) => lesson.id === module.verification?.lessonId)
     ? module.verification?.lessonId as string
     : "build-a-relay";

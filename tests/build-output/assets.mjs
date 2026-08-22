@@ -70,3 +70,20 @@ test("optional Rubik renderer and solver stay behind their exploration route", (
   assert.equal(readDistText("index.html").includes(rendererAsset), false);
   assert.equal(readDistText("index.html").includes(solverAsset), false);
 });
+
+test("workbench palette and status panel stay behind on-demand imports", () => {
+  const assets = readdirSync(path.join(distRoot, "assets"));
+  const homeAsset = assets.find((asset) => asset.startsWith("Home-") && asset.endsWith(".js"));
+  const paletteAsset = assets.find((asset) => asset.startsWith("ComponentPalette-") && asset.endsWith(".js"));
+  const statusPanelAsset = assets.find((asset) => asset.startsWith("StatusPanel-") && asset.endsWith(".js"));
+
+  assert.ok(homeAsset);
+  assert.ok(paletteAsset);
+  assert.ok(statusPanelAsset);
+
+  const homeSource = readDistText(`assets/${homeAsset}`);
+  for (const asset of [paletteAsset, statusPanelAsset]) {
+    assert.match(homeSource, new RegExp(`import\\("\\./${asset}"\\)`));
+    assert.doesNotMatch(homeSource, new RegExp(`from"\\./${asset}"`));
+  }
+});

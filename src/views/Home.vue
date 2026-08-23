@@ -146,6 +146,7 @@ const route = useRoute();
 const workbenchMode = computed<"free" | "workshop">(() => route.name === "workbench-workshop" ? "workshop" : "free");
 const canvasViewportRef = ref<HTMLElement | null>(null);
 const workbenchRef = ref<HTMLElement | null>(null);
+const desktopViewport = ref(isDesktopViewport());
 const activeLessonId = ref(lessonCatalog[0].id);
 const lastSavedAt = ref<string | null>(null);
 const recordTitle = ref("");
@@ -3488,6 +3489,7 @@ watch(
 );
 
 function handleMobileViewportChange() {
+  desktopViewport.value = isDesktopViewport();
   updateCanvasViewportSize();
   fitMobileWorkbenchAfterRender("auto", true);
 }
@@ -3658,6 +3660,7 @@ function startCloudAuthSession() {
 }
 
 onMounted(() => {
+  desktopViewport.value = isDesktopViewport();
   fitMobileWorkbenchAfterRender();
   window.addEventListener("keydown", handleWorkbenchKeydown);
   window.addEventListener("resize", handleMobileViewportChange);
@@ -3771,7 +3774,7 @@ onBeforeUnmount(() => {
         @click="palettePanelOpen = false; statusPanelOpen = false"
       />
 
-      <div v-if="palettePanelOpen" class="contents xl:col-start-1 xl:row-start-1 xl:block xl:min-h-0">
+      <div v-if="desktopViewport || palettePanelOpen" class="contents xl:col-start-1 xl:row-start-1 xl:block xl:min-h-0">
         <ComponentPalette
           class="xl:h-full"
           :open="palettePanelOpen"
@@ -3888,7 +3891,7 @@ onBeforeUnmount(() => {
         @toggle-status="statusPanelOpen = !statusPanelOpen; palettePanelOpen = false"
       />
 
-      <div v-if="statusPanelOpen" class="contents xl:col-start-3 xl:row-start-1 xl:block xl:min-h-0">
+      <div v-if="desktopViewport || statusPanelOpen" class="contents xl:col-start-3 xl:row-start-1 xl:block xl:min-h-0">
         <StatusPanel
           class="xl:h-full"
           v-model:active-lesson-id="activeLessonId"

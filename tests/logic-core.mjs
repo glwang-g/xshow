@@ -3,6 +3,7 @@ import test from "node:test";
 import { compiledModuleUrl } from "./helpers/compile-module.mjs";
 
 const logicCore = await import(await compiledModuleUrl("../src/lib/logic-core.ts", import.meta.url));
+const registerMission = await import(await compiledModuleUrl("../src/lib/clocked-register-mission.ts", import.meta.url));
 
 test("logic gates produce stable truth tables", () => {
   assert.deepEqual(logicCore.truthTable("AND").map((row) => row.out), [0, 0, 0, 1]);
@@ -66,4 +67,15 @@ test("register trace captures data only on rising clock edges", () => {
       [true, 0],
     ],
   );
+});
+
+test("clocked register mission records a replayable capture event", () => {
+  let state = registerMission.createClockedRegisterMissionState();
+  state = registerMission.tickClockedRegisterMission(state, { source: "user", type: "set-input", payload: { data: 1, clock: 0 } });
+  state = registerMission.tickClockedRegisterMission(state, { source: "user", type: "pulse-clock", payload: { clock: 1 } });
+
+  assert.equal(state.data.q, 1);
+  assert.equal(state.tick, 2);
+  assert.deepEqual(state.events.map((event) => event.type), ["register.held", "register.captured"]);
+  assert.equal(state.events.at(-1).payload.captured, true);
 });

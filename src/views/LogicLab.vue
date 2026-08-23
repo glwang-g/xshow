@@ -15,6 +15,7 @@ import {
   type LogicGateKind,
 } from "@/lib/logic-core";
 import { composeFullAdder, composeHalfAdder } from "@/lib/logic-composition";
+import { createClockedRegisterMissionState, tickClockedRegisterMission } from "@/lib/clocked-register-mission";
 import {
   evaluatePublishedModule,
   loadPublishedRelayModules,
@@ -31,6 +32,7 @@ const latchSet = ref(false);
 const latchReset = ref(false);
 const registerData = ref<LogicBit>(1);
 const registerQ = ref<LogicBit>(0);
+const registerMission = ref(createClockedRegisterMissionState());
 const publishedRelays = ref<PublishedRelayModule[]>([]);
 const relayInputs = ref<Record<string, boolean[]>>({});
 const moduleMessage = ref("");
@@ -78,12 +80,15 @@ function resetLatch() {
 }
 
 function pulseRegister() {
-  registerQ.value = registerData.value;
+  registerMission.value = tickClockedRegisterMission(registerMission.value, { source: "user", type: "pulse-clock", payload: { clock: 1, data: registerData.value } });
+  registerQ.value = registerMission.value.data.q;
+  registerMission.value = tickClockedRegisterMission(registerMission.value, { source: "system", type: "clock-low", payload: { clock: 0 } });
 }
 
 function resetRegister() {
   registerQ.value = 0;
   registerData.value = 1;
+  registerMission.value = createClockedRegisterMissionState();
 }
 
 function moduleInputCount(module: PublishedRelayModule) {
@@ -538,6 +543,10 @@ function renameModule(module: PublishedRelayModule) {
                   复位
                 </button>
               </div>
+
+              <p class="mt-3 rounded-md border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs text-cyan-800">
+                tick {{ registerMission.tick }} · {{ registerMission.events?.at(-1)?.message ?? "等待第一个时钟事件" }}
+              </p>
 
               <div class="mt-4 grid grid-cols-6 gap-1.5">
                 <div

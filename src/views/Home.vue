@@ -3771,16 +3771,17 @@ onBeforeUnmount(() => {
         @click="palettePanelOpen = false; statusPanelOpen = false"
       />
 
-      <ComponentPalette
-        v-if="palettePanelOpen"
-        class="xl:col-start-1"
-        :open="palettePanelOpen"
-        @add-part="addPart"
-        @close="palettePanelOpen = false"
-      />
+      <div v-if="palettePanelOpen" class="contents xl:col-start-1 xl:row-start-1 xl:block xl:min-h-0">
+        <ComponentPalette
+          class="xl:h-full"
+          :open="palettePanelOpen"
+          @add-part="addPart"
+          @close="palettePanelOpen = false"
+        />
+      </div>
 
       <WorkbenchCanvas
-        class="xl:col-start-2"
+        class="xl:col-start-2 xl:row-start-1"
         :active-lesson="activeLesson"
         :apply-pwa-update="applyPwaUpdate"
         :battery-polarity-label="batteryPolarityLabel"
@@ -3887,10 +3888,10 @@ onBeforeUnmount(() => {
         @toggle-status="statusPanelOpen = !statusPanelOpen; palettePanelOpen = false"
       />
 
-      <StatusPanel
-        v-if="statusPanelOpen"
-        class="xl:col-start-3"
-        v-model:active-lesson-id="activeLessonId"
+      <div v-if="statusPanelOpen" class="contents xl:col-start-3 xl:row-start-1 xl:block xl:min-h-0">
+        <StatusPanel
+          class="xl:h-full"
+          v-model:active-lesson-id="activeLessonId"
         v-model:cloud-email="cloudEmail"
         v-model:cloud-password="cloudPassword"
         v-model:cloud-password-confirm="cloudPasswordConfirm"
@@ -3990,7 +3991,8 @@ onBeforeUnmount(() => {
         @copy-workspace-share-link="copyWorkspaceShareLink"
         @export-experiment-report="exportExperimentReport"
         @export-workspace-json="exportWorkspaceJson"
-      />
+        />
+      </div>
     </section>
   </main>
 </template>

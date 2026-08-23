@@ -17,12 +17,14 @@ test("workbench defers closed palette and status panel code while keeping the ca
   assert.match(homeSource, /defineAsyncComponent\(\(\) => import\("@\/components\/workbench\/ComponentPalette\.vue"\)\)/);
   assert.match(homeSource, /defineAsyncComponent\(\(\) => import\("@\/components\/workbench\/StatusPanel\.vue"\)\)/);
   assert.match(homeSource, /import WorkbenchCanvas from "@\/components\/workbench\/WorkbenchCanvas\.vue"/);
-  assert.match(homeSource, /<ComponentPalette\s+v-if="palettePanelOpen"/);
-  assert.match(homeSource, /<StatusPanel\s+v-if="statusPanelOpen"/);
+  assert.match(homeSource, /<div v-if="palettePanelOpen"[\s\S]*?<ComponentPalette/);
+  assert.match(homeSource, /<div v-if="statusPanelOpen"[\s\S]*?<StatusPanel/);
 });
 
-test("desktop workbench regions keep their grid columns when deferred panels are closed", () => {
-  assert.match(homeSource, /<ComponentPalette\s+v-if="palettePanelOpen"\s+class="xl:col-start-1"/);
-  assert.match(homeSource, /<WorkbenchCanvas\s+class="xl:col-start-2"/);
-  assert.match(homeSource, /<StatusPanel\s+v-if="statusPanelOpen"\s+class="xl:col-start-3"/);
+test("desktop workbench regions stay in one explicit grid row after deferred panels mount", () => {
+  assert.match(homeSource, /<div v-if="palettePanelOpen" class="contents xl:col-start-1 xl:row-start-1 xl:block xl:min-h-0"/);
+  assert.match(homeSource, /<WorkbenchCanvas\s+class="xl:col-start-2 xl:row-start-1"/);
+  assert.match(homeSource, /<div v-if="statusPanelOpen" class="contents xl:col-start-3 xl:row-start-1 xl:block xl:min-h-0"/);
+  assert.match(homeSource, /<ComponentPalette\s+class="xl:h-full"/);
+  assert.match(homeSource, /<StatusPanel\s+class="xl:h-full"/);
 });

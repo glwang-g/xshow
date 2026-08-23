@@ -23,7 +23,7 @@
 | 部署、服务器和发布流程 | `docs/DEPLOYMENT.zh-CN.md` |
 | 跨项目 Freexlib 世界契约 | 同级 `freexlib-portal` 仓库 -> `docs/world-contract.zh-CN.md` |
 | 移动端、PWA、QA 记录 | `docs/mobile-qa.zh-CN.md`、`docs/v0.2-qa-report.zh-CN.md` |
-| 最近一次 dev 拉取做了什么 | `docs/dev-pull-summary-2026-07-03.zh-CN.md` |
+| 最近一次开发推进和收口做了什么 | `docs/dev-summary-2026-08-24.zh-CN.md` |
 | CPU 模拟器与 Rust/WASM 融合 | `docs/rust-wasm-computer-core.zh-CN.md`、`modules/cpu-sim/README.md` |
 | 具体 issue 想法或待拆任务 | `docs/issue-drafts/*.zh-CN.md` |
 

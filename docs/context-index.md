@@ -23,7 +23,7 @@ Use this index to quickly find the repository conventions and durable notes that
 | Deployment and server release flow | `docs/DEPLOYMENT.md` |
 | Mobile, PWA, and QA notes | `docs/mobile-qa.md`, `docs/v0.2-qa-report.md` |
 | Cross-project Freexlib world contract | sibling repo `freexlib-portal` -> `docs/world-contract.md` |
-| What the latest dev pull added | `docs/dev-pull-summary-2026-07-03.zh-CN.md` |
+| What changed in the latest development and hardening pass | `docs/dev-summary-2026-08-24.md` |
 | CPU simulator and Rust/WASM integration | `docs/rust-wasm-computer-core.md`, `modules/cpu-sim/README.md` |
 | Issue ideas or scoped task drafts | `docs/issue-drafts/*.md` |
 

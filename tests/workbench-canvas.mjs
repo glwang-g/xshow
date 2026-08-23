@@ -20,3 +20,9 @@ test("workbench defers closed palette and status panel code while keeping the ca
   assert.match(homeSource, /<ComponentPalette\s+v-if="palettePanelOpen"/);
   assert.match(homeSource, /<StatusPanel\s+v-if="statusPanelOpen"/);
 });
+
+test("desktop workbench regions keep their grid columns when deferred panels are closed", () => {
+  assert.match(homeSource, /<ComponentPalette\s+v-if="palettePanelOpen"\s+class="xl:col-start-1"/);
+  assert.match(homeSource, /<WorkbenchCanvas\s+class="xl:col-start-2"/);
+  assert.match(homeSource, /<StatusPanel\s+v-if="statusPanelOpen"\s+class="xl:col-start-3"/);
+});

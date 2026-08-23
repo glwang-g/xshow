@@ -3773,12 +3773,14 @@ onBeforeUnmount(() => {
 
       <ComponentPalette
         v-if="palettePanelOpen"
+        class="xl:col-start-1"
         :open="palettePanelOpen"
         @add-part="addPart"
         @close="palettePanelOpen = false"
       />
 
       <WorkbenchCanvas
+        class="xl:col-start-2"
         :active-lesson="activeLesson"
         :apply-pwa-update="applyPwaUpdate"
         :battery-polarity-label="batteryPolarityLabel"
@@ -3887,6 +3889,7 @@ onBeforeUnmount(() => {
 
       <StatusPanel
         v-if="statusPanelOpen"
+        class="xl:col-start-3"
         v-model:active-lesson-id="activeLessonId"
         v-model:cloud-email="cloudEmail"
         v-model:cloud-password="cloudPassword"

@@ -1,76 +1,65 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, defineAsyncComponent, onBeforeUnmount, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 import WorkbenchCanvas from "@/components/workbench/WorkbenchCanvas.vue";
 import WorkbenchHeader from "@/components/workbench/WorkbenchHeader.vue";
 import { useWorkbenchHistory } from "@/composables/useWorkbenchHistory";
-import { lessonCatalog, type LessonCheckId, type LessonWorkspace } from "@/data/lessons";
+import { useWireInteraction } from "@/composables/useWireInteraction";
+import { useCanvasViewportGesture } from "@/composables/useCanvasViewportGesture";
+import { useWorkspaceRecords } from "@/composables/useWorkspaceRecords";
+import { useCloudWorkspaceSync } from "@/composables/useCloudWorkspaceSync";
+import { useWorkbenchParts } from "@/composables/useWorkbenchParts";
+import { useWorkbenchPartMovement } from "@/composables/useWorkbenchPartMovement";
+import { useWorkbenchWirePresentation } from "@/composables/useWorkbenchWirePresentation";
+import { useCircuitStatusView } from "@/composables/useCircuitStatusView";
+import { useCircuitLessonChecks } from "@/composables/useCircuitLessonChecks";
+import { useWorkbenchSelection } from "@/composables/useWorkbenchSelection";
+import { useWorkbenchKeyboard } from "@/composables/useWorkbenchKeyboard";
+import { useMobileWorkbenchStarter } from "@/composables/useMobileWorkbenchStarter";
+import { useMobileWorkbenchSizing } from "@/composables/useMobileWorkbenchSizing";
+import { useMobileWorkbenchViewport } from "@/composables/useMobileWorkbenchViewport";
+import { lessonCatalog, type LessonWorkspace } from "@/data/lessons";
 import {
   batteryPolarity,
-  batteryPositiveTerminal,
-  clampResistorOhms,
   evaluateCircuit,
-  hasPath,
-  normalizePartRotation,
-  sameTerminal,
-  terminalId,
-  type AmmeterState,
-  type BuzzerState,
-  type CapacitorState,
   type CircuitPart,
-  type DiodeState,
-  type LedState,
-  type MotorState,
   type PartType,
   type TerminalKey,
   type TerminalRef,
-  type VoltmeterState,
   type Wire,
   type WireEnd,
 } from "@/lib/circuit";
 import {
   cloudConfig,
-  deleteCloudWorkspaceRecord,
-  getCloudUser,
-  listCloudWorkspaceRecords,
-  onCloudAuthStateChange,
-  renameCloudWorkspaceRecord,
-  saveCloudWorkspaceRecord,
-  sendPasswordResetEmail,
-  signInWithEmailPassword,
-  signOutCloud,
-  signUpWithEmailPassword,
-  updateCloudPassword,
-  updateCloudWorkspaceRecord,
-  type CloudWorkspaceRecord,
 } from "@/lib/cloud";
-import { getSpec, workbench, type StatusPanelTab } from "@/lib/workbench-ui";
+import { getSpec, workbench } from "@/lib/workbench-ui";
 import {
-  type CloudAuthMode,
   type CloudSyncState,
-  type CloudSyncStatus,
   type PersistedWorkspace,
-  type SaveCloudWorkspaceOptions,
-  type SavedWorkspaceRecord,
 } from "@/lib/workspace-records";
 import {
-  base64UrlDecode,
-  base64UrlEncode,
   formatSavedTime,
   isPersistedWorkspace,
-  isSavedWorkspaceRecord,
-  sanitizeCloudWorkspaceRecords,
 } from "@/lib/workspace-codec";
-import { formatExperimentReportMarkdown } from "@/lib/experiment-report";
+import { useExperimentReport } from "@/composables/useExperimentReport";
 import type { PhysicalBuildPlan } from "@/lib/physical-build";
-import { exportWorkbenchImage as exportWorkbenchImageFile } from "@/lib/workbench-export";
-import {
-  createPublishedRelayModule,
-  loadPublishedRelayModules,
-  savePublishedRelayModule,
-  verifyRelayPublication,
-} from "@/lib/published-modules";
-import { pwaUpdateAvailableEvent } from "@/pwa";
+import { useWorkbenchImageExport } from "@/composables/useWorkbenchImageExport";
+import { useWorkbenchPartPresentation } from "@/composables/useWorkbenchPartPresentation";
+import { loadPublishedRelayModules } from "@/lib/published-modules";
+import { useRelayPublication } from "@/composables/useRelayPublication";
+import { useCloudWorkspaceView } from "@/composables/useCloudWorkspaceView";
+import { useBeginnerGuide } from "@/composables/useBeginnerGuide";
+import { useWorkbenchWorkspaceState } from "@/composables/useWorkbenchWorkspaceState";
+import { useWorkbenchNavigation } from "@/composables/useWorkbenchNavigation";
+import { useWorkbenchAutosave } from "@/composables/useWorkbenchAutosave";
+import { useWorkbenchGeometry } from "@/composables/useWorkbenchGeometry";
+import { useWorkbenchPointerInteraction } from "@/composables/useWorkbenchPointerInteraction";
+import { useWorkbenchCircuitView } from "@/composables/useWorkbenchCircuitView";
+import { usePwaUpdate } from "@/composables/usePwaUpdate";
+import { useWorkbenchWindowLifecycle } from "@/composables/useWorkbenchWindowLifecycle";
+import { useSafeLocalStorage } from "@/composables/useSafeLocalStorage";
+import { useWorkbenchPanels } from "@/composables/useWorkbenchPanels";
+import { useWorkbenchLessonTargets } from "@/composables/useWorkbenchLessonTargets";
 import { useBoardStore } from "@/stores/board";
 
 // The canvas and header are needed immediately. The palette and side panel
@@ -78,25 +67,6 @@ import { useBoardStore } from "@/stores/board";
 // transfer without changing any editor interaction.
 const ComponentPalette = defineAsyncComponent(() => import("@/components/workbench/ComponentPalette.vue"));
 const StatusPanel = defineAsyncComponent(() => import("@/components/workbench/StatusPanel.vue"));
-
-type TerminalHit = {
-  distance: number;
-  position: {
-    x: number;
-    y: number;
-  };
-  ref: TerminalRef;
-};
-
-type Point = {
-  x: number;
-  y: number;
-};
-
-type LoadWorkspaceOptions = {
-  adaptMobileStarterLayout?: boolean;
-  resetMobileLayout?: boolean;
-};
 
 type WorkbenchBounds = {
   bottom: number;
@@ -107,26 +77,9 @@ type WorkbenchBounds = {
   width: number;
 };
 
-type CloudRecord = CloudWorkspaceRecord<PersistedWorkspace>;
-type BeginnerGuideStepId = "parts" | "wire" | "switch";
-type BeginnerGuideStep = {
-  actionLabel: string;
-  description: string;
-  id: BeginnerGuideStepId;
-  title: string;
-};
-type GuideAssistantMode = "diagnosis" | "menu" | "steps" | "wire";
-type GuideDiagnosisAction = "none" | "status" | "switch" | "wire";
-type GuideDiagnosis = {
-  action: GuideDiagnosisAction;
-  actionLabel: string;
-  description: string;
-  title: string;
-};
 const savedWorkspaceKey = "xshow.workspace.v1";
 const savedRecordsKey = "xshow.workspace.records.v1";
 const guideAssistantDismissedKey = "xshow.guide-assistant.dismissed.v1";
-const cloudUploadSuggestionKeyPrefix = "xshow.cloud.upload-suggestion.v1";
 const maxEditorHistoryEntries = 40;
 const workspaceShareParam = "workspace";
 const githubRepositoryUrl = "https://github.com/glwang-g/xshow";
@@ -142,95 +95,39 @@ const mobileFitPadding = {
 };
 const hiddenPhysicalBuildPlan: PhysicalBuildPlan = { connections: [], items: [], ready: false, summary: "", warnings: [] };
 const board = useBoardStore();
+const localStorage = useSafeLocalStorage();
+const { read: readLocalStorage, remove: removeLocalStorage, write: writeLocalStorage } = localStorage;
+const pwaUpdate = usePwaUpdate();
+const { apply: applyPwaUpdate, dismiss: dismissPwaUpdate, registration: pwaUpdateRegistration } = pwaUpdate;
 const route = useRoute();
 const workbenchMode = computed<"free" | "workshop">(() => route.name === "workbench-workshop" ? "workshop" : "free");
-const canvasViewportRef = ref<HTMLElement | null>(null);
+const {
+  endPointerGesture: endCanvasGesture,
+  handlePointerDown: handleCanvasPointerDown,
+  handlePointerMove: handleCanvasPointerMove,
+  setViewportElement: setCanvasViewportElement,
+  updateViewportSize: updateCanvasViewportSize,
+  viewportRef: canvasViewportRef,
+  viewportSize: canvasViewportSize,
+} = useCanvasViewportGesture({
+  getZoom: () => board.zoom,
+  initialSize: { height: workbench.height, width: workbench.width },
+  isDesktopViewport,
+  setZoom: (value) => board.setZoom(value),
+});
 const workbenchRef = ref<HTMLElement | null>(null);
 const desktopViewport = ref(isDesktopViewport());
 const activeLessonId = ref(lessonCatalog[0].id);
-const lastSavedAt = ref<string | null>(null);
-const recordTitle = ref("");
-const savedRecords = ref<SavedWorkspaceRecord[]>([]);
-const shareLinkState = ref<"copied" | "idle" | "manual">("idle");
-const experimentReportCopyState = ref<"copied" | "idle" | "manual">("idle");
-const cloudAuthBusy = ref(false);
-const cloudAuthError = ref("");
-const cloudAuthMode = ref<CloudAuthMode>("sign-in");
-const cloudAuthMessage = ref("");
-const cloudEmail = ref("");
-const cloudPassword = ref("");
-const cloudPasswordConfirm = ref("");
-const cloudRecordTitle = ref("");
-const cloudRecords = ref<CloudRecord[]>([]);
-const cloudRecordsBusy = ref(false);
-const cloudRecordsError = ref("");
-const cloudRecordsMessage = ref("");
-const cloudPendingSnapshot = ref<PersistedWorkspace | null>(null);
-const cloudPendingTitle = ref("");
-const cloudShouldSuggestInitialUpload = ref(false);
-const cloudSyncStatus = ref<CloudSyncStatus>("idle");
-const cloudActiveRecordId = ref<string | null>(null);
-const cloudLastSyncedAt = ref<string | null>(null);
-const cloudUserEmail = ref<string | null>(null);
-const sharedWorkspaceLoaded = ref(false);
 const workspaceRecoveryMessage = ref("");
-const suppressCloudDirtyMark = ref(false);
-const pwaUpdateRegistration = ref<ServiceWorkerRegistration | null>(null);
-const palettePanelOpen = ref(false);
-const statusPanelOpen = ref(false);
-const statusPanelTab = ref<StatusPanelTab>("lesson");
-const guideAssistantOpen = ref(false);
-const guideAssistantMode = ref<GuideAssistantMode>("menu");
-const beginnerGuideStepIndex = ref(0);
-const lessonCompletePanelOpen = ref(false);
-const dismissedLessonCompletionId = ref<string | null>(null);
-const hoveredWireId = ref<string | null>(null);
-const hoveredEndpoint = ref<{ wireId: string; end: WireEnd } | null>(null);
-const selectedTerminal = ref<TerminalRef | null>(null);
-const selectedWireId = ref<string | null>(null);
+const lastSavedAt = ref<string | null>(null);
 const selectedPartId = ref("bulb-1");
-const newWireDrag = ref<{ from: TerminalRef; moved: boolean; over: TerminalRef | null; x: number; y: number } | null>(
-  null,
-);
-const suppressNextTerminalClick = ref(false);
-const rewiring = ref<{ wireId: string; end: WireEnd } | null>(null);
-const endpointDrag = ref<{ wireId: string; end: WireEnd; x: number; y: number; over: TerminalRef | null } | null>(
-  null,
-);
-const dragging = ref<{ historyRecorded: boolean; id: string; offsetX: number; offsetY: number } | null>(null);
-const viewportPointers = new Map<number, { x: number; y: number }>();
-const viewportGesture = ref<
-  | { mode: "pan"; lastX: number; lastY: number }
-  | { distance: number; mode: "pinch"; zoom: number }
-  | null
->(null);
-const canvasViewportSize = ref({ height: workbench.height, width: workbench.width });
 const mobileWorkbenchSize = ref({ ...mobileWorkbenchBase });
-let mobileFitFrame: number | null = null;
-let mobileScrollFrame: number | null = null;
-let cloudStartupTimer: number | null = null;
-
-function updateCanvasViewportSize() {
-  if (!canvasViewportRef.value) {
-    return;
-  }
-
-  const nextSize = {
-    height: canvasViewportRef.value.clientHeight,
-    width: canvasViewportRef.value.clientWidth,
-  };
-
-  if (nextSize.height === canvasViewportSize.value.height && nextSize.width === canvasViewportSize.value.width) {
-    return;
-  }
-
-  canvasViewportSize.value = nextSize;
-}
-
-function setCanvasViewportElement(element: HTMLElement | null) {
-  canvasViewportRef.value = element;
-  updateCanvasViewportSize();
-}
+const mobileStarter = useMobileWorkbenchStarter({
+  getSpec: (partType) => getSpec(partType),
+  isDesktopViewport,
+  viewportRef: canvasViewportRef,
+});
+const { isMobilePortraitViewport, mobileStarterWorkspace } = mobileStarter;
 
 function setWorkbenchElement(element: HTMLElement | null) {
   workbenchRef.value = element;
@@ -243,26 +140,6 @@ const parts = ref<CircuitPart[]>([
   { id: "resistor-1", name: "可变电阻器", type: "resistor", x: 330, y: 472, resistance: 48 },
 ]);
 
-const beginnerGuideSteps: BeginnerGuideStep[] = [
-  {
-    id: "parts",
-    title: "先选一个元器件",
-    description: "从元器件面板点一下电池、开关或灯泡，工作台会自动放上去。",
-    actionLabel: "打开元器件",
-  },
-  {
-    id: "wire",
-    title: "拖动圆点就能连线",
-    description: "按住元器件旁边的圆形端子，拖到另一个端子上松手，就能接出一根导线。",
-    actionLabel: "高亮端子",
-  },
-  {
-    id: "switch",
-    title: "点开关看结果",
-    description: "电路接通后，点击开关，灯泡、导线动画和状态面板会一起变化。",
-    actionLabel: "找到开关",
-  },
-];
 
 const wires = ref<Wire[]>([
   {
@@ -286,6 +163,41 @@ const wires = ref<Wire[]>([
     to: { partId: "battery-1", terminal: "a" },
   },
 ]);
+const mobileSizing = useMobileWorkbenchSizing({
+  getSpec,
+  isDesktopViewport,
+  isPortraitViewport: isMobilePortraitViewport,
+  padding: mobileFitPadding,
+  parts,
+  viewportRef: canvasViewportRef,
+  workbench,
+});
+const {
+  mobileContentBounds,
+  mobileDefaultWorkbenchSize,
+  mobileFitZoom,
+  mobileVisibleWorkbenchSize,
+} = mobileSizing;
+const mobileViewport = useMobileWorkbenchViewport({
+  boardZoom: () => board.zoom,
+  canvasViewportRef,
+  defaultSize: mobileDefaultWorkbenchSize,
+  fitZoom: mobileFitZoom,
+  isDesktopViewport,
+  mobileContentBounds,
+  mobileVisibleWorkbenchSize,
+  setBoardZoom: (value) => board.setZoom(value),
+  setViewportSize: updateCanvasViewportSize,
+  size: mobileWorkbenchSize,
+});
+const {
+  dispose: disposeMobileViewport,
+  expandMobileWorkbenchTo,
+  fitMobileWorkbench,
+  fitMobileWorkbenchAfterRender,
+  resetMobileView,
+  resetMobileWorkbenchSize,
+} = mobileViewport;
 
 const effectiveWorkbenchSize = computed(() => {
   if (isDesktopViewport()) {
@@ -316,640 +228,79 @@ const effectiveWorkbenchSize = computed(() => {
 });
 
 const selectedPart = computed(() => parts.value.find((part) => part.id === selectedPartId.value));
-const selectedWire = computed(() => wires.value.find((wire) => wire.id === selectedWireId.value));
-const renderedWires = computed(() => {
-  if (!selectedWireId.value) {
-    return wires.value;
-  }
-
-  return [
-    ...wires.value.filter((wire) => wire.id !== selectedWireId.value),
-    ...wires.value.filter((wire) => wire.id === selectedWireId.value),
-  ];
-});
 const simulation = computed(() => evaluateCircuit(parts.value, wires.value));
-const primaryBattery = computed(() => parts.value.find((part) => part.type === "battery"));
+const circuitStatus = useCircuitStatusView(parts, simulation);
+const {
+  ammeterParts,
+  ammeterStatus,
+  bulbBrightness,
+  bulbParts,
+  buzzerParts,
+  buzzerStatus,
+  capacitorParts,
+  capacitorStatus,
+  currentAnimationDuration,
+  diodeParts,
+  diodeStatus,
+  ledParts,
+  ledStatus,
+  litBulbParts,
+  litLedParts,
+  motorParts,
+  motorStatus,
+  twoBulbBrightnessValues,
+  voltmeterParts,
+  voltmeterStatus,
+} = circuitStatus;
 const mainBulb = computed(() => parts.value.find((part) => part.type === "bulb"));
-const mainBulbBrightness = computed(() =>
-  mainBulb.value ? simulation.value.bulbs[mainBulb.value.id]?.brightness ?? 0 : 0,
-);
-const ledWarnings = computed(() =>
-  Object.values(simulation.value.leds).filter((state) => state.overCurrent || state.reversed),
-);
-const diodeWarnings = computed(() =>
-  Object.values(simulation.value.diodes).filter((state) => state.overCurrent || state.reversed),
-);
-const hasBuzzerParts = computed(() => parts.value.some((part) => part.type === "buzzer"));
-const activeBuzzerCount = computed(() => Object.values(simulation.value.buzzers).filter((state) => state.active).length);
-const hasMotorParts = computed(() => parts.value.some((part) => part.type === "motor"));
-const activeMotorCount = computed(() => Object.values(simulation.value.motors).filter((state) => state.active).length);
-const activeAmmeterCount = computed(() => Object.values(simulation.value.ammeters).filter((state) => state.active).length);
-const activeVoltmeterCount = computed(() => Object.values(simulation.value.voltmeters).filter((state) => state.active).length);
-const currentVisualStrength = computed(() => Math.min(1, simulation.value.currentMilliAmps / 180));
-const cloudSyncState = computed<CloudSyncState>(() => {
-  if (!cloudConfig.configured) {
-    return "unconfigured";
-  }
-
-  if (!cloudUserEmail.value) {
-    return "configured";
-  }
-
-  if (cloudSyncStatus.value !== "idle") {
-    return cloudSyncStatus.value;
-  }
-
-  return "signed-in";
+const mainBulbBrightness = computed(() => mainBulb.value ? simulation.value.bulbs[mainBulb.value.id]?.brightness ?? 0 : 0);
+const circuitLessonChecks = useCircuitLessonChecks({
+  mainBulbBrightness,
+  parts,
+  simulation,
+  status: circuitStatus,
+  wires,
 });
-const cloudSyncLabel = computed(() => {
-  if (cloudSyncState.value === "unconfigured") {
-    return "未配置";
-  }
-
-  if (cloudSyncState.value === "configured") {
-    return "未登录";
-  }
-
-  if (cloudSyncState.value === "local-changes") {
-    return "本地修改";
-  }
-
-  if (cloudSyncState.value === "syncing") {
-    return "同步中";
-  }
-
-  if (cloudSyncState.value === "synced") {
-    return "已同步";
-  }
-
-  if (cloudSyncState.value === "failed") {
-    return "同步失败";
-  }
-
-  return "已登录";
+const circuitView = useWorkbenchCircuitView({ activeLessonId, lessonChecks: circuitLessonChecks, parts, simulation, status: circuitStatus });
+const {
+  activeAmmeterCount, activeBuzzerCount, activeLesson, activeLessonGuide, activeMotorCount, activeVoltmeterCount,
+  currentVisualStrength, diodeWarnings, hasBuzzerParts, hasMotorParts, ledWarnings, lessonComplete, lessonProgress,
+  lessonStepStates, mobileLessonStripText, nextLessonStep, primaryBattery,
+} = circuitView;
+const panels = useWorkbenchPanels({ activeLessonId, lessonComplete });
+const {
+  closeLessonCompletePanel,
+  dismissedLessonCompletionId,
+  lessonCompletePanelOpen,
+  openMobileStatusPanel,
+  palettePanelOpen,
+  statusPanelOpen,
+  statusPanelTab,
+} = panels;
+const lessonTargets = useWorkbenchLessonTargets(activeLessonGuide);
+const { isLessonPartTarget, isLessonTerminalTarget } = lessonTargets;
+const experimentReport = useExperimentReport({
+  activeLesson,
+  lessonStepStates,
+  parts,
+  simulation,
+  wires,
 });
-const cloudSyncDescription = computed(() => {
-  if (cloudSyncState.value === "unconfigured") {
-    return "配置 Supabase 后可开启云端记录，本地玩法不受影响。";
-  }
-
-  if (cloudSyncState.value === "configured") {
-    return "使用邮箱和密码登录后，可跨设备保存实验记录。";
-  }
-
-  if (cloudSyncState.value === "local-changes") {
-    return "当前工作台已有本地修改，保存到云端后可在其他设备继续。";
-  }
-
-  if (cloudSyncState.value === "syncing") {
-    return "正在和云端记录同步。";
-  }
-
-  if (cloudSyncState.value === "synced") {
-    return cloudLastSyncedAt.value ? `最近同步：${formatSavedTime(cloudLastSyncedAt.value)}` : "当前工作台已保存到云端。";
-  }
-
-  if (cloudSyncState.value === "failed") {
-    return "刚才的云端操作失败了，本地工作台仍会自动保存。";
-  }
-
-  return "可以保存到云端记录，并在其他设备登录后继续。";
+const {
+  copy: copyExperimentReport,
+  copyState: experimentReportCopyState,
+  currentMarkdown: currentExperimentReportMarkdown,
+  dispose: disposeExperimentReport,
+  download: exportExperimentReport,
+} = experimentReport;
+const relayPublication = useRelayPublication({
+  activeLesson,
+  lessonComplete,
+  parts,
+  wires,
+  workbenchMode,
 });
-const cloudSyncBadgeClass = computed(() => {
-  if (cloudSyncState.value === "synced") {
-    return "bg-emerald-100 text-emerald-800";
-  }
-
-  if (cloudSyncState.value === "local-changes" || cloudSyncState.value === "syncing") {
-    return "bg-amber-100 text-amber-900";
-  }
-
-  if (cloudSyncState.value === "signed-in") {
-    return "bg-cyan-100 text-cyan-800";
-  }
-
-  if (cloudSyncState.value === "failed") {
-    return "bg-rose-100 text-rose-800";
-  }
-
-  return cloudSyncState.value === "configured" ? "bg-cyan-100 text-cyan-800" : "bg-muted text-muted-foreground";
-});
-const activeCloudRecord = computed(() => cloudRecords.value.find((record) => record.id === cloudActiveRecordId.value));
-const cloudAuthTitle = computed(() => {
-  if (cloudAuthMode.value === "sign-up") {
-    return "创建云端账号";
-  }
-
-  if (cloudAuthMode.value === "reset") {
-    return "重置密码";
-  }
-
-  if (cloudAuthMode.value === "update-password") {
-    return "设置新密码";
-  }
-
-  return "登录云端同步";
-});
-const cloudAuthSubmitLabel = computed(() => {
-  if (cloudAuthBusy.value) {
-    return "处理中";
-  }
-
-  if (cloudAuthMode.value === "sign-up") {
-    return "注册并登录";
-  }
-
-  if (cloudAuthMode.value === "reset") {
-    return "发送重置邮件";
-  }
-
-  if (cloudAuthMode.value === "update-password") {
-    return "更新密码";
-  }
-
-  return "登录";
-});
-const cloudAuthHelpText = computed(() => {
-  if (cloudAuthMode.value === "sign-up") {
-    return "注册后 Supabase 可能会发送确认邮件；确认后即可用密码登录。";
-  }
-
-  if (cloudAuthMode.value === "reset") {
-    return "输入账号邮箱，我们会发送一封密码重置邮件。";
-  }
-
-  if (cloudAuthMode.value === "update-password") {
-    return "请输入新密码。更新后，下次就可以直接用邮箱和新密码登录。";
-  }
-
-  return "登录状态会保存在当前浏览器中，下次打开会自动恢复。";
-});
-const cloudSaveLabel = computed(() => {
-  if (cloudRecordsBusy.value) {
-    return "处理中";
-  }
-
-  return cloudActiveRecordId.value ? "更新云端" : "保存云端";
-});
-const currentAnimationDuration = computed(() => {
-  if (!simulation.value.closed || simulation.value.currentMilliAmps <= 0) {
-    return "1.6s";
-  }
-
-  const duration = Math.max(0.45, Math.min(1.8, 1.8 - simulation.value.currentMilliAmps / 160));
-  return `${duration.toFixed(2)}s`;
-});
-
-function bulbParts() {
-  return parts.value.filter((part) => part.type === "bulb");
-}
-
-function litBulbParts() {
-  return bulbParts().filter((part) => (simulation.value.bulbs[part.id]?.brightness ?? 0) > 0);
-}
-
-function bulbBrightness(part: CircuitPart) {
-  return simulation.value.bulbs[part.id]?.brightness ?? 0;
-}
-
-function twoBulbBrightnessValues() {
-  return bulbParts().slice(0, 2).map((part) => bulbBrightness(part));
-}
-
-function ledParts() {
-  return parts.value.filter((part) => part.type === "led");
-}
-
-function litLedParts() {
-  return ledParts().filter((part) => (simulation.value.leds[part.id]?.brightness ?? 0) > 0);
-}
-
-function diodeParts() {
-  return parts.value.filter((part) => part.type === "diode");
-}
-
-function ammeterParts() {
-  return parts.value.filter((part) => part.type === "ammeter");
-}
-
-function voltmeterParts() {
-  return parts.value.filter((part) => part.type === "voltmeter");
-}
-
-function buzzerParts() {
-  return parts.value.filter((part) => part.type === "buzzer");
-}
-
-function motorParts() {
-  return parts.value.filter((part) => part.type === "motor");
-}
-
-function capacitorParts() {
-  return parts.value.filter((part) => part.type === "capacitor");
-}
-
-function ledStatus(part: CircuitPart): LedState {
-  return (
-    simulation.value.leds[part.id] ?? {
-      brightness: 0,
-      brightnessPercent: 0,
-      forward: false,
-      overCurrent: false,
-      reversed: false,
-    }
-  );
-}
-
-function diodeStatus(part: CircuitPart): DiodeState {
-  return (
-    simulation.value.diodes[part.id] ?? {
-      conducting: false,
-      forward: false,
-      overCurrent: false,
-      reversed: false,
-    }
-  );
-}
-
-function capacitorStatus(part: CircuitPart): CapacitorState {
-  return (
-    simulation.value.capacitors[part.id] ?? {
-      chargePercent: 0,
-      charging: false,
-      connected: false,
-      voltage: 0,
-    }
-  );
-}
-
-function ammeterStatus(part: CircuitPart): AmmeterState {
-  return (
-    simulation.value.ammeters[part.id] ?? {
-      active: false,
-      currentMilliAmps: 0,
-    }
-  );
-}
-
-function voltmeterStatus(part: CircuitPart): VoltmeterState {
-  return (
-    simulation.value.voltmeters[part.id] ?? {
-      active: false,
-      voltage: 0,
-    }
-  );
-}
-
-function buzzerStatus(part: CircuitPart): BuzzerState {
-  return (
-    simulation.value.buzzers[part.id] ?? {
-      active: false,
-      volume: 0,
-      volumePercent: 0,
-    }
-  );
-}
-
-function motorStatus(part: CircuitPart): MotorState {
-  return (
-    simulation.value.motors[part.id] ?? {
-      active: false,
-      speed: 0,
-      speedPercent: 0,
-    }
-  );
-}
-
-function hasWireBetween(left: TerminalRef, right: TerminalRef) {
-  return wires.value.some(
-    (wire) =>
-      (sameTerminal(wire.from, left) && sameTerminal(wire.to, right)) ||
-      (sameTerminal(wire.from, right) && sameTerminal(wire.to, left)),
-  );
-}
-
-function hasWirePathBetween(left: TerminalRef, right: TerminalRef) {
-  const graph = new Map<string, string[]>();
-
-  for (const wire of wires.value) {
-    const from = terminalId(wire.from);
-    const to = terminalId(wire.to);
-    graph.set(from, [...(graph.get(from) ?? []), to]);
-    graph.set(to, [...(graph.get(to) ?? []), from]);
-  }
-
-  return hasPath(terminalId(left), terminalId(right), Array.from(graph.entries()).flatMap(([from, targets]) =>
-    targets.map((to) => ({ from, to })),
-  ));
-}
-
-function hasSeriesBulbRoute() {
-  const bulbs = bulbParts();
-  if (bulbs.length < 2) {
-    return false;
-  }
-
-  return bulbs.some((left) =>
-    bulbs.some(
-      (right) =>
-        left.id !== right.id &&
-        (hasWireBetween(
-          { partId: left.id, terminal: "b" },
-          { partId: right.id, terminal: "a" },
-        ) ||
-          hasWireBetween(
-            { partId: left.id, terminal: "a" },
-            { partId: right.id, terminal: "b" },
-          )),
-    ),
-  );
-}
-
-function hasParallelBulbRoute() {
-  const bulbs = bulbParts();
-  if (bulbs.length < 2) {
-    return false;
-  }
-
-  return bulbs.some((left) =>
-    bulbs.some(
-      (right) =>
-        left.id !== right.id &&
-        ((hasWirePathBetween(
-          { partId: left.id, terminal: "a" },
-          { partId: right.id, terminal: "a" },
-        ) &&
-          hasWirePathBetween(
-            { partId: left.id, terminal: "b" },
-            { partId: right.id, terminal: "b" },
-          )) ||
-          (hasWirePathBetween(
-            { partId: left.id, terminal: "a" },
-            { partId: right.id, terminal: "b" },
-          ) &&
-            hasWirePathBetween(
-              { partId: left.id, terminal: "b" },
-              { partId: right.id, terminal: "a" },
-            ))),
-    ),
-  );
-}
-
-function hasSeriesAmmeterWiring() {
-  return (
-    hasWireBetween({ partId: "battery-1", terminal: "b" }, { partId: "switch-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "ammeter-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "ammeter-1", terminal: "b" }, { partId: "bulb-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "bulb-1", terminal: "b" }, { partId: "resistor-1", terminal: "b" }) &&
-    hasWireBetween({ partId: "resistor-1", terminal: "a" }, { partId: "battery-1", terminal: "a" })
-  );
-}
-
-function hasParallelOutputWiring() {
-  return (
-    hasWireBetween({ partId: "battery-1", terminal: "b" }, { partId: "switch-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "buzzer-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "motor-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "buzzer-1", terminal: "b" }, { partId: "resistor-1", terminal: "b" }) &&
-    hasWireBetween({ partId: "motor-1", terminal: "b" }, { partId: "resistor-1", terminal: "b" }) &&
-    hasWireBetween({ partId: "resistor-1", terminal: "a" }, { partId: "battery-1", terminal: "a" })
-  );
-}
-
-function hasSwitchedCapacitorWiring() {
-  return (
-    hasWireBetween({ partId: "battery-1", terminal: "b" }, { partId: "switch-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "capacitor-1", terminal: "b" }) &&
-    hasWireBetween({ partId: "capacitor-1", terminal: "a" }, { partId: "battery-1", terminal: "a" })
-  );
-}
-
-function hasForwardDiodeWiring() {
-  return (
-    hasWireBetween({ partId: "battery-1", terminal: "b" }, { partId: "switch-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "resistor-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "resistor-1", terminal: "b" }, { partId: "diode-1", terminal: "b" }) &&
-    hasWireBetween({ partId: "diode-1", terminal: "a" }, { partId: "battery-1", terminal: "a" })
-  );
-}
-
-function hasRelayParts() {
-  return ["battery", "switch", "coil", "spring", "bulb", "resistor"].every((type) =>
-    parts.value.some((part) => part.type === type),
-  );
-}
-
-function hasRelayLink() {
-  return parts.value.some((part) => part.type === "spring" && part.controlledBy === "coil-1");
-}
-
-function hasEnergizedRelay() {
-  return hasRelayLink() && Boolean(simulation.value.coils["coil-1"]?.energized);
-}
-
-function hasRelayOutput() {
-  return hasEnergizedRelay() && (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) > 0;
-}
-
-function hasNormallyClosedContact() {
-  return parts.value.some(
-    (part) => part.type === "spring" && part.contactMode === "normally-closed" && part.controlledBy === "coil-1",
-  );
-}
-
-function hasNotOutputOn() {
-  return hasNormallyClosedContact() && parts.value.some((part) => part.id === "switch-1" && !part.closed) &&
-    (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) > 0;
-}
-
-function hasNotOutputOff() {
-  return hasNormallyClosedContact() && parts.value.some((part) => part.id === "switch-1" && part.closed) &&
-    Boolean(simulation.value.coils["coil-1"]?.energized) &&
-    (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) === 0;
-}
-
-function hasTwoInputSwitches() {
-  return parts.value.filter((part) => part.type === "switch").length >= 2 && hasRelayParts();
-}
-
-function hasSeriesRelayInputs() {
-  return hasTwoInputSwitches() &&
-    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "switch-2", terminal: "a" }) &&
-    hasWireBetween({ partId: "switch-2", terminal: "b" }, { partId: "coil-1", terminal: "a" });
-}
-
-function hasParallelRelayInputs() {
-  return hasTwoInputSwitches() &&
-    hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "coil-1", terminal: "a" }) &&
-    hasWireBetween({ partId: "switch-2", terminal: "b" }, { partId: "coil-1", terminal: "a" });
-}
-
-const lessonCheckers: Record<LessonCheckId, () => boolean> = {
-  hasActiveBuzzer: () =>
-    buzzerParts().some((part) => {
-      const state = buzzerStatus(part);
-      return state.active && state.volumePercent > 0;
-    }),
-  hasActiveAmmeter: () =>
-    ammeterParts().some((part) => {
-      const state = ammeterStatus(part);
-      return state.active && state.currentMilliAmps > 0;
-    }),
-  hasActiveMotor: () =>
-    motorParts().some((part) => {
-      const state = motorStatus(part);
-      return state.active && state.speedPercent > 0;
-    }),
-  hasActiveVoltmeter: () =>
-    voltmeterParts().some((part) => {
-      const state = voltmeterStatus(part);
-      return state.active && state.voltage > 0;
-    }),
-  hasAdjustedResistor: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) !== 48),
-  hasEnergizedRelay,
-  hasBrightBulb: () => mainBulbBrightness.value >= 0.4,
-  hasBrightParallelBulbs: () =>
-    hasParallelBulbRoute() &&
-    twoBulbBrightnessValues().length >= 2 &&
-    twoBulbBrightnessValues().every((brightness) => brightness >= 0.24),
-  hasCapacitorParts: () =>
-    ["battery", "switch", "capacitor"].every((type) => parts.value.some((part) => part.type === type)),
-  hasCapacitorWithoutMainCurrent: () =>
-    capacitorParts().some((part) => capacitorStatus(part).connected) && simulation.value.currentMilliAmps === 0,
-  hasChargedCapacitor: () =>
-    capacitorParts().some((part) => {
-      const state = capacitorStatus(part);
-      return state.connected && state.chargePercent >= 80;
-    }),
-  hasClosedCircuit: () => simulation.value.closed,
-  hasClosedSwitch: () => parts.value.some((part) => part.type === "switch" && part.closed),
-  hasDarkBulb: () => mainBulbBrightness.value === 0,
-  hasDiodeParts: () =>
-    ["battery", "switch", "resistor", "diode"].every((type) => parts.value.some((part) => part.type === type)),
-  hasDimSeriesBulbs: () =>
-    hasSeriesBulbRoute() &&
-    twoBulbBrightnessValues().length >= 2 &&
-    twoBulbBrightnessValues().every((brightness) => brightness > 0 && brightness <= 0.32),
-  hasForwardDiodeWiring,
-  hasForwardLed: () => ledParts().some((part) => ledStatus(part).forward),
-  hasLedParts: () =>
-    ["battery", "switch", "resistor", "led"].every((type) => parts.value.some((part) => part.type === type)),
-  hasLitLed: () => litLedParts().length > 0,
-  hasLitBulb: () => mainBulbBrightness.value > 0,
-  hasLowResistance: () => parts.value.some((part) => part.type === "resistor" && (part.resistance ?? 0) <= 24),
-  hasMeterParts: () =>
-    ["battery", "switch", "ammeter", "bulb", "resistor", "voltmeter"].every((type) =>
-      parts.value.some((part) => part.type === type),
-    ),
-  hasOpenCircuit: () => !simulation.value.closed,
-  hasOpenSwitch: () => parts.value.some((part) => part.type === "switch" && !part.closed),
-  hasNormallyClosedContact,
-  hasNotOutputOff,
-  hasNotOutputOn,
-  hasOutputParts: () =>
-    ["battery", "switch", "buzzer", "motor", "resistor"].every((type) =>
-      parts.value.some((part) => part.type === type),
-    ),
-  hasParallelBulbs: () => simulation.value.closed && hasParallelBulbRoute(),
-  hasParallelOutputWiring,
-  hasParallelRelayInputs,
-  hasRelayLink,
-  hasRelayOutput,
-  hasRelayParts,
-  hasReverseBlockingDiode: () => diodeParts().some((part) => {
-    const state = diodeStatus(part);
-    return state.reversed && !state.conducting;
-  }),
-  hasSafeLedCurrent: () => ledParts().some((part) => {
-    const state = ledStatus(part);
-    return state.brightness > 0 && !state.overCurrent;
-  }),
-  hasSeriesBulbs: () => simulation.value.closed && hasSeriesBulbRoute(),
-  hasSeriesAmmeterWiring,
-  hasSeriesRelayInputs,
-  hasStarterParts: () =>
-    ["battery", "switch", "bulb", "resistor"].every((type) => parts.value.some((part) => part.type === type)),
-  hasSwitchedCapacitorWiring,
-  hasTwoBulbs: () => bulbParts().length >= 2,
-  hasTwoInputSwitches,
-  hasTwoLitBulbs: () => litBulbParts().length >= 2,
-};
-const activeLesson = computed(() => lessonCatalog.find((lesson) => lesson.id === activeLessonId.value) ?? lessonCatalog[0]);
-const lessonStepStates = computed(() =>
-  activeLesson.value.steps.map((step) => ({
-    ...step,
-    complete: lessonCheckers[step.checkId](),
-  })),
-);
-const nextLessonStep = computed(() => lessonStepStates.value.find((step) => !step.complete));
-const activeLessonGuide = computed(() => nextLessonStep.value?.guide ?? null);
-const mobileLessonStripText = computed(() => nextLessonStep.value?.description ?? "实验完成");
-const beginnerGuideStep = computed(() => beginnerGuideSteps[beginnerGuideStepIndex.value] ?? beginnerGuideSteps[0]);
-const guideDiagnosis = computed<GuideDiagnosis>(() => {
-  const openSwitch = parts.value.find((part) => part.type === "switch" && !part.closed);
-  if (openSwitch) {
-    return {
-      action: "switch",
-      actionLabel: "找到开关",
-      title: "开关还没闭合",
-      description: "先点一下开关，让电流有机会通过。开关闭合后，灯泡和导线动画会立刻变化。",
-    };
-  }
-
-  if (!simulation.value.closed) {
-    return {
-      action: "wire",
-      actionLabel: "高亮端子",
-      title: "导线还没接成一圈",
-      description: "从一个圆形端子拖到另一个端子，试着让电池、开关和灯泡连成一圈。",
-    };
-  }
-
-  const reversedLed = ledParts().find((part) => ledStatus(part).reversed);
-  if (reversedLed) {
-    return {
-      action: "status",
-      actionLabel: "看属性",
-      title: "LED 可能接反了",
-      description: "LED 有正负极。选中 LED 后看属性面板，把正负方向调对，或者重新连接两端。",
-    };
-  }
-
-  if (mainBulb.value && mainBulbBrightness.value === 0) {
-    return {
-      action: "status",
-      actionLabel: "看状态",
-      title: "灯泡还没有电流",
-      description: "回路看起来接通了，但灯泡没有明显亮度。可以调小可变电阻，或检查灯泡两端是否接在线路里。",
-    };
-  }
-
-  if (simulation.value.closed) {
-    return {
-      action: "status",
-      actionLabel: "看状态",
-      title: "电路已经接通",
-      description: "现在可以试试调电阻、反转电池，或者换成 LED、电机和蜂鸣器观察差异。",
-    };
-  }
-
-  return {
-    action: "none",
-    actionLabel: "知道了",
-    title: "先从一根线开始",
-    description: "按住元器件旁边的圆点，拖到另一个圆点上松手，就能连出第一根导线。",
-  };
-});
-const lessonProgress = computed(() => {
-  const completed = lessonStepStates.value.filter((step) => step.complete).length;
-  const total = lessonStepStates.value.length;
-  return {
-    completed,
-    percent: total === 0 ? 0 : Math.round((completed / total) * 100),
-    total,
-  };
-});
-const lessonComplete = computed(() => lessonProgress.value.total > 0 && lessonProgress.value.percent === 100);
+const { publish: publishRelayModule } = relayPublication;
 const savedWorkspaceLabel = computed(() => {
   if (!lastSavedAt.value) {
     return "自动保存已开启";
@@ -960,6 +311,21 @@ const savedWorkspaceLabel = computed(() => {
     minute: "2-digit",
   }).format(new Date(lastSavedAt.value))}`;
 });
+const workspaceState = useWorkbenchWorkspaceState({
+  activeLessonId,
+  clearInteractionState,
+  fitWorkbenchAfterLoad: (behavior, resetLayout) => fitMobileWorkbenchAfterRender(behavior, resetLayout),
+  isKnownLesson: (lessonId) => lessonCatalog.some((lesson) => lesson.id === lessonId),
+  mobileStarterWorkspace,
+  parts,
+  selectedPartId,
+  setZoom: (zoom) => board.setZoom(zoom),
+  snapBoundRelayAssemblies,
+  wires,
+  zoom: computed(() => board.zoom),
+});
+const { loadWorkspace, loadWorkspaceSnapshot: loadWorkspaceSnapshotState, workspaceHistoryKey, workspaceSnapshot } = workspaceState;
+function saveWorkspaceSnapshotToStorage() { saveWorkspaceToStorageFromRecords(); }
 const {
   pushHistory: pushEditorHistory,
   redo: redoWorkspaceChange,
@@ -967,182 +333,372 @@ const {
 } = useWorkbenchHistory<PersistedWorkspace>({
   maxEntries: maxEditorHistoryEntries,
   restoreSnapshot: loadWorkspaceSnapshot,
-  saveSnapshot: saveWorkspaceToStorage,
+  saveSnapshot: saveWorkspaceSnapshotToStorage,
   snapshotKey: workspaceHistoryKey,
   takeSnapshot: workspaceSnapshot,
 });
+const navigation = useWorkbenchNavigation({
+  activeLesson,
+  activeLessonId,
+  dismissLessonCompletion: () => { dismissedLessonCompletionId.value = null; },
+  loadWorkspace,
+  pushHistory: pushEditorHistory,
+  setStatusTab: (tab) => { statusPanelTab.value = tab; },
+  setWorkshopCompletion: (open) => { lessonCompletePanelOpen.value = open; },
+});
+const { loadLessonWorkspace, loadNextLesson, loadWorkbenchMode, resetDemo } = navigation;
 
-let autosaveTimer: number | null = null;
+const workspaceRecords = useWorkspaceRecords({
+  isPersistedWorkspace,
+  lastSavedAt,
+  loadSnapshot: loadWorkspaceSnapshot,
+  pushHistory: pushEditorHistory,
+  readLocalStorage,
+  removeLocalStorage,
+  saveSnapshot: workspaceSnapshot,
+  saveToStorage: (workspace) => writeLocalStorage(savedWorkspaceKey, JSON.stringify(workspace)),
+  savedRecordsKey,
+  savedWorkspaceKey,
+  shareParam: workspaceShareParam,
+  writeLocalStorage,
+  recoveryMessage: workspaceRecoveryMessage,
+});
+const {
+  copyWorkspaceShareLink,
+  exportWorkspaceJson,
+  importWorkspaceJson: importWorkspaceJsonFromRecords,
+  loadSavedRecord,
+  loadSavedRecords,
+  recordTitle,
+  removeSavedRecord,
+  restoreAutoSavedWorkspace: restoreAutoSavedWorkspaceFromRecords,
+  restoreWorkspaceFromUrl: restoreWorkspaceFromUrlFromRecords,
+  saveWorkspaceRecord,
+  saveWorkspaceToStorage: saveWorkspaceToStorageFromRecords,
+  savedRecords,
+  shareLinkState,
+  sharedWorkspaceLoaded,
+} = workspaceRecords;
+const cloudWorkspaceSync = useCloudWorkspaceSync({
+  lastSavedWorkspace: workspaceSnapshot,
+  loadWorkspaceSnapshot,
+  localRecordTitle: recordTitle,
+  pushEditorHistory,
+  readLocalStorage,
+  saveWorkspaceToStorage: saveWorkspaceToStorageFromRecords,
+  sharedWorkspaceLoaded,
+  workspaceRecoveryMessage,
+});
+const {
+  activeCloudRecord,
+  cloudActiveRecordId,
+  cloudAuthBusy,
+  cloudAuthError,
+  cloudAuthMessage,
+  cloudAuthMode,
+  cloudEmail,
+  cloudLastSyncedAt,
+  cloudPassword,
+  cloudPasswordConfirm,
+  cloudPendingSnapshot,
+  cloudPendingTitle,
+  cloudRecordTitle,
+  cloudRecords,
+  cloudRecordsBusy,
+  cloudRecordsError,
+  cloudRecordsMessage,
+  cloudShouldSuggestInitialUpload,
+  cloudSyncStatus,
+  cloudUserEmail,
+  dismissCloudInitialUploadSuggestion: dismissCloudInitialUploadSuggestionFromCloud,
+  handleCloudSignOut: handleCloudSignOutFromCloud,
+  loadCloudRecord: loadCloudRecordFromCloud,
+  loadCloudRecords: loadCloudRecordsFromCloud,
+  refreshCloudUser: refreshCloudUserFromCloud,
+  removeCloudRecord: removeCloudRecordFromCloud,
+  renameCloudRecord: renameCloudRecordFromCloud,
+  requestCloudAuth: requestCloudAuthFromCloud,
+  saveWorkspaceToCloud: saveWorkspaceToCloudFromCloud,
+  setCloudAuthMode: setCloudAuthModeFromCloud,
+  startCloudAuthSession: startCloudAuthSessionFromCloud,
+  stopCloudAuthSession: stopCloudAuthSessionFromCloud,
+} = cloudWorkspaceSync;
+const cloudWorkspaceView = useCloudWorkspaceView({
+  activeRecordId: cloudActiveRecordId,
+  authBusy: cloudAuthBusy,
+  authMode: cloudAuthMode,
+  configured: cloudConfig.configured,
+  lastSyncedAt: cloudLastSyncedAt,
+  recordsBusy: cloudRecordsBusy,
+  syncStatus: cloudSyncStatus,
+  userEmail: cloudUserEmail,
+});
+const {
+  authHelpText: cloudAuthHelpText,
+  authSubmitLabel: cloudAuthSubmitLabel,
+  authTitle: cloudAuthTitle,
+  saveLabel: cloudSaveLabel,
+  syncBadgeClass: cloudSyncBadgeClass,
+  syncDescription: cloudSyncDescription,
+  syncLabel: cloudSyncLabel,
+  syncState: cloudSyncState,
+} = cloudWorkspaceView;
+const workbenchParts = useWorkbenchParts({
+  clearInteractionState,
+  closePalette: () => { palettePanelOpen.value = false; },
+  getSpec,
+  pushHistory: pushEditorHistory,
+  selectedPartId,
+  setStatusTab: (tab) => { statusPanelTab.value = tab; },
+  parts,
+  wires,
+  clampPosition: clampPartPosition,
+});
+const {
+  addPart: addPartFromParts,
+  duplicateSelectedPart: duplicateSelectedPartFromParts,
+  removeSelectedPart: removeSelectedPartFromParts,
+  setPartPosition: setPartPositionFromParts,
+  setPartRotation: setPartRotationFromParts,
+  setResistance: setResistanceFromParts,
+  setSpringContactMode: setSpringContactModeFromParts,
+  toggleBatteryPolarity: toggleBatteryPolarityFromParts,
+  toggleSwitch: toggleSwitchFromParts,
+} = workbenchParts;
+const partMovement = useWorkbenchPartMovement({
+  boardPoint,
+  clampPosition: clampPartPosition,
+  getSpec,
+  parts,
+  pushHistory: pushEditorHistory,
+  selectedPartId,
+  setStatusTab: (tab) => { statusPanelTab.value = tab; },
+  workbenchLimitHeight,
+  workbenchLimitWidth,
+});
+const {
+  bindSpringToCoil: bindSpringToCoilFromMovement,
+  clearDrag,
+  isDragging,
+  nudgeSelectedPart: nudgeSelectedPartFromMovement,
+  snapBoundRelayAssemblies: snapBoundRelayAssembliesFromMovement,
+} = partMovement;
+
+let beginnerGuideHandleWireAdded = () => {};
+const wireInteraction = useWireInteraction({
+  boardPoint,
+  closestTerminal,
+  expandMobileWorkbenchTo,
+  getTerminalPosition,
+  limitHeight: workbenchLimitHeight,
+  limitWidth: workbenchLimitWidth,
+  onWireAdded: () => beginnerGuideHandleWireAdded(),
+  pushEditorHistory,
+  selectedPartId,
+  statusPanelTab,
+  wires,
+});
+const {
+  addWireBetween,
+  clearCanvasSelection,
+  clearWires,
+  endpointDrag,
+  finishEndpointDrag,
+  finishNewWireDrag,
+  finishRewire,
+  hoveredEndpoint,
+  hoveredWireId,
+  handleTerminalClick,
+  newWireDrag,
+  removeWire,
+  renderedWires,
+  rewiring,
+  selectWire,
+  selectedTerminal,
+  selectedWire,
+  selectedWireId,
+  suppressNextTerminalClick,
+  startBranchWireDrag,
+  startEndpointDrag,
+  startNewWireDrag,
+  startRewire,
+  updateNewWireDrag,
+} = wireInteraction;
+const pointerInteraction = useWorkbenchPointerInteraction({
+  movement: partMovement,
+  parts,
+  selectedTerminal,
+  wire: wireInteraction,
+  wires,
+});
+const {
+  endDrag,
+  finishTerminalDrag,
+  handlePartPointerDown,
+  handleWorkbenchPointerMove,
+  isTerminalDropTarget,
+  isTerminalSelected,
+} = pointerInteraction;
+const beginnerGuide = useBeginnerGuide({
+  guideDismissedKey: guideAssistantDismissedKey,
+  ledParts,
+  ledStatus,
+  loadExample: resetDemo,
+  mainBulb,
+  mainBulbBrightness,
+  openStatusPanel: openMobileStatusPanel,
+  parts,
+  resetLayout: resetMobileView,
+  selectedPartId,
+  selectedTerminal,
+  selectedWireId,
+  setPanels: ({ paletteOpen, statusOpen }) => {
+    palettePanelOpen.value = paletteOpen;
+    statusPanelOpen.value = statusOpen;
+  },
+  simulation,
+});
+const {
+  beginnerGuideStep,
+  beginnerGuideStepIndex,
+  beginnerGuideTotal,
+  guideAssistantMode,
+  guideAssistantOpen,
+  guideDiagnosis,
+  handleBeginnerGuideAction,
+  handleGuideDiagnosisAction,
+  loadExampleFromGuide,
+  nextBeginnerGuideStep,
+  openGuideAssistant,
+  resetLayoutFromGuide,
+  showGuideDiagnosis,
+  showWireGuide,
+  startBeginnerGuide,
+  dismissGuideAssistant,
+} = beginnerGuide;
+beginnerGuideHandleWireAdded = beginnerGuide.handleWireAdded;
+const partPresentation = useWorkbenchPartPresentation({
+  boardZoom: () => board.zoom,
+  endpointDrag,
+  getSpec,
+  parts,
+  workbenchRef,
+});
+const workbenchGeometry = useWorkbenchGeometry({
+  expandWorkbenchTo: expandMobileWorkbenchTo,
+  getSpec,
+  getTerminalPosition,
+  limitHeight: workbenchLimitHeight,
+  limitWidth: workbenchLimitWidth,
+  parts,
+});
+const selection = useWorkbenchSelection({
+  clearDrag,
+  clearWireSelection: wireInteraction.clearCanvasSelection,
+  endpointDrag,
+  hoveredEndpoint,
+  hoveredWireId,
+  isDragging,
+  newWireDrag,
+  removePart: removeSelectedPartFromParts,
+  removeWire,
+  rewiring,
+  selectedPart,
+  selectedPartId,
+  selectedTerminal,
+  selectedWire,
+  selectedWireId,
+  suppressNextTerminalClick,
+});
+const {
+  clearCanvasSelection: clearCanvasSelectionFromSelection,
+  clearInteractionState: clearInteractionStateFromSelection,
+  clearSelection: clearSelectionFromSelection,
+  deleteSelectedWorkbenchItem: deleteSelectedWorkbenchItemFromSelection,
+  hasTransientInteraction: hasTransientInteractionFromSelection,
+} = selection;
+const keyboard = useWorkbenchKeyboard({
+  cancelInteraction: () => cancelWorkbenchInteraction(),
+  duplicatePart: duplicateSelectedPartFromParts,
+  getZoom: () => board.zoom,
+  isBattery: (part) => part?.type === "battery",
+  isSwitch: (part) => part?.type === "switch",
+  nudgePart: nudgeSelectedPart,
+  redo: redoWorkspaceChange,
+  removeSelectedItem: () => deleteSelectedWorkbenchItem(),
+  resetView: () => { pushEditorHistory(); resetMobileView(); },
+  selectedPart,
+  setZoom: (value) => { pushEditorHistory(); board.setZoom(value); },
+  toggleBattery: toggleBatteryPolarityFromParts,
+  toggleSwitch: toggleSwitchFromParts,
+  undo: undoWorkspaceChange,
+});
+const handleWorkbenchKeydown = keyboard.handleKeydown;
+const wirePresentation = useWorkbenchWirePresentation({
+  currentVisualStrength: () => currentVisualStrength.value,
+  endpointDrag,
+  getPart,
+  getSpec,
+  getTerminalPosition,
+  hoveredEndpoint,
+  hoveredWireId,
+  isDesktopViewport,
+  newWireDrag,
+  selectedWireId,
+  simulationWire: (wireId) => simulation.value.wires[wireId],
+  terminalDisplayLabel,
+  wireEndpointPosition,
+  wires,
+  workbenchLimitHeight,
+  workbenchLimitWidth,
+});
+const {
+  clearEndpointHover,
+  clearWireHover,
+  endpointFill,
+  endpointRadius,
+  endpointStrokeWidth,
+  isEndpointHovered,
+  isWireHighlighted,
+  newWireDragPath,
+  setEndpointHover,
+  setWireHover,
+  terminalLabel,
+  wireLabel,
+  wireBridges,
+  wirePath,
+  wireStroke,
+  wireStrokeWidth,
+} = wirePresentation;
+const imageExport = useWorkbenchImageExport({
+  activeLessonTitle: computed(() => activeLesson.value.title),
+  ammeterStatus,
+  buzzerStatus,
+  capacitorStatus,
+  diodeStatus,
+  ledStatus,
+  motorStatus,
+  parts,
+  selectedPartId,
+  simulation,
+  voltmeterStatus,
+  wirePath,
+  wireStroke,
+  wireStrokeWidth,
+  wires,
+});
+const { exportWorkbenchImage } = imageExport;
+
 let buildPlanCopyFeedbackTimer: number | null = null;
-let cloudAuthUnsubscribe: (() => void) | null = null;
-let experimentReportCopyFeedbackTimer: number | null = null;
-let shareLinkFeedbackTimer: number | null = null;
-let partEditHistory: { key: string; timer: number } | null = null;
 
-function readLocalStorage(key: string) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
+function loadWorkspaceSnapshot(workspace: PersistedWorkspace) {
+  lastSavedAt.value = loadWorkspaceSnapshotState(workspace);
 }
 
-function writeLocalStorage(key: string, value: string) {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  try {
-    window.localStorage.setItem(key, value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function removeLocalStorage(key: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    // Removing stale storage is best-effort.
-  }
-}
-
-function clearInteractionState() {
-  selectedTerminal.value = null;
-  selectedWireId.value = null;
-  hoveredWireId.value = null;
-  hoveredEndpoint.value = null;
-  rewiring.value = null;
-  endpointDrag.value = null;
-  newWireDrag.value = null;
-  suppressNextTerminalClick.value = false;
-  dragging.value = null;
-}
-
-function clearSelection() {
-  clearInteractionState();
-  selectedPartId.value = "";
-}
-
-function hasTransientInteraction() {
-  return Boolean(
-    dragging.value ||
-      endpointDrag.value ||
-      newWireDrag.value ||
-      rewiring.value ||
-      selectedTerminal.value ||
-      hoveredEndpoint.value ||
-      hoveredWireId.value,
-  );
-}
-
-function batteryPolarityLabel(part: CircuitPart) {
-  return batteryPositiveTerminal(part) === "a" ? "正极在左侧" : "正极在右侧";
-}
-
-function terminalDisplayLabel(part: CircuitPart, terminal: TerminalKey) {
-  if (part.type === "battery") {
-    return batteryPositiveTerminal(part) === terminal ? "+" : "-";
-  }
-
-  if (part.type === "spring") {
-    return terminal === "a" ? "COM" : part.contactMode === "normally-closed" ? "NC" : "NO";
-  }
-
-  return getSpec(part).terminals[terminal].label;
-}
-
-function normalizeRotation(value: number) {
-  return normalizePartRotation(value);
-}
-
-function partRotation(part: CircuitPart) {
-  return normalizeRotation(part.rotation ?? 0);
-}
-
-function rotateLocalPoint(point: Point, center: Point, degrees: number): Point {
-  if (degrees === 0) {
-    return point;
-  }
-
-  const radians = (degrees * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  const dx = point.x - center.x;
-  const dy = point.y - center.y;
-
-  return {
-    x: center.x + dx * cos - dy * sin,
-    y: center.y + dx * sin + dy * cos,
-  };
-}
-
-function rotatedTerminalOffset(part: CircuitPart, terminal: TerminalKey) {
-  const spec = getSpec(part);
-  const offset = spec.terminals[terminal];
-  return rotateLocalPoint(offset, { x: spec.width / 2, y: spec.height / 2 }, partRotation(part));
-}
-
-function getPart(partId: string) {
-  return parts.value.find((part) => part.id === partId);
-}
-
-function getTerminalPosition(ref: TerminalRef) {
-  const part = getPart(ref.partId);
-  if (!part) {
-    return { x: 0, y: 0 };
-  }
-
-  const offset = rotatedTerminalOffset(part, ref.terminal);
-  return {
-    x: part.x + offset.x,
-    y: part.y + offset.y,
-  };
-}
-
-function terminalStyle(part: CircuitPart, terminal: TerminalKey) {
-  const offset = getSpec(part).terminals[terminal];
-  return {
-    left: `${offset.x - 16}px`,
-    top: `${offset.y - 16}px`,
-  };
-}
-
-function partStyle(part: CircuitPart) {
-  const spec = getSpec(part);
-  return {
-    left: `${part.x}px`,
-    top: `${part.y}px`,
-    width: `${spec.width}px`,
-    height: `${spec.height}px`,
-    transform: `rotate(${partRotation(part)}deg)`,
-    transformOrigin: "center",
-  };
-}
-
-function wireEndpointPosition(wire: Wire, end: WireEnd) {
-  if (endpointDrag.value?.wireId === wire.id && endpointDrag.value.end === end) {
-    return {
-      x: endpointDrag.value.x,
-      y: endpointDrag.value.y,
-    };
-  }
-
-  return getTerminalPosition(wire[end]);
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
+function clearInteractionState() { clearInteractionStateFromSelection(); }
+function snapBoundRelayAssemblies() { snapBoundRelayAssembliesFromMovement(); }
+function clearSelection() { clearSelectionFromSelection(); }
+function hasTransientInteraction() { return hasTransientInteractionFromSelection(); }
 
 function workbenchLimitWidth() {
   return effectiveWorkbenchSize.value.width;
@@ -1152,1341 +708,31 @@ function workbenchLimitHeight() {
   return effectiveWorkbenchSize.value.height;
 }
 
-function expandMobileWorkbenchTo(x: number, y: number, padding = 280) {
-  if (isDesktopViewport()) {
-    return;
-  }
-
-  const chunk = 400;
-  const nextWidth = Math.max(
-    mobileWorkbenchSize.value.width,
-    Math.ceil((x + padding) / chunk) * chunk,
-  );
-  const nextHeight = Math.max(
-    mobileWorkbenchSize.value.height,
-    Math.ceil((y + padding) / chunk) * chunk,
-  );
-
-  if (nextWidth !== mobileWorkbenchSize.value.width || nextHeight !== mobileWorkbenchSize.value.height) {
-    mobileWorkbenchSize.value = {
-      height: nextHeight,
-      width: nextWidth,
-    };
-  }
-}
-
 function isDesktopViewport() {
   return typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches;
 }
 
-function isMobilePortraitViewport() {
-  if (typeof window === "undefined" || isDesktopViewport()) {
-    return false;
-  }
-
-  const viewport = canvasViewportRef.value;
-  const width = viewport?.clientWidth ?? window.innerWidth;
-  const height = viewport?.clientHeight ?? window.innerHeight;
-  return height > width * 1.12;
-}
-
-function centeredMobilePartX(partType: PartType, centerX = 360) {
-  return Math.round(centerX - getSpec(partType).width / 2);
-}
-
-function mobilePortraitLayoutFromRows(
-  workspace: LessonWorkspace,
-  rows: Record<string, { centerX?: number; y: number }>,
-) {
-  const layout: Record<string, Point> = {};
-
-  for (const part of workspace.parts) {
-    const row = rows[part.id];
-    if (!row) {
-      continue;
-    }
-
-    layout[part.id] = {
-      x: centeredMobilePartX(part.type, row.centerX),
-      y: row.y,
-    };
-  }
-
-  return layout;
-}
-
-function mobilePortraitStarterLayout(workspace: LessonWorkspace) {
-  const hasPart = (partId: string) => workspace.parts.some((part) => part.id === partId);
-  const hasParallelWires = workspace.wires.some((wire) => wire.id.includes("parallel"));
-
-  if (hasPart("led-1")) {
-    return mobilePortraitLayoutFromRows(workspace, {
-      "battery-1": { y: 80 },
-      "switch-1": { y: 245 },
-      "resistor-1": { y: 420 },
-      "led-1": { y: 625 },
-    });
-  }
-
-  if (hasPart("bulb-2") && hasParallelWires) {
-    return mobilePortraitLayoutFromRows(workspace, {
-      "battery-1": { y: 70 },
-      "switch-1": { y: 226 },
-      "bulb-1": { centerX: 230, y: 420 },
-      "bulb-2": { centerX: 500, y: 420 },
-      "resistor-1": { y: 682 },
-    });
-  }
-
-  if (hasPart("bulb-2")) {
-    return mobilePortraitLayoutFromRows(workspace, {
-      "battery-1": { y: 64 },
-      "switch-1": { y: 220 },
-      "bulb-1": { y: 382 },
-      "bulb-2": { y: 590 },
-      "resistor-1": { y: 812 },
-    });
-  }
-
-  return mobilePortraitLayoutFromRows(workspace, {
-    "battery-1": { y: 80 },
-    "switch-1": { y: 245 },
-    "bulb-1": { y: 430 },
-    "resistor-1": { y: 650 },
-  });
-}
-
-function mobileStarterWorkspace(workspace: LessonWorkspace) {
-  if (!isMobilePortraitViewport()) {
-    return workspace;
-  }
-
-  const layout = mobilePortraitStarterLayout(workspace);
-  return {
-    ...workspace,
-    parts: workspace.parts.map((part) => ({
-      ...part,
-      ...(layout[part.id] ?? {}),
-    })),
-  };
-}
-
-function mobileContentBounds(padding = isMobilePortraitViewport() ? 160 : 72): WorkbenchBounds {
-  if (parts.value.length === 0) {
-    return {
-      bottom: workbench.height,
-      height: workbench.height,
-      left: 0,
-      right: workbench.width,
-      top: 0,
-      width: workbench.width,
-    };
-  }
-
-  const bounds = parts.value.reduce(
-    (nextBounds, part) => {
-      const spec = getSpec(part);
-      return {
-        bottom: Math.max(nextBounds.bottom, part.y + spec.height),
-        left: Math.min(nextBounds.left, part.x),
-        right: Math.max(nextBounds.right, part.x + spec.width),
-        top: Math.min(nextBounds.top, part.y),
-      };
-    },
-    {
-      bottom: Number.NEGATIVE_INFINITY,
-      left: Number.POSITIVE_INFINITY,
-      right: Number.NEGATIVE_INFINITY,
-      top: Number.POSITIVE_INFINITY,
-    },
-  );
-  const left = Math.max(0, bounds.left - padding);
-  const top = Math.max(0, bounds.top - padding);
-  const right = bounds.right + padding;
-  const bottom = bounds.bottom + padding;
-
-  return {
-    bottom,
-    height: Math.max(240, bottom - top),
-    left,
-    right,
-    top,
-    width: Math.max(240, right - left),
-  };
-}
-
-function mobileVisibleWorkbenchSize() {
-  const viewport = canvasViewportRef.value;
-  if (!viewport) {
-    return { height: workbench.height, width: workbench.width };
-  }
-
-  return {
-    height: Math.max(260, viewport.clientHeight - mobileFitPadding.bottomControls),
-    width: Math.max(280, viewport.clientWidth - mobileFitPadding.horizontal),
-  };
-}
-
-function mobileFitZoom() {
-  const visibleSize = mobileVisibleWorkbenchSize();
-  const contentBounds = mobileContentBounds();
-  return Math.floor(Math.min(visibleSize.width / contentBounds.width, visibleSize.height / contentBounds.height) * 92);
-}
-
-function mobileDefaultWorkbenchSize() {
-  const visibleSize = mobileVisibleWorkbenchSize();
-  const contentBounds = mobileContentBounds();
-  const fitScale = clamp(mobileFitZoom(), 25, 160) / 100;
-
-  return {
-    height: Math.ceil(Math.max(mobileWorkbenchBase.height, contentBounds.bottom, visibleSize.height / fitScale)),
-    width: Math.ceil(Math.max(mobileWorkbenchBase.width, contentBounds.right, visibleSize.width / fitScale)),
-  };
-}
-
-function resetMobileWorkbenchSize() {
-  if (isDesktopViewport()) {
-    return;
-  }
-
-  mobileWorkbenchSize.value = mobileDefaultWorkbenchSize();
-}
-
-function fitMobileWorkbench(behavior: ScrollBehavior = "auto", resetLayout = false) {
-  if (typeof window === "undefined" || isDesktopViewport() || !canvasViewportRef.value) {
-    return;
-  }
-
-  updateCanvasViewportSize();
-  if (resetLayout) {
-    resetMobileWorkbenchSize();
-  }
-
-  const nextZoom = mobileFitZoom();
-  if (nextZoom !== board.zoom) {
-    board.setZoom(nextZoom);
-  }
-
-  if (mobileScrollFrame !== null) {
-    window.cancelAnimationFrame(mobileScrollFrame);
-  }
-
-  mobileScrollFrame = window.requestAnimationFrame(() => {
-    mobileScrollFrame = null;
-    const viewport = canvasViewportRef.value;
-    if (!viewport) {
-      return;
-    }
-
-    const visibleSize = mobileVisibleWorkbenchSize();
-    const contentBounds = mobileContentBounds();
-    const scale = board.zoom / 100;
-    const centeredLeft =
-      contentBounds.left * scale - Math.max(0, (viewport.clientWidth - contentBounds.width * scale) / 2);
-    const centeredTop =
-      contentBounds.top * scale - Math.max(16, (visibleSize.height - contentBounds.height * scale) / 2);
-
-    canvasViewportRef.value?.scrollTo({
-      behavior,
-      left: Math.max(0, centeredLeft),
-      top: Math.max(0, centeredTop),
-    });
-  });
-}
-
-function fitMobileWorkbenchAfterRender(behavior: ScrollBehavior = "auto", resetLayout = false) {
-  if (typeof window === "undefined" || isDesktopViewport()) {
-    return;
-  }
-
-  nextTick(() => {
-    if (mobileFitFrame !== null) {
-      window.cancelAnimationFrame(mobileFitFrame);
-    }
-
-    mobileFitFrame = window.requestAnimationFrame(() => {
-      mobileFitFrame = null;
-      fitMobileWorkbench(behavior, resetLayout);
-    });
-  });
-}
-
-function resetMobileView() {
-  if (isDesktopViewport()) {
-    board.setZoom(86);
-    return;
-  }
-
-  fitMobileWorkbench("smooth", true);
-}
-
-function exportWorkbenchImage() {
-  exportWorkbenchImageFile({
-    activeLessonTitle: activeLesson.value.title,
-    ammeterStatus,
-    buzzerStatus,
-    capacitorStatus,
-    diodeStatus,
-    ledStatus,
-    motorStatus,
-    parts: parts.value,
-    selectedPartId: selectedPartId.value,
-    simulation: simulation.value,
-    voltmeterStatus,
-    wirePath,
-    wireStroke,
-    wireStrokeWidth,
-    wires: wires.value,
-  });
-}
-
-function viewportPointerDistance() {
-  const pointers = Array.from(viewportPointers.values());
-  if (pointers.length < 2) {
-    return 0;
-  }
-
-  return Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
-}
-
-function isCircuitInteractionTarget(target: EventTarget | null) {
-  return (
-    target instanceof Element &&
-    Boolean(target.closest("[data-circuit-interactive='true'], button, a, input, select, textarea"))
-  );
-}
-
-function handleCanvasPointerDown(event: PointerEvent) {
-  if (isDesktopViewport()) {
-    return;
-  }
-
-  if (viewportPointers.size === 0 && isCircuitInteractionTarget(event.target)) {
-    viewportGesture.value = null;
-    return;
-  }
-
-  viewportPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-
-  if (viewportPointers.size >= 2) {
-    viewportGesture.value = {
-      distance: viewportPointerDistance(),
-      mode: "pinch",
-      zoom: board.zoom,
-    };
-    event.preventDefault();
-    return;
-  }
-
-  viewportGesture.value = { mode: "pan", lastX: event.clientX, lastY: event.clientY };
-  event.preventDefault();
-}
-
-function handleCanvasPointerMove(event: PointerEvent) {
-  if (isDesktopViewport() || !viewportPointers.has(event.pointerId)) {
-    return;
-  }
-
-  viewportPointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
-
-  if (viewportPointers.size >= 2) {
-    const gesture = viewportGesture.value;
-    const distance = viewportPointerDistance();
-
-    if (gesture?.mode === "pinch" && gesture.distance > 0) {
-      board.setZoom(gesture.zoom * (distance / gesture.distance));
-      event.preventDefault();
-    }
-
-    return;
-  }
-
-  const gesture = viewportGesture.value;
-  if (gesture?.mode !== "pan" || !canvasViewportRef.value) {
-    return;
-  }
-
-  canvasViewportRef.value.scrollLeft -= event.clientX - gesture.lastX;
-  canvasViewportRef.value.scrollTop -= event.clientY - gesture.lastY;
-  viewportGesture.value = { mode: "pan", lastX: event.clientX, lastY: event.clientY };
-  event.preventDefault();
-}
-
-function endCanvasGesture(event: PointerEvent) {
-  viewportPointers.delete(event.pointerId);
-
-  if (viewportPointers.size < 2 && viewportGesture.value?.mode === "pinch") {
-    viewportGesture.value = null;
-  }
-
-  if (viewportPointers.size === 0) {
-    viewportGesture.value = null;
-  }
-}
-
-function terminalSide(ref: TerminalRef) {
-  const part = getPart(ref.partId);
-  if (!part) {
-    return ref.terminal === "a" ? -1 : 1;
-  }
-
-  const spec = getSpec(part);
-  const offset = rotatedTerminalOffset(part, ref.terminal);
-  const dx = offset.x - spec.width / 2;
-  if (Math.abs(dx) < 1) {
-    return ref.terminal === "a" ? -1 : 1;
-  }
-
-  return dx < 0 ? -1 : 1;
-}
-
-function compactRoutePoints(points: Point[]) {
-  return points.filter((point, index) => {
-    const previous = points[index - 1];
-    return !previous || previous.x !== point.x || previous.y !== point.y;
-  });
-}
-
-function wireRoutePoints(wire: Wire) {
-  const start = wireEndpointPosition(wire, "from");
-  const end = wireEndpointPosition(wire, "to");
-  const startSide = terminalSide(wire.from);
-  const endSide = terminalSide(wire.to);
-  const lead = 44;
-  const margin = 28;
-  const limitWidth = workbenchLimitWidth();
-  const startLead = {
-    x: clamp(start.x + startSide * lead, margin, limitWidth - margin),
-    y: start.y,
-  };
-  const endLead = {
-    x: clamp(end.x + endSide * lead, margin, limitWidth - margin),
-    y: end.y,
-  };
-  const route: Point[] = [start, startLead];
-
-  const verticalMobileRoute = !isDesktopViewport() && Math.abs(startLead.y - endLead.y) > 96;
-  if (verticalMobileRoute && startSide !== endSide) {
-    const routeDirection = endLead.y > startLead.y ? 1 : -1;
-    const bridgeY = routeDirection > 0
-      ? Math.min(endLead.y - 44, startLead.y + 72)
-      : Math.max(endLead.y + 44, startLead.y - 72);
-
-    route.push(
-      { x: startLead.x, y: bridgeY },
-      { x: endLead.x, y: bridgeY },
-    );
-  } else if (startSide === endSide) {
-    const routeSide = startSide;
-    const outsideX =
-      routeSide > 0
-        ? clamp(Math.max(startLead.x, endLead.x) + 72, margin, limitWidth - margin)
-        : clamp(Math.min(startLead.x, endLead.x) - 72, margin, limitWidth - margin);
-
-    route.push({ x: outsideX, y: startLead.y }, { x: outsideX, y: endLead.y });
-  } else {
-    const middleX = Math.round((startLead.x + endLead.x) / 2);
-    route.push({ x: middleX, y: startLead.y }, { x: middleX, y: endLead.y });
-  }
-
-  route.push(endLead, end);
-  return compactRoutePoints(route);
-}
-
-function roundedOrthogonalPath(points: Point[], radius = 16) {
-  if (points.length === 0) {
-    return "";
-  }
-
-  if (points.length === 1) {
-    return `M ${points[0].x} ${points[0].y}`;
-  }
-
-  const commands = [`M ${points[0].x} ${points[0].y}`];
-
-  for (let index = 1; index < points.length - 1; index += 1) {
-    const previous = points[index - 1];
-    const current = points[index];
-    const next = points[index + 1];
-    const previousDistance = Math.hypot(current.x - previous.x, current.y - previous.y);
-    const nextDistance = Math.hypot(next.x - current.x, next.y - current.y);
-
-    if (previousDistance === 0 || nextDistance === 0) {
-      continue;
-    }
-
-    const turnRadius = Math.min(radius, previousDistance / 2, nextDistance / 2);
-    const before = {
-      x: current.x + ((previous.x - current.x) / previousDistance) * turnRadius,
-      y: current.y + ((previous.y - current.y) / previousDistance) * turnRadius,
-    };
-    const after = {
-      x: current.x + ((next.x - current.x) / nextDistance) * turnRadius,
-      y: current.y + ((next.y - current.y) / nextDistance) * turnRadius,
-    };
-
-    commands.push(
-      `L ${Math.round(before.x)} ${Math.round(before.y)}`,
-      `Q ${current.x} ${current.y} ${Math.round(after.x)} ${Math.round(after.y)}`,
-    );
-  }
-
-  const last = points[points.length - 1];
-  commands.push(`L ${last.x} ${last.y}`);
-  return commands.join(" ");
-}
-
-function wirePath(wire: Wire) {
-  return roundedOrthogonalPath(wireRoutePoints(wire));
-}
-
-function newWireDragPath() {
-  if (!newWireDrag.value) {
-    return "";
-  }
-
-  const start = getTerminalPosition(newWireDrag.value.from);
-  const end = newWireDrag.value.over ? getTerminalPosition(newWireDrag.value.over) : newWireDrag.value;
-  const middleX = Math.round((start.x + end.x) / 2);
-  return roundedOrthogonalPath([
-    start,
-    { x: middleX, y: start.y },
-    { x: middleX, y: end.y },
-    end,
-  ]);
-}
-
-function isWireHighlighted(wire: Wire) {
-  return (
-    selectedWireId.value === wire.id ||
-    hoveredWireId.value === wire.id ||
-    endpointDrag.value?.wireId === wire.id
-  );
-}
-
-function wireStroke(wire: Wire) {
-  if (selectedWireId.value === wire.id || endpointDrag.value?.wireId === wire.id) {
-    return "#f59e0b";
-  }
-
-  if (hoveredWireId.value === wire.id) {
-    return "#0e7490";
-  }
-
-  return simulation.value.wires[wire.id]?.active ? "#0891b2" : "#64748b";
-}
-
-function wireStrokeWidth(wire: Wire) {
-  if (selectedWireId.value === wire.id || endpointDrag.value?.wireId === wire.id) {
-    return 7;
-  }
-
-  if (hoveredWireId.value === wire.id) {
-    return 6;
-  }
-
-  return simulation.value.wires[wire.id]?.active ? 5 + currentVisualStrength.value * 2 : 5;
-}
-
-function isEndpointHovered(wire: Wire, end: WireEnd) {
-  return hoveredEndpoint.value?.wireId === wire.id && hoveredEndpoint.value.end === end;
-}
-
-function endpointRadius(wire: Wire, end: WireEnd) {
-  if (endpointDrag.value?.wireId === wire.id && endpointDrag.value.end === end) {
-    return 12;
-  }
-
-  if (selectedWireId.value === wire.id) {
-    return 10;
-  }
-
-  if (isEndpointHovered(wire, end)) {
-    return 10;
-  }
-
-  return hoveredWireId.value === wire.id ? 9 : 7;
-}
-
-function endpointFill(wire: Wire, end: WireEnd) {
-  if (
-    selectedWireId.value === wire.id ||
-    isEndpointHovered(wire, end) ||
-    endpointDrag.value?.wireId === wire.id
-  ) {
-    return "#f59e0b";
-  }
-
-  return "#0f172a";
-}
-
-function endpointStrokeWidth(wire: Wire, end: WireEnd) {
-  return selectedWireId.value === wire.id ||
-    isEndpointHovered(wire, end) ||
-    endpointDrag.value?.wireId === wire.id
-    ? 3
-    : 0;
-}
-
-function setWireHover(wireId: string) {
-  hoveredWireId.value = wireId;
-}
-
-function clearWireHover(wireId: string) {
-  if (hoveredWireId.value === wireId) {
-    hoveredWireId.value = null;
-  }
-}
-
-function setEndpointHover(wireId: string, end: WireEnd) {
-  hoveredWireId.value = wireId;
-  hoveredEndpoint.value = { wireId, end };
-}
-
-function clearEndpointHover(wireId: string, end: WireEnd) {
-  if (hoveredEndpoint.value?.wireId === wireId && hoveredEndpoint.value.end === end) {
-    hoveredEndpoint.value = null;
-  }
-
-  if (hoveredWireId.value === wireId && !endpointDrag.value) {
-    hoveredWireId.value = null;
-  }
-}
-
-function terminalLabel(ref: TerminalRef) {
-  const part = getPart(ref.partId);
-  if (!part) {
-    return "Missing terminal";
-  }
-
-  return `${part.name}${terminalDisplayLabel(part, ref.terminal)}`;
-}
-
-function wireLabel(wire: Wire) {
-  return `${terminalLabel(wire.from)} -> ${terminalLabel(wire.to)}`;
-}
-
-function boardPoint(event: PointerEvent) {
-  if (!workbenchRef.value) {
-    return { x: 0, y: 0 };
-  }
-
-  const rect = workbenchRef.value.getBoundingClientRect();
-  const scale = board.zoom / 100;
-  return {
-    x: (event.clientX - rect.left) / scale,
-    y: (event.clientY - rect.top) / scale,
-  };
-}
-
-function allTerminals() {
-  return parts.value.flatMap((part) =>
-    (["a", "b"] as TerminalKey[]).map((terminal) => ({
-      ref: { partId: part.id, terminal },
-      position: getTerminalPosition({ partId: part.id, terminal }),
-    })),
-  );
-}
+function batteryPolarityLabel(part: CircuitPart) { return partPresentation.batteryPolarityLabel(part); }
+function terminalDisplayLabel(part: CircuitPart, terminal: TerminalKey) { return partPresentation.terminalDisplayLabel(part, terminal); }
+function getPart(partId: string) { return partPresentation.getPart(partId); }
+function getTerminalPosition(ref: TerminalRef) { return partPresentation.getTerminalPosition(ref); }
+function terminalStyle(part: CircuitPart, terminal: TerminalKey) { return partPresentation.terminalStyle(part, terminal); }
+function partStyle(part: CircuitPart) { return partPresentation.partStyle(part); }
+function wireEndpointPosition(wire: Wire, end: WireEnd) { return partPresentation.wireEndpointPosition(wire, end); }
+function boardPoint(event: PointerEvent) { return partPresentation.boardPoint(event); }
 
 function closestTerminal(point: { x: number; y: number }, excluded?: TerminalRef) {
-  let best: TerminalHit | null = null;
-
-  for (const terminal of allTerminals()) {
-    if (excluded && sameTerminal(terminal.ref, excluded)) {
-      continue;
-    }
-
-    const distance = Math.hypot(terminal.position.x - point.x, terminal.position.y - point.y);
-    if (distance <= 42 && (!best || distance < best.distance)) {
-      best = {
-        ref: terminal.ref,
-        position: terminal.position,
-        distance,
-      };
-    }
-  }
-
-  return best;
-}
-
-function handlePartPointerDown(event: PointerEvent, part: CircuitPart) {
-  selectedWireId.value = null;
-  rewiring.value = null;
-  endpointDrag.value = null;
-  newWireDrag.value = null;
-  selectedPartId.value = part.id;
-  statusPanelTab.value = "selection";
-  const point = boardPoint(event);
-  dragging.value = {
-    historyRecorded: false,
-    id: part.id,
-    offsetX: point.x - part.x,
-    offsetY: point.y - part.y,
-  };
-  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-}
-
-function relayPartner(part: CircuitPart) {
-  if (part.type === "coil") {
-    return parts.value.find((candidate) => candidate.type === "spring" && candidate.controlledBy === part.id);
-  }
-
-  if (part.type === "spring" && part.controlledBy) {
-    return parts.value.find((candidate) => candidate.id === part.controlledBy && candidate.type === "coil");
-  }
-
-  return undefined;
-}
-
-function snapRelayAssembly(coil: CircuitPart, spring: CircuitPart) {
-  const coilSpec = getSpec(coil);
-  const springSpec = getSpec(spring);
-  const groupX = Math.round(Math.min(workbenchLimitWidth() - coilSpec.width - 16, Math.max(16, coil.x)));
-  const groupY = Math.round(
-    Math.min(
-      workbenchLimitHeight() - coilSpec.height - springSpec.height - 28,
-      Math.max(16, coil.y - springSpec.height - 12),
-    ),
-  );
-  spring.x = groupX;
-  spring.y = groupY;
-  coil.x = groupX;
-  coil.y = groupY + springSpec.height + 12;
-}
-
-function snapBoundRelayAssemblies() {
-  const claimedCoils = new Set<string>();
-  for (const spring of parts.value.filter((part) => part.type === "spring" && part.controlledBy)) {
-    const coil = parts.value.find((part) => part.id === spring.controlledBy && part.type === "coil");
-    if (coil && !claimedCoils.has(coil.id)) {
-      snapRelayAssembly(coil, spring);
-      claimedCoils.add(coil.id);
-    }
-  }
-}
-
-function bindSpringToCoil(spring: CircuitPart, coilId: string) {
-  if (spring.type !== "spring") {
-    return;
-  }
-
-  if (!coilId) {
-    if (!spring.controlledBy) {
-      return;
-    }
-    pushEditorHistory();
-    delete spring.controlledBy;
-    return;
-  }
-
-  const coil = parts.value.find((part) => part.id === coilId && part.type === "coil");
-  const alreadyBound = parts.value.find((part) => part.type === "spring" && part.id !== spring.id && part.controlledBy === coilId);
-  if (!coil || alreadyBound) {
-    return;
-  }
-
-  if (spring.controlledBy === coil.id) {
-    return;
-  }
-
-  pushEditorHistory();
-  spring.controlledBy = coil.id;
-  snapRelayAssembly(coil, spring);
-}
-
-function publishRelayModule(part: CircuitPart) {
-  const spring = part.type === "spring"
-    ? part
-    : parts.value.find((candidate) => candidate.type === "spring" && candidate.controlledBy === part.id);
-  if (!spring?.controlledBy) {
-    return "请先把弹簧开关绑定到一条线圈，再发布。";
-  }
-
-  if (workbenchMode.value !== "workshop" || !activeLesson.value.nextStage) {
-    return "请在器件工坊的发布课程中制作模块。";
-  }
-
-  if (!lessonComplete.value) {
-    return `先完成“${activeLesson.value.title}”的全部验证步骤，再发布模块。`;
-  }
-
-  const existing = loadPublishedRelayModules();
-  const nextStage = activeLesson.value.nextStage;
-  const verification = verifyRelayPublication(parts.value, wires.value, nextStage?.moduleName);
-  if (!verification.passed) {
-    return verification.reason;
-  }
-  const module = createPublishedRelayModule({
-    kind: nextStage?.moduleKind === "logic-gate" ? "logic-gate" : "relay",
-    name: nextStage?.moduleName ?? `RelaySwitch ${existing.length + 1}`,
-    parts: parts.value,
-    springId: spring.id,
-    verification: { lessonId: activeLesson.value.id, truthTable: verification.rows, verifiedAt: new Date().toISOString() },
-    wires: wires.value,
-  });
-  if (!module || !savePublishedRelayModule(module)) {
-    return "发布未保存。请检查浏览器是否允许本地存储。";
-  }
-
-  return `已发布 ${module.name}，现在可以在 Logic Lab 使用并查看来源。`;
-}
-
-function handleWorkbenchPointerMove(event: PointerEvent) {
-  if (newWireDrag.value) {
-    updateNewWireDrag(event);
-    return;
-  }
-
-  if (endpointDrag.value) {
-    const point = boardPoint(event);
-    const wire = wires.value.find((item) => item.id === endpointDrag.value?.wireId);
-    const otherEnd = wire ? (endpointDrag.value.end === "from" ? wire.to : wire.from) : undefined;
-    const hit = closestTerminal(point, otherEnd);
-    const nextPoint = hit?.position ?? point;
-    expandMobileWorkbenchTo(nextPoint.x, nextPoint.y);
-    endpointDrag.value.x = Math.min(workbenchLimitWidth(), Math.max(0, nextPoint.x));
-    endpointDrag.value.y = Math.min(workbenchLimitHeight(), Math.max(0, nextPoint.y));
-    endpointDrag.value.over = hit?.ref ?? null;
-    return;
-  }
-
-  if (!dragging.value) {
-    return;
-  }
-
-  const part = getPart(dragging.value.id);
-  if (!part) {
-    return;
-  }
-
-  const point = boardPoint(event);
-  const partner = relayPartner(part);
-  if (!partner) {
-    const position = clampPartPosition(part, point.x - dragging.value.offsetX, point.y - dragging.value.offsetY);
-    if (position.x === part.x && position.y === part.y) {
-      return;
-    }
-    if (!dragging.value.historyRecorded) {
-      pushEditorHistory();
-      dragging.value.historyRecorded = true;
-    }
-    part.x = position.x;
-    part.y = position.y;
-    return;
-  }
-
-  const rawX = point.x - dragging.value.offsetX;
-  const rawY = point.y - dragging.value.offsetY;
-  const group = [part, partner];
-  const deltaX = Math.min(
-    ...group.map((item) => workbenchLimitWidth() - getSpec(item).width - 16 - item.x),
-    Math.max(...group.map((item) => 16 - item.x), rawX - part.x),
-  );
-  const deltaY = Math.min(
-    ...group.map((item) => workbenchLimitHeight() - getSpec(item).height - 16 - item.y),
-    Math.max(...group.map((item) => 16 - item.y), rawY - part.y),
-  );
-  if (deltaX === 0 && deltaY === 0) {
-    return;
-  }
-  if (!dragging.value.historyRecorded) {
-    pushEditorHistory();
-    dragging.value.historyRecorded = true;
-  }
-  for (const item of group) {
-    item.x = Math.round(item.x + deltaX);
-    item.y = Math.round(item.y + deltaY);
-  }
-}
-
-function endDrag() {
-  dragging.value = null;
-  finishEndpointDrag();
-  finishNewWireDrag();
-}
-
-function finishTerminalDrag() {
-  // Terminal buttons stop propagation, so they must explicitly complete an
-  // endpoint rewire. Ignore the following click only for this terminal path:
-  // otherwise a successful drag would immediately start click-to-wire mode.
-  const rewired = Boolean(endpointDrag.value);
-  endDrag();
-  if (rewired) {
-    suppressNextTerminalClick.value = true;
-  }
-}
-
-function clearCanvasSelection() {
-  selectedPartId.value = "";
-  hoveredEndpoint.value = null;
-  hoveredWireId.value = null;
-  selectedTerminal.value = null;
-  selectedWireId.value = null;
-  rewiring.value = null;
-  endpointDrag.value = null;
-  newWireDrag.value = null;
-  suppressNextTerminalClick.value = false;
-}
-
-function selectWire(wireId: string) {
-  hoveredWireId.value = wireId;
-  selectedWireId.value = wireId;
-  selectedTerminal.value = null;
-  rewiring.value = null;
-  statusPanelTab.value = "selection";
-}
-
-function startRewire(wireId: string, end: WireEnd) {
-  selectedWireId.value = wireId;
-  selectedTerminal.value = null;
-  endpointDrag.value = null;
-  newWireDrag.value = null;
-  rewiring.value = { wireId, end };
-}
-
-function startEndpointDrag(event: PointerEvent, wire: Wire, end: WireEnd) {
-  if (event.altKey) {
-    startBranchWireDrag(event, wire, end);
-    return;
-  }
-
-  if (selectedWireId.value !== wire.id) {
-    selectWire(wire.id);
-  }
-
-  const start = getTerminalPosition(wire[end]);
-  selectedTerminal.value = null;
-  selectedWireId.value = wire.id;
-  hoveredWireId.value = wire.id;
-  hoveredEndpoint.value = { wireId: wire.id, end };
-  rewiring.value = { wireId: wire.id, end };
-  newWireDrag.value = null;
-  endpointDrag.value = {
-    wireId: wire.id,
-    end,
-    x: start.x,
-    y: start.y,
-    over: null,
-  };
-  (event.currentTarget as SVGCircleElement).setPointerCapture(event.pointerId);
-}
-
-function startBranchWireDrag(event: PointerEvent, wire: Wire, end: WireEnd) {
-  const from = { ...wire[end] };
-  const start = getTerminalPosition(from);
-  selectedTerminal.value = null;
-  selectedWireId.value = null;
-  hoveredWireId.value = wire.id;
-  hoveredEndpoint.value = { wireId: wire.id, end };
-  rewiring.value = null;
-  endpointDrag.value = null;
-  newWireDrag.value = {
-    from,
-    moved: false,
-    over: null,
-    x: start.x,
-    y: start.y,
-  };
-  (event.currentTarget as SVGCircleElement).setPointerCapture(event.pointerId);
-}
-
-function finishEndpointDrag() {
-  if (!endpointDrag.value) {
-    return;
-  }
-
-  const target = endpointDrag.value.over;
-  if (target) {
-    finishRewire(target);
-  }
-
-  endpointDrag.value = null;
-}
-
-function finishRewire(target: TerminalRef) {
-  if (!rewiring.value) {
-    return;
-  }
-
-  const current = rewiring.value;
-  const wire = wires.value.find((item) => item.id === current.wireId);
-  if (!wire) {
-    rewiring.value = null;
-    return;
-  }
-
-  const otherEnd = current.end === "from" ? wire.to : wire.from;
-  if (sameTerminal(target, otherEnd)) {
-    rewiring.value = null;
-    endpointDrag.value = null;
-    return;
-  }
-
-  const hasSameWire = wires.value.some((item) => {
-    if (item.id === wire.id) {
-      return false;
-    }
-
-    const nextFrom = current.end === "from" ? target : wire.from;
-    const nextTo = current.end === "to" ? target : wire.to;
-    return (
-      (sameTerminal(item.from, nextFrom) && sameTerminal(item.to, nextTo)) ||
-      (sameTerminal(item.to, nextFrom) && sameTerminal(item.from, nextTo))
-    );
-  });
-
-  if (!hasSameWire) {
-    pushEditorHistory();
-    wire[current.end] = target;
-  }
-
-  hoveredEndpoint.value = null;
-  hoveredWireId.value = wire.id;
-  selectedWireId.value = wire.id;
-  rewiring.value = null;
-  selectedTerminal.value = null;
-  endpointDrag.value = null;
-}
-
-function addWireBetween(from: TerminalRef, to: TerminalRef) {
-  if (sameTerminal(from, to)) {
-    return null;
-  }
-
-  const hasSameWire = wires.value.some(
-    (wire) =>
-      (sameTerminal(wire.from, from) && sameTerminal(wire.to, to)) ||
-      (sameTerminal(wire.to, from) && sameTerminal(wire.from, to)),
-  );
-
-  if (hasSameWire) {
-    return null;
-  }
-
-  pushEditorHistory();
-  const wire = {
-    id: `wire-${Date.now()}`,
-    from,
-    to,
-  };
-  wires.value.push(wire);
-  hoveredWireId.value = wire.id;
-  selectedWireId.value = wire.id;
-  if (
-    guideAssistantOpen.value &&
-    (guideAssistantMode.value === "steps" || guideAssistantMode.value === "wire") &&
-    beginnerGuideStep.value.id === "wire"
-  ) {
-    beginnerGuideStepIndex.value = 2;
-    guideAssistantMode.value = "steps";
-  }
-  return wire;
-}
-
-function startNewWireDrag(event: PointerEvent, part: CircuitPart, terminal: TerminalKey) {
-  if (rewiring.value) {
-    return;
-  }
-
-  const from = { partId: part.id, terminal };
-  const start = getTerminalPosition(from);
-  selectedPartId.value = part.id;
-  selectedWireId.value = null;
-  hoveredWireId.value = null;
-  endpointDrag.value = null;
-  newWireDrag.value = {
-    from,
-    moved: false,
-    over: null,
-    x: start.x,
-    y: start.y,
-  };
-  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-}
-
-function updateNewWireDrag(event: PointerEvent) {
-  if (!newWireDrag.value) {
-    return;
-  }
-
-  const point = boardPoint(event);
-  const start = getTerminalPosition(newWireDrag.value.from);
-  const hit = closestTerminal(point, newWireDrag.value.from);
-  const nextPoint = hit?.position ?? point;
-  newWireDrag.value.moved =
-    newWireDrag.value.moved || Math.hypot(point.x - start.x, point.y - start.y) > 6;
-  expandMobileWorkbenchTo(nextPoint.x, nextPoint.y);
-  newWireDrag.value.x = Math.min(workbenchLimitWidth(), Math.max(0, nextPoint.x));
-  newWireDrag.value.y = Math.min(workbenchLimitHeight(), Math.max(0, nextPoint.y));
-  newWireDrag.value.over = hit?.ref ?? null;
-}
-
-function finishNewWireDrag() {
-  if (!newWireDrag.value) {
-    return;
-  }
-
-  const drag = newWireDrag.value;
-  newWireDrag.value = null;
-
-  if (!drag.moved) {
-    return;
-  }
-
-  suppressNextTerminalClick.value = true;
-  selectedTerminal.value = null;
-
-  if (drag.over) {
-    addWireBetween(drag.from, drag.over);
-  }
-}
-
-function handleTerminalClick(part: CircuitPart, terminal: TerminalKey) {
-  if (suppressNextTerminalClick.value) {
-    suppressNextTerminalClick.value = false;
-    return;
-  }
-
-  selectedPartId.value = part.id;
-  const target = { partId: part.id, terminal };
-
-  if (rewiring.value) {
-    finishRewire(target);
-    return;
-  }
-
-  selectedWireId.value = null;
-
-  if (!selectedTerminal.value) {
-    selectedTerminal.value = target;
-    return;
-  }
-
-  const from = selectedTerminal.value;
-  if (sameTerminal(from, target)) {
-    selectedTerminal.value = null;
-    return;
-  }
-
-  addWireBetween(from, target);
-
-  selectedTerminal.value = null;
-}
-
-function isTerminalSelected(part: CircuitPart, terminal: TerminalKey) {
-  const terminalRef = { partId: part.id, terminal };
-  const isPendingNewWire =
-    selectedTerminal.value?.partId === part.id &&
-    selectedTerminal.value.terminal === terminal;
-  const isDraftNewWire =
-    (newWireDrag.value?.from.partId === part.id && newWireDrag.value.from.terminal === terminal) ||
-    (newWireDrag.value?.over?.partId === part.id && newWireDrag.value.over.terminal === terminal);
-
-  if (!rewiring.value) {
-    const isDropTarget =
-      endpointDrag.value?.over?.partId === part.id &&
-      endpointDrag.value.over.terminal === terminal;
-
-    return isPendingNewWire || isDraftNewWire || isDropTarget;
-  }
-
-  const wire = wires.value.find((item) => item.id === rewiring.value?.wireId);
-  const isRewireEnd = wire ? sameTerminal(wire[rewiring.value.end], terminalRef) : false;
-  const isDropTarget =
-    endpointDrag.value?.over?.partId === part.id &&
-    endpointDrag.value.over.terminal === terminal;
-
-  return isPendingNewWire || isDraftNewWire || isRewireEnd || isDropTarget;
-}
-
-function isTerminalDropTarget(part: CircuitPart, terminal: TerminalKey) {
-  return (
-    endpointDrag.value?.over?.partId === part.id &&
-    endpointDrag.value.over.terminal === terminal
-  ) || (
-    newWireDrag.value?.over?.partId === part.id &&
-    newWireDrag.value.over.terminal === terminal
-  );
-}
-
-function isLessonTerminalTarget(part: CircuitPart, terminal: TerminalKey) {
-  return Boolean(
-    activeLessonGuide.value?.terminalRefs?.some(
-      (ref) => ref.partId === part.id && ref.terminal === terminal,
-    ),
-  );
-}
-
-function isLessonPartTarget(part: CircuitPart) {
-  return Boolean(
-    activeLessonGuide.value?.partIds?.includes(part.id) ||
-      activeLessonGuide.value?.terminalRefs?.some((ref) => ref.partId === part.id),
-  );
+  return workbenchGeometry.closestTerminal(point, excluded);
 }
 
 function clampPartPosition(part: CircuitPart, x: number, y: number) {
-  const spec = getSpec(part);
-  expandMobileWorkbenchTo(x + spec.width, y + spec.height);
-
-  return {
-    x: Math.round(Math.min(workbenchLimitWidth() - spec.width - 16, Math.max(16, x))),
-    y: Math.round(Math.min(workbenchLimitHeight() - spec.height - 16, Math.max(16, y))),
-  };
+  return workbenchGeometry.clampPosition(part, x, y);
 }
 
-function addPart(type: PartType) {
-  const index = parts.value.filter((part) => part.type === type).length + 1;
-  const spec = getSpec(type);
-  pushEditorHistory();
-  const nextPart: CircuitPart = {
-    id: `${type}-${Date.now()}`,
-    name: `${spec.label} ${index}`,
-    type,
-    x: 180 + ((index * 70) % 420),
-    y: 180 + ((index * 48) % 260),
-  };
-
-  if (type === "switch") {
-    nextPart.closed = false;
-  }
-
-  if (type === "resistor") {
-    nextPart.resistance = 60;
-  }
-
-  if (type === "spring") {
-    nextPart.contactMode = "normally-open";
-    nextPart.closed = false;
-  }
-
-  parts.value.push(nextPart);
-  clearInteractionState();
-  selectedPartId.value = nextPart.id;
-  statusPanelTab.value = "selection";
-  palettePanelOpen.value = false;
-}
-
-function duplicateSelectedPart() {
-  const selected = selectedPart.value;
-  if (!selected) {
-    return;
-  }
-
-  pushEditorHistory();
-  const index = parts.value.filter((part) => part.type === selected.type).length + 1;
-  const position = clampPartPosition(selected, selected.x + 36, selected.y + 36);
-  const nextPart: CircuitPart = {
-    ...selected,
-    id: `${selected.type}-${Date.now()}`,
-    name: `${getSpec(selected).label} ${index}`,
-    x: position.x,
-    y: position.y,
-  };
-  parts.value.push(nextPart);
-  clearInteractionState();
-  selectedPartId.value = nextPart.id;
-}
-
-function removeSelectedPart() {
-  const selected = selectedPart.value;
-  if (!selected || parts.value.length <= 1) {
-    return;
-  }
-
-  pushEditorHistory();
-  parts.value = parts.value.filter((part) => part.id !== selected.id);
-  wires.value = wires.value.filter(
-    (wire) => wire.from.partId !== selected.id && wire.to.partId !== selected.id,
-  );
-  for (const part of parts.value) {
-    if (part.controlledBy === selected.id) {
-      delete part.controlledBy;
-    }
-  }
-  selectedPartId.value = parts.value[0]?.id ?? "";
-  clearInteractionState();
-}
-
-function removeWire(wireId: string) {
-  if (!wires.value.some((wire) => wire.id === wireId)) {
-    return;
-  }
-
-  pushEditorHistory();
-  wires.value = wires.value.filter((wire) => wire.id !== wireId);
-  if (selectedWireId.value === wireId) {
-    selectedWireId.value = null;
-  }
-
-  if (hoveredWireId.value === wireId) {
-    hoveredWireId.value = null;
-  }
-
-  if (hoveredEndpoint.value?.wireId === wireId) {
-    hoveredEndpoint.value = null;
-  }
-
-  if (rewiring.value?.wireId === wireId) {
-    rewiring.value = null;
-  }
-
-  if (endpointDrag.value?.wireId === wireId) {
-    endpointDrag.value = null;
-  }
-}
-
-function clearWires() {
-  if (wires.value.length === 0) {
-    return;
-  }
-
-  pushEditorHistory();
-  wires.value = [];
-  clearInteractionState();
-}
-
-function deleteSelectedWorkbenchItem() {
-  if (selectedWire.value) {
-    removeWire(selectedWire.value.id);
-    return;
-  }
-
-  if (selectedPart.value) {
-    removeSelectedPart();
-  }
-}
+function deleteSelectedWorkbenchItem() { deleteSelectedWorkbenchItemFromSelection(); }
 
 function nudgeSelectedPart(deltaX: number, deltaY: number, shouldRecordHistory = true) {
-  const selected = selectedPart.value;
-  if (!selected) {
-    return;
-  }
-
-  if (shouldRecordHistory) {
-    pushEditorHistory();
-  }
-
-  const partner = relayPartner(selected);
-  if (!partner) {
-    const position = clampPartPosition(selected, selected.x + deltaX, selected.y + deltaY);
-    selected.x = position.x;
-    selected.y = position.y;
-  } else {
-    const group = [selected, partner];
-    const appliedX = Math.min(
-      ...group.map((item) => workbenchLimitWidth() - getSpec(item).width - 16 - item.x),
-      Math.max(...group.map((item) => 16 - item.x), deltaX),
-    );
-    const appliedY = Math.min(
-      ...group.map((item) => workbenchLimitHeight() - getSpec(item).height - 16 - item.y),
-      Math.max(...group.map((item) => 16 - item.y), deltaY),
-    );
-    for (const item of group) {
-      item.x = Math.round(item.x + appliedX);
-      item.y = Math.round(item.y + appliedY);
-    }
-  }
+  nudgeSelectedPartFromMovement(deltaX, deltaY, shouldRecordHistory);
   selectedWireId.value = null;
 }
 
@@ -2506,364 +752,13 @@ function cancelWorkbenchInteraction() {
   clearSelection();
 }
 
-function isKeyboardShortcutBlocked(target: EventTarget | null) {
-  return target instanceof HTMLElement
-    ? Boolean(target.closest("input, textarea, select, button, [contenteditable='true']"))
-    : false;
-}
-
-function setWorkbenchZoom(value: number) {
-  pushEditorHistory();
-  board.setZoom(value);
-}
-
-function handleWorkbenchKeydown(event: KeyboardEvent) {
-  if (isKeyboardShortcutBlocked(event.target)) {
-    return;
-  }
-
-  const key = event.key;
-  const keyLower = key.toLowerCase();
-  const commandKey = event.metaKey || event.ctrlKey;
-
-  if (commandKey && keyLower === "z") {
-    event.preventDefault();
-    if (event.shiftKey) {
-      redoWorkspaceChange();
-    } else {
-      undoWorkspaceChange();
-    }
-    return;
-  }
-
-  if (commandKey && keyLower === "y") {
-    event.preventDefault();
-    redoWorkspaceChange();
-    return;
-  }
-
-  if (commandKey && keyLower === "d") {
-    event.preventDefault();
-    duplicateSelectedPart();
-    return;
-  }
-
-  if (key === "Delete" || key === "Backspace") {
-    event.preventDefault();
-    deleteSelectedWorkbenchItem();
-    return;
-  }
-
-  if (key === "Escape") {
-    event.preventDefault();
-    cancelWorkbenchInteraction();
-    return;
-  }
-
-  const nudgeDistance = event.shiftKey ? 16 : 4;
-  const nudgeMap: Partial<Record<string, [number, number]>> = {
-    ArrowDown: [0, nudgeDistance],
-    ArrowLeft: [-nudgeDistance, 0],
-    ArrowRight: [nudgeDistance, 0],
-    ArrowUp: [0, -nudgeDistance],
-  };
-  const nudge = nudgeMap[key];
-  if (nudge) {
-    event.preventDefault();
-    nudgeSelectedPart(nudge[0], nudge[1], !event.repeat);
-    return;
-  }
-
-  if ((key === "Enter" || key === " ") && selectedPart.value?.type === "switch") {
-    event.preventDefault();
-    toggleSwitch(selectedPart.value);
-    return;
-  }
-
-  if ((key === "Enter" || key === " ") && selectedPart.value?.type === "battery") {
-    event.preventDefault();
-    toggleBatteryPolarity(selectedPart.value);
-    return;
-  }
-
-  if (key === "+" || key === "=") {
-    event.preventDefault();
-    setWorkbenchZoom(board.zoom + 5);
-    return;
-  }
-
-  if (key === "-" || key === "_") {
-    event.preventDefault();
-    setWorkbenchZoom(board.zoom - 5);
-    return;
-  }
-
-  if (key === "0") {
-    event.preventDefault();
-    pushEditorHistory();
-    resetMobileView();
-  }
-}
-
-function loadWorkspace(workspace: LessonWorkspace, options: LoadWorkspaceOptions = {}) {
-  const nextWorkspace = options.adaptMobileStarterLayout ? mobileStarterWorkspace(workspace) : workspace;
-
-  parts.value = nextWorkspace.parts.map((part) => ({ ...part }));
-  snapBoundRelayAssemblies();
-  wires.value = nextWorkspace.wires.map((wire) => ({
-    ...wire,
-    from: { ...wire.from },
-    to: { ...wire.to },
-  }));
-  selectedPartId.value = nextWorkspace.selectedPartId;
-  clearInteractionState();
-  board.setZoom(nextWorkspace.zoom);
-  fitMobileWorkbenchAfterRender("auto", options.resetMobileLayout ?? true);
-}
-
-function workspaceSnapshot(savedAt = new Date().toISOString()): PersistedWorkspace {
-  return {
-    activeLessonId: activeLessonId.value,
-    parts: parts.value.map((part) => ({ ...part })),
-    savedAt,
-    selectedPartId: selectedPartId.value,
-    version: 1,
-    wires: wires.value.map((wire) => ({
-      ...wire,
-      from: { ...wire.from },
-      to: { ...wire.to },
-    })),
-    zoom: board.zoom,
-  };
-}
-
-function workspaceHistoryKey(workspace: PersistedWorkspace) {
-  return JSON.stringify({
-    activeLessonId: workspace.activeLessonId,
-    parts: workspace.parts,
-    selectedPartId: workspace.selectedPartId,
-    wires: workspace.wires,
-    zoom: workspace.zoom,
-  });
-}
-
-function loadWorkspaceSnapshot(workspace: PersistedWorkspace) {
-  activeLessonId.value = lessonCatalog.some((lesson) => lesson.id === workspace.activeLessonId)
-    ? workspace.activeLessonId
-    : lessonCatalog[0].id;
-  loadWorkspace(workspace);
-  lastSavedAt.value = workspace.savedAt;
-}
-
-function restoreWorkspaceFromUrl() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const sharedWorkspace = new URL(window.location.href).searchParams.get(workspaceShareParam);
-  if (!sharedWorkspace) {
-    return false;
-  }
-
-  try {
-    const parsed = JSON.parse(base64UrlDecode(sharedWorkspace)) as unknown;
-    if (!isPersistedWorkspace(parsed)) {
-      workspaceRecoveryMessage.value = "分享链接中的工作台数据无效，已忽略该链接。";
-      return false;
-    }
-
-    loadWorkspaceSnapshot(parsed);
-    saveWorkspaceToStorage();
-    sharedWorkspaceLoaded.value = true;
-    return true;
-  } catch {
-    workspaceRecoveryMessage.value = "分享链接无法读取，已忽略该链接。";
-    return false;
-  }
-}
-
-function restoreAutoSavedWorkspace() {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const rawWorkspace = readLocalStorage(savedWorkspaceKey);
-  if (!rawWorkspace) {
-    return false;
-  }
-
-  try {
-    const workspace = JSON.parse(rawWorkspace) as unknown;
-    if (isPersistedWorkspace(workspace)) {
-      loadWorkspaceSnapshot(workspace);
-      return true;
-    }
-
-    removeLocalStorage(savedWorkspaceKey);
-    if (!workspaceRecoveryMessage.value) {
-      workspaceRecoveryMessage.value = "上次自动保存的数据不完整，已安全回退到默认工作台。";
-    }
-  } catch {
-    removeLocalStorage(savedWorkspaceKey);
-    if (!workspaceRecoveryMessage.value) {
-      workspaceRecoveryMessage.value = "上次自动保存无法读取，已安全回退到默认工作台。";
-    }
-  }
-
-  return false;
-}
-
-function saveWorkspaceToStorage() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const workspace = workspaceSnapshot();
-  if (writeLocalStorage(savedWorkspaceKey, JSON.stringify(workspace))) {
-    lastSavedAt.value = workspace.savedAt;
-  }
-}
-
 function markCloudWorkspaceChanged() {
-  if (!cloudUserEmail.value || suppressCloudDirtyMark.value || cloudSyncStatus.value === "syncing") {
+  if (!cloudUserEmail.value || cloudSyncStatus.value === "syncing") {
     return;
   }
 
   cloudSyncStatus.value = "local-changes";
   cloudRecordsMessage.value = "";
-}
-
-function cloudUploadSuggestionKey() {
-  return cloudUserEmail.value ? `${cloudUploadSuggestionKeyPrefix}.${cloudUserEmail.value}` : cloudUploadSuggestionKeyPrefix;
-}
-
-function dismissCloudInitialUploadSuggestion() {
-  cloudShouldSuggestInitialUpload.value = false;
-
-  if (typeof window !== "undefined") {
-    writeLocalStorage(cloudUploadSuggestionKey(), "dismissed");
-  }
-}
-
-function scheduleWorkspaceSave() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  markCloudWorkspaceChanged();
-
-  if (autosaveTimer) {
-    window.clearTimeout(autosaveTimer);
-  }
-
-  autosaveTimer = window.setTimeout(saveWorkspaceToStorage, 220);
-}
-
-function loadSavedRecords() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const rawRecords = readLocalStorage(savedRecordsKey);
-  if (!rawRecords) {
-    return;
-  }
-
-  try {
-    const records = JSON.parse(rawRecords) as unknown;
-    if (!Array.isArray(records)) {
-      savedRecords.value = [];
-      removeLocalStorage(savedRecordsKey);
-      return;
-    }
-
-    const nextRecords = records.filter(isSavedWorkspaceRecord).slice(0, 12);
-    savedRecords.value = nextRecords;
-    if (nextRecords.length !== records.length) {
-      persistSavedRecords();
-    }
-  } catch {
-    removeLocalStorage(savedRecordsKey);
-  }
-}
-
-function persistSavedRecords() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  writeLocalStorage(savedRecordsKey, JSON.stringify(savedRecords.value));
-}
-
-function saveWorkspaceRecord() {
-  const snapshot = workspaceSnapshot();
-  const title = recordTitle.value.trim() || `记录 ${formatSavedTime(snapshot.savedAt)}`;
-  savedRecords.value = [
-    {
-      ...snapshot,
-      id: `record-${Date.now()}`,
-      title,
-    },
-    ...savedRecords.value,
-  ].slice(0, 12);
-  recordTitle.value = "";
-  persistSavedRecords();
-  saveWorkspaceToStorage();
-}
-
-function downloadTextFile(filename: string, content: string, type: string) {
-  if (typeof document === "undefined") {
-    return;
-  }
-
-  const blob = new Blob([content], { type });
-  const link = document.createElement("a");
-  const objectUrl = URL.createObjectURL(blob);
-  link.download = filename;
-  link.href = objectUrl;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
-}
-
-function exportWorkspaceJson() {
-  const snapshot = workspaceSnapshot();
-  const filename = `xshow-workspace-${new Date(snapshot.savedAt).toISOString().slice(0, 10)}.json`;
-  downloadTextFile(filename, JSON.stringify(snapshot, null, 2), "application/json");
-}
-
-function showShareLinkFeedback(state: "copied" | "manual") {
-  shareLinkState.value = state;
-
-  if (shareLinkFeedbackTimer) {
-    window.clearTimeout(shareLinkFeedbackTimer);
-  }
-
-  shareLinkFeedbackTimer = window.setTimeout(() => {
-    shareLinkState.value = "idle";
-    shareLinkFeedbackTimer = null;
-  }, state === "copied" ? 1800 : 3600);
-}
-
-async function copyWorkspaceShareLink() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const url = new URL(window.location.href);
-  url.searchParams.set(workspaceShareParam, base64UrlEncode(JSON.stringify(workspaceSnapshot())));
-  const shareUrl = url.toString();
-
-  try {
-    if (!navigator.clipboard?.writeText) {
-      throw new Error("Clipboard API unavailable");
-    }
-
-    await navigator.clipboard.writeText(shareUrl);
-    showShareLinkFeedback("copied");
-  } catch {
-    showShareLinkFeedback("manual");
-    window.prompt("浏览器没有允许自动复制，请手动复制这个分享链接：", shareUrl);
-  }
 }
 
 function openExperimentReportPanel() {
@@ -2872,855 +767,55 @@ function openExperimentReportPanel() {
   palettePanelOpen.value = false;
 }
 
-function currentExperimentReportMarkdown() {
-  return formatExperimentReportMarkdown({
-    generatedAt: new Date().toISOString(),
-    lessonObjective: activeLesson.value.objective,
-    lessonSteps: lessonStepStates.value.map((step) => ({
-      complete: step.complete,
-      description: step.description,
-    })),
-    lessonTitle: activeLesson.value.title,
-    parts: parts.value,
-    simulation: simulation.value,
-    wires: wires.value,
-  });
-}
-
-function showExperimentReportCopyFeedback(state: "copied" | "manual") {
-  experimentReportCopyState.value = state;
-
-  if (experimentReportCopyFeedbackTimer) {
-    window.clearTimeout(experimentReportCopyFeedbackTimer);
-  }
-
-  experimentReportCopyFeedbackTimer = window.setTimeout(() => {
-    experimentReportCopyState.value = "idle";
-    experimentReportCopyFeedbackTimer = null;
-  }, state === "copied" ? 1800 : 3600);
-}
-
-async function copyExperimentReport() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const markdown = currentExperimentReportMarkdown();
-
-  try {
-    if (!navigator.clipboard?.writeText) {
-      throw new Error("Clipboard API unavailable");
-    }
-
-    await navigator.clipboard.writeText(markdown);
-    showExperimentReportCopyFeedback("copied");
-  } catch {
-    showExperimentReportCopyFeedback("manual");
-    window.prompt("浏览器没有允许自动复制，请手动复制这个实验报告：", markdown);
-  }
-}
-
-function exportExperimentReport() {
-  const date = new Date().toISOString().slice(0, 10);
-  downloadTextFile(
-    `xshow-experiment-report-${date}.md`,
-    currentExperimentReportMarkdown(),
-    "text/markdown;charset=utf-8",
-  );
-}
-
 async function importWorkspaceJson(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const file = input.files?.[0];
-  input.value = "";
-
-  if (!file) {
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(await file.text()) as unknown;
-    if (!isPersistedWorkspace(parsed)) {
-      window.alert("这个 JSON 文件不是有效的 xshow 工作台存档。");
-      return;
-    }
-
-    pushEditorHistory();
-    loadWorkspaceSnapshot(parsed);
-    workspaceRecoveryMessage.value = "";
-    saveWorkspaceToStorage();
-    statusPanelOpen.value = false;
-  } catch {
-    window.alert("读取 JSON 存档失败，请检查文件内容。");
-  }
-}
-
-function loadSavedRecord(record: SavedWorkspaceRecord) {
-  pushEditorHistory();
-  loadWorkspaceSnapshot(record);
-  workspaceRecoveryMessage.value = "";
-  saveWorkspaceToStorage();
-}
-
-function removeSavedRecord(recordId: string) {
-  savedRecords.value = savedRecords.value.filter((record) => record.id !== recordId);
-  persistSavedRecords();
-}
-
-async function refreshCloudUser() {
-  if (!cloudConfig.configured) {
-    return;
-  }
-
-  try {
-    const user = await getCloudUser();
-    cloudUserEmail.value = user?.email ?? null;
-    if (user) {
-      void loadCloudRecords();
-    } else {
-      cloudRecords.value = [];
-      cloudActiveRecordId.value = null;
-      cloudLastSyncedAt.value = null;
-      cloudRecordTitle.value = "";
-      cloudShouldSuggestInitialUpload.value = false;
-      cloudAuthMode.value = "sign-in";
-      clearCloudConflict();
-      cloudSyncStatus.value = "idle";
-    }
-  } catch (error) {
-    cloudAuthError.value = error instanceof Error ? error.message : "读取登录状态失败。";
-  }
-}
-
-function setCloudAuthMode(mode: CloudAuthMode) {
-  cloudAuthMode.value = mode;
-  cloudAuthError.value = "";
-  cloudAuthMessage.value = "";
-  cloudPassword.value = "";
-  cloudPasswordConfirm.value = "";
-}
-
-function validateCloudPassword({ requireConfirm = false } = {}) {
-  if (!cloudPassword.value) {
-    cloudAuthError.value = "请输入密码。";
-    return false;
-  }
-
-  if (cloudPassword.value.length < 6) {
-    cloudAuthError.value = "密码至少需要 6 位。";
-    return false;
-  }
-
-  if (requireConfirm && cloudPassword.value !== cloudPasswordConfirm.value) {
-    cloudAuthError.value = "两次输入的密码不一致。";
-    return false;
-  }
-
-  return true;
-}
-
-async function requestCloudAuth() {
-  const email = cloudEmail.value.trim();
-  cloudAuthError.value = "";
-  cloudAuthMessage.value = "";
-
-  if (!cloudConfig.configured) {
-    cloudAuthError.value = "还没有配置 Supabase 环境变量。";
-    return;
-  }
-
-  if (cloudAuthMode.value !== "update-password" && !email) {
-    cloudAuthError.value = "请输入邮箱地址。";
-    return;
-  }
-
-  if (cloudAuthMode.value === "sign-in" && !validateCloudPassword()) {
-    return;
-  }
-
-  if (cloudAuthMode.value === "sign-up" && !validateCloudPassword({ requireConfirm: true })) {
-    return;
-  }
-
-  if (cloudAuthMode.value === "update-password" && !validateCloudPassword({ requireConfirm: true })) {
-    return;
-  }
-
-  cloudAuthBusy.value = true;
-  try {
-    if (cloudAuthMode.value === "sign-in") {
-      await signInWithEmailPassword(email, cloudPassword.value);
-      cloudPassword.value = "";
-      cloudPasswordConfirm.value = "";
-      cloudAuthMessage.value = "已登录云端同步。";
-      await refreshCloudUser();
-      return;
-    }
-
-    if (cloudAuthMode.value === "sign-up") {
-      await signUpWithEmailPassword(email, cloudPassword.value);
-      cloudPassword.value = "";
-      cloudPasswordConfirm.value = "";
-      cloudAuthMessage.value = "账号已创建。如果收到确认邮件，请先完成邮箱确认。";
-      cloudAuthMode.value = "sign-in";
-      await refreshCloudUser();
-      return;
-    }
-
-    if (cloudAuthMode.value === "reset") {
-      await sendPasswordResetEmail(email);
-      cloudAuthMessage.value = "密码重置邮件已发送，请检查邮箱。";
-      cloudAuthMode.value = "sign-in";
-      return;
-    }
-
-    await updateCloudPassword(cloudPassword.value);
-    cloudPassword.value = "";
-    cloudPasswordConfirm.value = "";
-    cloudAuthMode.value = "sign-in";
-    cloudAuthMessage.value = "密码已更新。";
-  } catch (error) {
-    cloudAuthError.value = error instanceof Error ? error.message : "云端账号操作失败。";
-  } finally {
-    cloudAuthBusy.value = false;
-  }
-}
-
-async function loadCloudRecords() {
-  if (!cloudConfig.configured || !cloudUserEmail.value) {
-    cloudRecords.value = [];
-    return;
-  }
-
-  cloudRecordsBusy.value = true;
-  cloudRecordsError.value = "";
-
-  try {
-    const { droppedCount, records } = sanitizeCloudWorkspaceRecords(
-      await listCloudWorkspaceRecords<PersistedWorkspace>(),
-    );
-    cloudRecords.value = records;
-    if (droppedCount > 0) {
-      cloudRecordsError.value = `已忽略 ${droppedCount} 条无效云端记录。`;
-    }
-    cloudShouldSuggestInitialUpload.value =
-      cloudRecords.value.length === 0 &&
-      !cloudActiveRecordId.value &&
-      !readLocalStorage(cloudUploadSuggestionKey());
-  } catch (error) {
-    cloudSyncStatus.value = "failed";
-    cloudRecordsError.value = error instanceof Error ? error.message : "读取云端记录失败。";
-  } finally {
-    cloudRecordsBusy.value = false;
-  }
-}
-
-function clearCloudConflict() {
-  cloudPendingSnapshot.value = null;
-  cloudPendingTitle.value = "";
-}
-
-function getCloudRecordTitle(snapshot: PersistedWorkspace) {
-  return (
-    cloudRecordTitle.value.trim() ||
-    activeCloudRecord.value?.title ||
-    recordTitle.value.trim() ||
-    `云端记录 ${formatSavedTime(snapshot.savedAt)}`
-  ).slice(0, 120);
-}
-
-function upsertCloudRecord(record: CloudRecord) {
-  cloudRecords.value = [record, ...cloudRecords.value.filter((item) => item.id !== record.id)].slice(0, 20);
-  cloudActiveRecordId.value = record.id;
-  cloudLastSyncedAt.value = record.updated_at;
-  cloudRecordTitle.value = record.title;
-}
-
-async function saveWorkspaceToCloud(options: SaveCloudWorkspaceOptions = {}) {
-  if (!cloudUserEmail.value) {
-    cloudRecordsError.value = "请先登录云端同步。";
-    return;
-  }
-
-  cloudRecordsBusy.value = true;
-  cloudRecordsError.value = "";
-  cloudRecordsMessage.value = "";
-  cloudSyncStatus.value = "syncing";
-
-  try {
-    const snapshot = cloudPendingSnapshot.value && (options.forceOverwrite || options.saveAsCopy)
-      ? cloudPendingSnapshot.value
-      : workspaceSnapshot();
-    const title = (cloudPendingTitle.value && (options.forceOverwrite || options.saveAsCopy))
-      ? cloudPendingTitle.value
-      : getCloudRecordTitle(snapshot);
-    const shouldUpdateActiveRecord = Boolean(cloudActiveRecordId.value && !options.saveAsCopy);
-    const record = shouldUpdateActiveRecord
-      ? await updateCloudWorkspaceRecord<PersistedWorkspace>(
-          cloudActiveRecordId.value as string,
-          title,
-          snapshot,
-          options.forceOverwrite ? undefined : cloudLastSyncedAt.value ?? undefined,
-        )
-      : await saveCloudWorkspaceRecord(title, snapshot);
-
-    if (!record) {
-      cloudPendingSnapshot.value = snapshot;
-      cloudPendingTitle.value = title;
-      await loadCloudRecords();
-      cloudSyncStatus.value = "failed";
-      cloudRecordsError.value = "云端记录已在其他设备更新。请选择覆盖云端，或另存为副本。";
-      return;
-    }
-
-    upsertCloudRecord(record);
-    clearCloudConflict();
-    if (cloudShouldSuggestInitialUpload.value) {
-      dismissCloudInitialUploadSuggestion();
-    }
-    sharedWorkspaceLoaded.value = false;
-    cloudSyncStatus.value = "synced";
-    cloudRecordsMessage.value = shouldUpdateActiveRecord ? "已更新云端记录。" : "已保存到云端。";
-  } catch (error) {
-    cloudSyncStatus.value = "failed";
-    cloudRecordsError.value = error instanceof Error ? error.message : "保存云端记录失败。";
-  } finally {
-    cloudRecordsBusy.value = false;
-  }
-}
-
-function loadCloudRecord(record: CloudRecord) {
-  cloudRecordsError.value = "";
-  cloudRecordsMessage.value = "";
-
-  if (!isPersistedWorkspace(record.workspace)) {
-    cloudSyncStatus.value = "failed";
-    cloudRecordsError.value = "这条云端记录不是有效的工作台存档。";
-    return;
-  }
-
-  suppressCloudDirtyMark.value = true;
-  pushEditorHistory();
-  loadWorkspaceSnapshot(record.workspace);
-  workspaceRecoveryMessage.value = "";
-  saveWorkspaceToStorage();
-  cloudActiveRecordId.value = record.id;
-  cloudLastSyncedAt.value = record.updated_at;
-  cloudRecordTitle.value = record.title;
-  clearCloudConflict();
-  cloudRecordsMessage.value = `已加载 ${record.title}`;
-  void nextTick(() => {
-    suppressCloudDirtyMark.value = false;
-    cloudSyncStatus.value = "synced";
-  });
-}
-
-async function renameCloudRecord(record: CloudRecord) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const nextTitle = window.prompt("新的云端记录名称：", record.title)?.trim().slice(0, 120);
-  if (!nextTitle || nextTitle === record.title) {
-    return;
-  }
-
-  const previousStatus = cloudSyncStatus.value;
-  cloudRecordsBusy.value = true;
-  cloudRecordsError.value = "";
-  cloudRecordsMessage.value = "";
-  cloudSyncStatus.value = "syncing";
-
-  try {
-    const updatedRecord = await renameCloudWorkspaceRecord<PersistedWorkspace>(record.id, nextTitle);
-    cloudRecords.value = cloudRecords.value.map((item) => (item.id === updatedRecord.id ? updatedRecord : item));
-    if (cloudActiveRecordId.value === updatedRecord.id) {
-      cloudLastSyncedAt.value = updatedRecord.updated_at;
-      cloudSyncStatus.value = "synced";
-    } else {
-      cloudSyncStatus.value = previousStatus === "syncing" ? "idle" : previousStatus;
-    }
-    cloudRecordsMessage.value = "云端记录已重命名。";
-  } catch (error) {
-    cloudSyncStatus.value = "failed";
-    cloudRecordsError.value = error instanceof Error ? error.message : "重命名云端记录失败。";
-  } finally {
-    cloudRecordsBusy.value = false;
-  }
-}
-
-async function removeCloudRecord(recordId: string) {
-  cloudRecordsBusy.value = true;
-  cloudRecordsError.value = "";
-  cloudRecordsMessage.value = "";
-  cloudSyncStatus.value = "syncing";
-
-  try {
-    await deleteCloudWorkspaceRecord(recordId);
-    cloudRecords.value = cloudRecords.value.filter((record) => record.id !== recordId);
-    if (cloudActiveRecordId.value === recordId) {
-      cloudActiveRecordId.value = null;
-      cloudLastSyncedAt.value = null;
-      cloudRecordTitle.value = "";
-      cloudShouldSuggestInitialUpload.value = false;
-      clearCloudConflict();
-      cloudSyncStatus.value = "local-changes";
-    } else {
-      cloudSyncStatus.value = "idle";
-    }
-    cloudRecordsMessage.value = "云端记录已删除。";
-  } catch (error) {
-    cloudSyncStatus.value = "failed";
-    cloudRecordsError.value = error instanceof Error ? error.message : "删除云端记录失败。";
-  } finally {
-    cloudRecordsBusy.value = false;
-  }
-}
-
-async function handleCloudSignOut() {
-  cloudAuthError.value = "";
-  cloudAuthMessage.value = "";
-  cloudAuthBusy.value = true;
-
-  try {
-    await signOutCloud();
-    cloudUserEmail.value = null;
-    cloudRecords.value = [];
-    cloudActiveRecordId.value = null;
-    cloudLastSyncedAt.value = null;
-    cloudRecordTitle.value = "";
-    cloudShouldSuggestInitialUpload.value = false;
-    cloudPassword.value = "";
-    cloudPasswordConfirm.value = "";
-    cloudAuthMode.value = "sign-in";
-    clearCloudConflict();
-    cloudSyncStatus.value = "idle";
-    cloudAuthMessage.value = "已退出云端同步。";
-  } catch (error) {
-    cloudAuthError.value = error instanceof Error ? error.message : "退出登录失败。";
-  } finally {
-    cloudAuthBusy.value = false;
-  }
-}
-
-function loadLessonWorkspace(lessonId = activeLesson.value.id) {
-  const lesson = lessonCatalog.find((item) => item.id === lessonId) ?? activeLesson.value;
-  pushEditorHistory();
-  activeLessonId.value = lesson.id;
-  loadWorkspace(lesson.starterWorkspace, { adaptMobileStarterLayout: true });
-}
-
-function loadPublishedModuleFromRoute() {
-  const moduleId = typeof route.query.module === "string" ? route.query.module : "";
-  if (!moduleId) {
-    return false;
-  }
-
-  const module = loadPublishedRelayModules().find((item) => item.id === moduleId);
-  if (!module) {
-    return false;
-  }
-
-  // Expanding a module is a navigation action, but it still replaces the
-  // editable board. Keep the caller's work recoverable with Undo.
-  pushEditorHistory();
-  activeLessonId.value = lessonCatalog.some((lesson) => lesson.id === module.verification?.lessonId)
-    ? module.verification?.lessonId as string
-    : "build-a-relay";
-  const sourceWorkspace = module.implementation.sourceWorkspace;
-  loadWorkspace(
-    {
-      parts: sourceWorkspace?.parts ?? module.implementation.parts,
-      selectedPartId: module.implementation.springId,
-      wires: sourceWorkspace?.wires ?? module.implementation.wires,
-      zoom: 100,
-    },
-    { adaptMobileStarterLayout: true },
-  );
-  statusPanelTab.value = "selection";
-  return true;
-}
-
-function loadWorkbenchMode(mode: "free" | "workshop") {
-  if (mode === "workshop" && loadPublishedModuleFromRoute()) {
-    lessonCompletePanelOpen.value = false;
-    dismissedLessonCompletionId.value = null;
-    return;
-  }
-
-  const lessonId = mode === "workshop" ? "build-a-relay" : "open-the-circuit";
-  statusPanelTab.value = "lesson";
-  lessonCompletePanelOpen.value = false;
-  dismissedLessonCompletionId.value = null;
-  loadLessonWorkspace(lessonId);
-}
-
-function closeLessonCompletePanel() {
-  dismissedLessonCompletionId.value = activeLessonId.value;
-  lessonCompletePanelOpen.value = false;
-}
-
-function loadNextLesson() {
-  const currentIndex = lessonCatalog.findIndex((lesson) => lesson.id === activeLessonId.value);
-  const nextLesson = lessonCatalog[(currentIndex + 1) % lessonCatalog.length] ?? lessonCatalog[0];
-  dismissedLessonCompletionId.value = null;
-  lessonCompletePanelOpen.value = false;
-  loadLessonWorkspace(nextLesson.id);
-}
-
-function resetDemo() {
-  const demoLesson = lessonCatalog.find((lesson) => lesson.id === "open-the-circuit") ?? lessonCatalog[0];
-  pushEditorHistory();
-  loadWorkspace(
-    {
-      ...demoLesson.starterWorkspace,
-      selectedPartId: "bulb-1",
-    },
-    { adaptMobileStarterLayout: true },
-  );
-}
-
-function toggleSwitch(part: CircuitPart) {
-  pushEditorHistory();
-  part.closed = !part.closed;
-}
-
-function toggleBatteryPolarity(part: CircuitPart) {
-  pushEditorHistory();
-
-  if (batteryPolarity(part) === "normal") {
-    part.polarity = "reversed";
-    return;
-  }
-
-  delete part.polarity;
-}
-
-function setResistance(part: CircuitPart, value: number) {
-  const nextValue = clampResistorOhms(value, part.resistance);
-  if (part.resistance === nextValue) {
-    return;
-  }
-  pushPartEditHistory(part, "resistance");
-  part.resistance = nextValue;
-}
-
-function setPartRotation(part: CircuitPart, value: number) {
-  const nextValue = normalizePartRotation(value, part.rotation);
-  if ((part.rotation ?? 0) === nextValue) {
-    return;
-  }
-  pushPartEditHistory(part, "rotation");
-  part.rotation = nextValue;
-}
-
-function pushPartEditHistory(part: CircuitPart, field: string) {
-  const key = `${part.id}:${field}`;
-  if (partEditHistory?.key !== key) {
-    if (partEditHistory) {
-      window.clearTimeout(partEditHistory.timer);
-    }
-    pushEditorHistory();
-  } else {
-    window.clearTimeout(partEditHistory.timer);
-  }
-  partEditHistory = {
-    key,
-    timer: window.setTimeout(() => {
-      partEditHistory = null;
-    }, 400),
-  };
-}
-
-function setPartPosition(part: CircuitPart, axis: "x" | "y", value: number) {
-  if (!Number.isFinite(value)) {
-    return;
-  }
-  const nextPosition = clampPartPosition(part, axis === "x" ? value : part.x, axis === "y" ? value : part.y);
-  if (nextPosition.x === part.x && nextPosition.y === part.y) {
-    return;
-  }
-  pushPartEditHistory(part, "position");
-  part.x = nextPosition.x;
-  part.y = nextPosition.y;
-}
-
-function setSpringContactMode(part: CircuitPart, value: string) {
-  if (part.type !== "spring" || (value !== "normally-open" && value !== "normally-closed") || part.contactMode === value) {
-    return;
-  }
-  pushPartEditHistory(part, "contact-mode");
-  part.contactMode = value;
+  await importWorkspaceJsonFromRecords(event, () => { statusPanelOpen.value = false; });
 }
 
 loadSavedRecords();
-const restoredStartupWorkspace = restoreWorkspaceFromUrl() || restoreAutoSavedWorkspace();
-if (!restoredStartupWorkspace) {
-  loadWorkspace(
-    {
-      parts: parts.value,
-      selectedPartId: selectedPartId.value,
-      wires: wires.value,
-      zoom: board.zoom,
-    },
-    { adaptMobileStarterLayout: true },
-  );
-}
-watch([parts, wires, selectedPartId, activeLessonId, () => board.zoom], scheduleWorkspaceSave, {
-  deep: true,
+const autosave = useWorkbenchAutosave({
+  activeLessonId,
+  loadDefaultWorkspace: () => loadWorkspace({ parts: parts.value, selectedPartId: selectedPartId.value, wires: wires.value, zoom: board.zoom }, { adaptMobileStarterLayout: true }),
+  markCloudChanged: markCloudWorkspaceChanged,
+  parts,
+  restoreAutoSavedWorkspace: restoreAutoSavedWorkspaceFromRecords,
+  restoreWorkspaceFromUrl: restoreWorkspaceFromUrlFromRecords,
+  saveWorkspaceToStorage: saveWorkspaceToStorageFromRecords,
+  selectedPartId,
+  wires,
+  zoom: () => board.zoom,
 });
+autosave.restoreInitialWorkspace();
 
-watch([workbenchMode, () => route.query.module], ([mode]) => loadWorkbenchMode(mode), { immediate: true });
-watch(
-  [lessonComplete, activeLessonId],
-  ([complete]) => {
-    if (complete && dismissedLessonCompletionId.value !== activeLessonId.value) {
-      lessonCompletePanelOpen.value = true;
-      return;
-    }
-
-    if (!complete && dismissedLessonCompletionId.value === activeLessonId.value) {
-      dismissedLessonCompletionId.value = null;
-    }
-
-    lessonCompletePanelOpen.value = false;
-  },
-  { immediate: true },
-);
-
+watch([workbenchMode, () => route.query.module], ([mode, moduleId]) => loadWorkbenchMode(mode, typeof moduleId === "string" ? moduleId : ""), { immediate: true });
 function handleMobileViewportChange() {
   desktopViewport.value = isDesktopViewport();
   updateCanvasViewportSize();
   fitMobileWorkbenchAfterRender("auto", true);
 }
 
-function handlePwaUpdateAvailable(event: Event) {
-  const detail = (event as CustomEvent<{ registration?: ServiceWorkerRegistration }>).detail;
-  pwaUpdateRegistration.value = detail.registration ?? null;
-}
-
-function dismissPwaUpdate() {
-  pwaUpdateRegistration.value = null;
-}
-
-function applyPwaUpdate() {
-  const waitingWorker = pwaUpdateRegistration.value?.waiting;
-  if (!waitingWorker || !("serviceWorker" in navigator)) {
-    window.location.reload();
-    return;
-  }
-
-  navigator.serviceWorker.addEventListener("controllerchange", () => window.location.reload(), {
-    once: true,
-  });
-  waitingWorker.postMessage({ type: "SKIP_WAITING" });
-}
-
-function openGuideAssistant(mode: GuideAssistantMode = "menu") {
-  guideAssistantMode.value = mode;
-  guideAssistantOpen.value = true;
-
-  if (typeof window !== "undefined") {
-    writeLocalStorage(guideAssistantDismissedKey, "opened");
-  }
-}
-
-function startBeginnerGuide(stepIndex = 0) {
-  beginnerGuideStepIndex.value = Math.min(beginnerGuideSteps.length - 1, Math.max(0, stepIndex));
-  openGuideAssistant("steps");
-}
-
-function showWireGuide() {
-  beginnerGuideStepIndex.value = 1;
-  handleGuideWireAction();
-  openGuideAssistant("wire");
-}
-
-function showGuideDiagnosis() {
-  openGuideAssistant("diagnosis");
-}
-
-function dismissGuideAssistant() {
-  guideAssistantOpen.value = false;
-
-  if (typeof window !== "undefined") {
-    writeLocalStorage(guideAssistantDismissedKey, "dismissed");
-  }
-}
-
-function nextBeginnerGuideStep() {
-  if (beginnerGuideStepIndex.value >= beginnerGuideSteps.length - 1) {
-    dismissGuideAssistant();
-    return;
-  }
-
-  beginnerGuideStepIndex.value += 1;
-}
-
-function openMobileStatusPanel(tab: StatusPanelTab = statusPanelTab.value) {
-  statusPanelTab.value = tab;
-  statusPanelOpen.value = true;
-  palettePanelOpen.value = false;
-}
-
-function handleGuidePartsAction() {
-  palettePanelOpen.value = true;
-  statusPanelOpen.value = false;
-}
-
-function handleGuideWireAction() {
-  selectedPartId.value = "battery-1";
-  selectedWireId.value = null;
-  selectedTerminal.value = { partId: "battery-1", terminal: "b" };
-  palettePanelOpen.value = false;
-  statusPanelOpen.value = false;
-}
-
-function handleGuideSwitchAction() {
-  selectedPartId.value = "switch-1";
-  selectedWireId.value = null;
-  selectedTerminal.value = null;
-  palettePanelOpen.value = false;
-  statusPanelOpen.value = false;
-}
-
-function handleBeginnerGuideAction() {
-  const step = beginnerGuideStep.value;
-
-  if (step.id === "parts") {
-    handleGuidePartsAction();
-    return;
-  }
-
-  if (step.id === "wire") {
-    handleGuideWireAction();
-    return;
-  }
-
-  if (step.id === "switch") {
-    handleGuideSwitchAction();
-  }
-}
-
-function handleGuideDiagnosisAction() {
-  const action = guideDiagnosis.value.action;
-
-  if (action === "switch") {
-    handleGuideSwitchAction();
-    return;
-  }
-
-  if (action === "wire") {
-    showWireGuide();
-    return;
-  }
-
-  if (action === "status") {
-    openMobileStatusPanel("circuit");
-  }
-}
-
-function resetLayoutFromGuide() {
-  resetMobileView();
-  guideAssistantOpen.value = false;
-}
-
-function loadExampleFromGuide() {
-  resetDemo();
-  guideAssistantOpen.value = false;
-}
-
-function startCloudAuthSession() {
-  if (!cloudConfig.configured) {
-    return;
-  }
-
-  void refreshCloudUser();
-  cloudAuthUnsubscribe = onCloudAuthStateChange((user, event) => {
-    cloudUserEmail.value = user?.email ?? null;
-    if (user) {
-      if (event === "PASSWORD_RECOVERY") {
-        cloudAuthMode.value = "update-password";
-        cloudAuthMessage.value = "请设置一个新密码。";
-      } else if (cloudAuthMode.value !== "update-password") {
-        cloudAuthMode.value = "sign-in";
-      }
-      void loadCloudRecords();
-    } else {
-      cloudRecords.value = [];
-      cloudActiveRecordId.value = null;
-      cloudLastSyncedAt.value = null;
-      cloudRecordTitle.value = "";
-      cloudShouldSuggestInitialUpload.value = false;
-      cloudAuthMode.value = "sign-in";
-      clearCloudConflict();
-      cloudSyncStatus.value = "idle";
-    }
-  });
-}
-
-onMounted(() => {
-  desktopViewport.value = isDesktopViewport();
-  fitMobileWorkbenchAfterRender();
-  window.addEventListener("keydown", handleWorkbenchKeydown);
-  window.addEventListener("resize", handleMobileViewportChange);
-  window.addEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
-  window.visualViewport?.addEventListener("resize", handleMobileViewportChange);
-  window.screen.orientation?.addEventListener("change", handleMobileViewportChange);
-
-  if (!readLocalStorage(guideAssistantDismissedKey)) {
-    guideAssistantOpen.value = true;
-    guideAssistantMode.value = "menu";
-  }
-
-  if (cloudConfig.configured) {
-    cloudStartupTimer = window.setTimeout(() => {
-      cloudStartupTimer = null;
-      startCloudAuthSession();
-    }, 500);
-  }
+useWorkbenchWindowLifecycle({
+  cloudConfigured: cloudConfig.configured,
+  fitWorkbench: () => {
+    desktopViewport.value = isDesktopViewport();
+    fitMobileWorkbenchAfterRender();
+  },
+  handleKeydown: handleWorkbenchKeydown,
+  handleViewportChange: handleMobileViewportChange,
+  restoreGuide: beginnerGuide.restoreInitialState,
+  startCloudAuth: startCloudAuthSessionFromCloud,
 });
 
 onBeforeUnmount(() => {
-  if (mobileFitFrame !== null) {
-    window.cancelAnimationFrame(mobileFitFrame);
-    mobileFitFrame = null;
-  }
+  disposeMobileViewport();
 
-  if (mobileScrollFrame !== null) {
-    window.cancelAnimationFrame(mobileScrollFrame);
-    mobileScrollFrame = null;
-  }
+  workbenchParts.dispose();
 
-  if (cloudStartupTimer !== null) {
-    window.clearTimeout(cloudStartupTimer);
-    cloudStartupTimer = null;
-  }
-
-  if (partEditHistory) {
-    window.clearTimeout(partEditHistory.timer);
-    partEditHistory = null;
-  }
-
-  cloudAuthUnsubscribe?.();
-  cloudAuthUnsubscribe = null;
-  window.removeEventListener("keydown", handleWorkbenchKeydown);
-  window.removeEventListener("resize", handleMobileViewportChange);
-  window.removeEventListener(pwaUpdateAvailableEvent, handlePwaUpdateAvailable);
-  window.visualViewport?.removeEventListener("resize", handleMobileViewportChange);
-  window.screen.orientation?.removeEventListener("change", handleMobileViewportChange);
-
-  if (shareLinkFeedbackTimer) {
-    window.clearTimeout(shareLinkFeedbackTimer);
-  }
-
+  stopCloudAuthSessionFromCloud();
   if (buildPlanCopyFeedbackTimer) {
     window.clearTimeout(buildPlanCopyFeedbackTimer);
   }
 
-  if (experimentReportCopyFeedbackTimer) {
-    window.clearTimeout(experimentReportCopyFeedbackTimer);
-  }
+  disposeExperimentReport();
 
 });
 </script>
@@ -3778,7 +873,7 @@ onBeforeUnmount(() => {
         <ComponentPalette
           class="xl:h-full"
           :open="palettePanelOpen"
-          @add-part="addPart"
+          @add-part="addPartFromParts"
           @close="palettePanelOpen = false"
         />
       </div>
@@ -3790,11 +885,11 @@ onBeforeUnmount(() => {
         :battery-polarity-label="batteryPolarityLabel"
         :beginner-guide-step="beginnerGuideStep"
         :beginner-guide-step-index="beginnerGuideStepIndex"
-        :beginner-guide-total="beginnerGuideSteps.length"
+        :beginner-guide-total="beginnerGuideTotal"
         :bulb-brightness="bulbBrightness"
         :buzzer-status="buzzerStatus"
         :capacitor-status="capacitorStatus"
-        :clear-canvas-selection="clearCanvasSelection"
+        :clear-canvas-selection="clearCanvasSelectionFromSelection"
         :clear-endpoint-hover="clearEndpointHover"
         :clear-wire-hover="clearWireHover"
         :clear-wires="clearWires"
@@ -3802,7 +897,7 @@ onBeforeUnmount(() => {
         :current-animation-duration="currentAnimationDuration"
         :dismiss-pwa-update="dismissPwaUpdate"
         :dismiss-guide-assistant="dismissGuideAssistant"
-        :duplicate-selected-part="duplicateSelectedPart"
+        :duplicate-selected-part="duplicateSelectedPartFromParts"
         :end-canvas-gesture="endCanvasGesture"
         :end-drag="endDrag"
         :finish-terminal-drag="finishTerminalDrag"
@@ -3853,7 +948,7 @@ onBeforeUnmount(() => {
         :reset-demo="resetDemo"
         :reset-layout-from-guide="resetLayoutFromGuide"
         :reset-mobile-view="resetMobileView"
-        :remove-selected-part="removeSelectedPart"
+        :remove-selected-part="removeSelectedPartFromParts"
         :rewiring="rewiring"
         :select-wire="selectWire"
         :selected-part-id="selectedPartId"
@@ -3861,10 +956,10 @@ onBeforeUnmount(() => {
         :selected-wire="selectedWire"
         :set-canvas-viewport="setCanvasViewportElement"
         :set-endpoint-hover="setEndpointHover"
-        :set-resistance="setResistance"
+        :set-resistance="setResistanceFromParts"
         :set-wire-hover="setWireHover"
         :set-workbench-element="setWorkbenchElement"
-        :set-part-rotation="setPartRotation"
+        :set-part-rotation="setPartRotationFromParts"
         :set-zoom="board.setZoom"
         :show-guide-diagnosis="showGuideDiagnosis"
         :show-wire-guide="showWireGuide"
@@ -3876,11 +971,12 @@ onBeforeUnmount(() => {
         :terminal-display-label="terminalDisplayLabel"
         :terminal-label="terminalLabel"
         :terminal-style="terminalStyle"
-        :toggle-battery-polarity="toggleBatteryPolarity"
-        :toggle-switch="toggleSwitch"
+        :toggle-battery-polarity="toggleBatteryPolarityFromParts"
+        :toggle-switch="toggleSwitchFromParts"
         :update-new-wire-drag="updateNewWireDrag"
         :voltmeter-status="voltmeterStatus"
         :wire-endpoint-position="wireEndpointPosition"
+        :wire-bridges="wireBridges"
         :wire-path="wirePath"
         :wire-stroke="wireStroke"
         :wire-stroke-width="wireStrokeWidth"
@@ -3908,7 +1004,7 @@ onBeforeUnmount(() => {
         :active-voltmeter-count="activeVoltmeterCount"
         :ammeter-status="ammeterStatus"
         :battery-polarity-label="batteryPolarityLabel"
-        :bind-spring-to-coil="bindSpringToCoil"
+        :bind-spring-to-coil="bindSpringToCoilFromMovement"
         :buzzer-status="buzzerStatus"
         :capacitor-status="capacitorStatus"
         :cloud-active-record-id="cloudActiveRecordId"
@@ -3932,10 +1028,10 @@ onBeforeUnmount(() => {
         :cloud-sync-label="cloudSyncLabel"
         :cloud-sync-state="cloudSyncState"
         :cloud-user-email="cloudUserEmail"
-        :dismiss-cloud-initial-upload-suggestion="dismissCloudInitialUploadSuggestion"
+        :dismiss-cloud-initial-upload-suggestion="dismissCloudInitialUploadSuggestionFromCloud"
         :experiment-report-copy-state="experimentReportCopyState"
         :format-saved-time="formatSavedTime"
-        :handle-cloud-sign-out="handleCloudSignOut"
+        :handle-cloud-sign-out="handleCloudSignOutFromCloud"
         :has-buzzer-parts="hasBuzzerParts"
         :has-motor-parts="hasMotorParts"
         :import-workspace-json="importWorkspaceJson"
@@ -3946,8 +1042,8 @@ onBeforeUnmount(() => {
         :lesson-complete="lessonComplete"
         :lesson-progress="lessonProgress"
         :lesson-step-states="lessonStepStates"
-        :load-cloud-record="loadCloudRecord"
-        :load-cloud-records="loadCloudRecords"
+        :load-cloud-record="loadCloudRecordFromCloud"
+        :load-cloud-records="loadCloudRecordsFromCloud"
         :load-lesson-workspace="loadLessonWorkspace"
         :load-saved-record="loadSavedRecord"
         :main-bulb-brightness="mainBulbBrightness"
@@ -3959,33 +1055,33 @@ onBeforeUnmount(() => {
         physical-build-plan-copy-state="idle"
         :publish-relay-module="publishRelayModule"
         :primary-battery="primaryBattery"
-        :remove-cloud-record="removeCloudRecord"
+        :remove-cloud-record="removeCloudRecordFromCloud"
         :remove-saved-record="removeSavedRecord"
-        :remove-selected-part="removeSelectedPart"
+        :remove-selected-part="removeSelectedPartFromParts"
         :remove-wire="removeWire"
-        :rename-cloud-record="renameCloudRecord"
-        :request-cloud-auth="requestCloudAuth"
+        :rename-cloud-record="renameCloudRecordFromCloud"
+        :request-cloud-auth="requestCloudAuthFromCloud"
         :rewiring="rewiring"
         :save-workspace-record="saveWorkspaceRecord"
-        :save-workspace-to-cloud="saveWorkspaceToCloud"
+        :save-workspace-to-cloud="saveWorkspaceToCloudFromCloud"
         :saved-records="savedRecords"
         :select-wire="selectWire"
         :selected-part="selectedPart"
         :selected-wire="selectedWire"
         :selected-wire-id="selectedWireId"
-        :set-cloud-auth-mode="setCloudAuthMode"
-        :set-part-position="setPartPosition"
-        :set-part-rotation="setPartRotation"
-        :set-resistance="setResistance"
-        :set-spring-contact-mode="setSpringContactMode"
+        :set-cloud-auth-mode="setCloudAuthModeFromCloud"
+        :set-part-position="setPartPositionFromParts"
+        :set-part-rotation="setPartRotationFromParts"
+        :set-resistance="setResistanceFromParts"
+        :set-spring-contact-mode="setSpringContactModeFromParts"
         :share-link-state="shareLinkState"
         :shared-workspace-loaded="sharedWorkspaceLoaded"
         :workspace-recovery-message="workspaceRecoveryMessage"
         :simulation="simulation"
         :workbench-mode="workbenchMode"
         :start-rewire="startRewire"
-        :toggle-battery-polarity="toggleBatteryPolarity"
-        :toggle-switch="toggleSwitch"
+        :toggle-battery-polarity="toggleBatteryPolarityFromParts"
+        :toggle-switch="toggleSwitchFromParts"
         :voltmeter-status="voltmeterStatus"
         :wire-label="wireLabel"
         :wires="wires"

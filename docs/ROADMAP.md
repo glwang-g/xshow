@@ -47,6 +47,7 @@ Status: **Done for v0.1**
 - [x] Snap wire endpoints more clearly to nearby terminals
 - [x] Improve wire routing so connections remain readable
 - [x] Add clearer hover, drag, and drop states for wire endpoints
+- [x] Remove collinear route points, support outside detours, and use bridges for non-connecting crossings
 
 ### Refine current direction animation
 

@@ -114,13 +114,23 @@ test("workbench history caps undo and redo stacks to the configured size", () =>
 test("workbench view records direct manipulation and coalesces continuous property edits", async () => {
   const { readFile } = await import("node:fs/promises");
   const homeSource = await readFile(new URL("../src/views/Home.vue", import.meta.url), "utf8");
+  const partsSource = await readFile(
+    new URL("../src/composables/useWorkbenchParts.ts", import.meta.url),
+    "utf8",
+  );
+  const movementSource = await readFile(
+    new URL("../src/composables/useWorkbenchPartMovement.ts", import.meta.url),
+    "utf8",
+  );
 
-  assert.match(homeSource, /historyRecorded: false/);
-  assert.match(homeSource, /if \(!dragging\.value\.historyRecorded\) \{\s+pushEditorHistory\(\);/);
-  assert.match(homeSource, /function pushPartEditHistory\(part: CircuitPart, field: string\)/);
-  assert.match(homeSource, /timer: window\.setTimeout\(\(\) => \{\s+partEditHistory = null;\s+\}, 400\)/);
-  assert.match(homeSource, /function setPartPosition\(part: CircuitPart, axis: "x" \| "y", value: number\)/);
-  assert.match(homeSource, /function setSpringContactMode\(part: CircuitPart, value: string\)/);
-  assert.match(homeSource, /if \(!coilId\) \{\s+if \(!spring\.controlledBy\) \{\s+return;/);
-  assert.match(homeSource, /if \(spring\.controlledBy === coil\.id\) \{\s+return;\s+\}\s+\s+pushEditorHistory\(\);/);
+  assert.match(movementSource, /historyRecorded: false/);
+  assert.match(movementSource, /if \(!dragging\.value\.historyRecorded\) \{\s+options\.pushHistory\(\);/);
+  assert.match(movementSource, /function relayPartner\(part: CircuitPart\)/);
+  assert.match(movementSource, /function bindSpringToCoil\(spring: CircuitPart, coilId: string\)/);
+  assert.match(partsSource, /function pushPartEditHistory\(part: CircuitPart, field: string\)/);
+  assert.match(partsSource, /timer: window\.setTimeout\(\(\) => \{\s+editHistory = null;\s+\}, 400\)/);
+  assert.match(partsSource, /function setPartPosition\(part: CircuitPart, axis: "x" \| "y", value: number\)/);
+  assert.match(partsSource, /function setSpringContactMode\(part: CircuitPart, value: string\)/);
+  assert.match(movementSource, /if \(!coilId\) \{\s+if \(!spring\.controlledBy\) \{\s+return;/);
+  assert.match(movementSource, /if \(!coil \|\| coil\.type !== "coil" \|\| alreadyBound \|\| spring\.controlledBy === coil\.id\) \{\s+return;/);
 });

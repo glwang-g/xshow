@@ -166,6 +166,7 @@ const props = defineProps<{
   updateNewWireDrag: (event: PointerEvent) => void;
   voltmeterStatus: (part: CircuitPart) => VoltmeterState;
   wireEndpointPosition: (wire: Wire, end: WireEnd) => Point;
+  wireBridges: Array<{ gapPath: string; id: string; path: string; stroke: string; verticalPath: string; verticalStroke: string; verticalWidth: number; width: number }>;
   wirePath: (wire: Wire) => string;
   wireStroke: (wire: Wire) => string;
   wireStrokeWidth: (wire: Wire) => number;
@@ -181,6 +182,22 @@ const emit = defineEmits<{
 
 function bindCanvasViewport(element: unknown) {
   props.setCanvasViewport(element instanceof HTMLElement ? element : null);
+}
+
+function handleWorkbenchSurfacePointerDown(event: PointerEvent) {
+  if (isWorkbenchInteractiveTarget(event.target)) return;
+  props.clearCanvasSelection();
+}
+
+function isWorkbenchInteractiveTarget(target: EventTarget | null) {
+  return target instanceof Element && Boolean(
+    target.closest("[data-circuit-interactive='true'], button, a, input, select, textarea"),
+  );
+}
+
+function handleCanvasViewportPointerDown(event: PointerEvent) {
+  if (!isWorkbenchInteractiveTarget(event.target)) props.clearCanvasSelection();
+  props.handleCanvasPointerDown(event);
 }
 
 function bindWorkbench(element: unknown) {
@@ -294,7 +311,7 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
       <section
         :ref="bindCanvasViewport"
         class="relative min-h-0 touch-none overflow-auto bg-[#f8faf7] xl:touch-auto xl:overflow-hidden xl:canvas-grid"
-        @pointerdown="handleCanvasPointerDown"
+        @pointerdown="handleCanvasViewportPointerDown"
         @pointermove="handleCanvasPointerMove"
         @pointerup="endCanvasGesture"
         @pointercancel="endCanvasGesture"
@@ -626,7 +643,7 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
             @pointermove="handleWorkbenchPointerMove"
             @pointerup="endDrag"
             @pointercancel="endDrag"
-            @pointerdown.self="clearCanvasSelection"
+            @pointerdown="handleWorkbenchSurfacePointerDown"
           >
             <div
               v-if="selectedPart && !selectedWire"
@@ -784,6 +801,11 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
                 @pointerenter="setEndpointHover(wire.id, 'to')"
                 @pointerleave="clearEndpointHover(wire.id, 'to')"
               />
+            </g>
+            <g v-for="bridge in wireBridges" :key="bridge.id" class="pointer-events-none">
+              <path :d="bridge.gapPath" fill="none" stroke="#f8faf7" stroke-linecap="butt" :stroke-width="bridge.width + 2" />
+              <path :d="bridge.verticalPath" fill="none" :stroke="bridge.verticalStroke" stroke-linecap="round" :stroke-width="bridge.verticalWidth" />
+              <path :d="bridge.path" fill="none" :stroke="bridge.stroke" stroke-linecap="round" stroke-linejoin="round" :stroke-width="bridge.width" />
             </g>
           </svg>
 

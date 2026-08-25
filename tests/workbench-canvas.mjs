@@ -13,6 +13,20 @@ test("terminal pointer events keep endpoint rewiring on the shared drag lifecycl
   assert.doesNotMatch(canvasSource, /@pointermove\.stop="updateNewWireDrag"/);
 });
 
+test("clicking blank workbench space clears selection without clearing interactive controls", () => {
+  assert.match(canvasSource, /function handleWorkbenchSurfacePointerDown\(event: PointerEvent\)/);
+  assert.match(canvasSource, /function handleCanvasViewportPointerDown\(event: PointerEvent\)/);
+  assert.match(canvasSource, /target\.closest\("\[data-circuit-interactive='true'\], button, a, input, select, textarea"\)/);
+  assert.match(canvasSource, /@pointerdown="handleWorkbenchSurfacePointerDown"/);
+  assert.match(canvasSource, /@pointerdown="handleCanvasViewportPointerDown"/);
+  assert.doesNotMatch(canvasSource, /@pointerdown\.self="clearCanvasSelection"/);
+});
+
+test("workbench canvas receives the full selection clear handler", () => {
+  assert.match(homeSource, /:clear-canvas-selection="clearCanvasSelectionFromSelection"/);
+  assert.doesNotMatch(homeSource, /<WorkbenchCanvas[\s\S]*?:clear-canvas-selection="clearCanvasSelection"/);
+});
+
 test("workbench defers closed palette and status panel code while keeping the canvas eager", () => {
   assert.match(homeSource, /defineAsyncComponent\(\(\) => import\("@\/components\/workbench\/ComponentPalette\.vue"\)\)/);
   assert.match(homeSource, /defineAsyncComponent\(\(\) => import\("@\/components\/workbench\/StatusPanel\.vue"\)\)/);

@@ -32,7 +32,9 @@ type ExportWorkbenchImageOptions = {
   wires: Wire[];
 };
 
-const terminalKeys: TerminalKey[] = ["a", "b"];
+function terminalKeysFor(part: CircuitPart): TerminalKey[] {
+  return part.type === "module" ? ["a", "b", "com", "out"] : ["a", "b"];
+}
 
 function roundedRectPath(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius = 8) {
   const corner = Math.min(radius, width / 2, height / 2);
@@ -96,6 +98,10 @@ function partExportColors(part: CircuitPart) {
 
   if (part.type === "motor") {
     return { background: "#f0fdf4", foreground: "#14532d", muted: "#16a34a" };
+  }
+
+  if (part.type === "module") {
+    return { background: "#f8fafc", foreground: "#0f172a", muted: "#475569" };
   }
 
   return { background: "#ffffff", foreground: "#0f172a", muted: part.closed ? "#10b981" : "#f43f5e" };
@@ -269,10 +275,20 @@ function drawExportPart(context: CanvasRenderingContext2D, part: CircuitPart, op
     context.globalAlpha = 0.45 + state.speed * 0.45;
     context.stroke();
     context.globalAlpha = 1;
+  } else if (part.type === "module") {
+    const contact = part.moduleContactMode === "normally-closed" ? "NC" : "NO";
+    context.fillText("A/B coil", part.x + 18, part.y + 48);
+    context.fillText(`COM -> ${contact}`, part.x + 18, part.y + 66);
+    context.strokeStyle = colors.muted;
+    context.lineWidth = 2;
+    context.strokeRect(part.x + 90, part.y + 48, spec.width - 102, 18);
+    context.fillStyle = colors.foreground;
+    context.font = "600 10px Inter, sans-serif";
+    context.fillText("relay", part.x + 94, part.y + 61);
   }
 
-  for (const terminal of terminalKeys) {
-    const offset = spec.terminals[terminal];
+  for (const terminal of terminalKeysFor(part)) {
+    const offset = spec.terminals[terminal]!;
     context.beginPath();
     context.arc(part.x + offset.x, part.y + offset.y, 9, 0, Math.PI * 2);
     context.fillStyle = "#0f172a";

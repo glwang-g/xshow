@@ -34,6 +34,7 @@ const partTypeLabels: Record<PartType, string> = {
   diode: "二极管",
   led: "LED",
   motor: "电机",
+  module: "自定义模块",
   resistor: "电阻",
   switch: "开关",
   spring: "弹簧触点",

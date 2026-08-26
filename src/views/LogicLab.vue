@@ -109,6 +109,15 @@ function hasVerificationWorkspace(module: PublishedRelayModule) {
   return Boolean(module.implementation.sourceWorkspace?.parts.length);
 }
 
+function moduleContactLabel(module: PublishedRelayModule) {
+  return module.behavior.contactMode === "normally-closed" ? "NC" : "NO";
+}
+
+function moduleContactClosed(module: PublishedRelayModule) {
+  const output = Boolean(relayOutput(module));
+  return module.behavior.contactMode === "normally-closed" ? !output : output;
+}
+
 function removeModule(module: PublishedRelayModule) {
   if (!window.confirm(`删除“${module.name}”？这不会影响工作台中的原始电路。`)) {
     return;
@@ -253,7 +262,34 @@ function renameModule(module: PublishedRelayModule) {
                     </button>
                   </div>
                 </div>
-                <div class="mt-3 grid gap-2" :class="moduleInputCount(module) === 2 ? 'grid-cols-3' : 'grid-cols-2'">
+                <div class="mt-3 rounded-md border border-violet-200 bg-violet-50/60 p-3">
+                  <div class="mb-2 flex items-center justify-between gap-2">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-violet-700">自定义元器件</span>
+                    <span class="text-[10px] text-violet-700">4 个端点 · 可复用</span>
+                  </div>
+                  <div class="grid grid-cols-[1fr_20px_1.4fr_20px_1fr] items-center gap-1">
+                    <div class="grid gap-2">
+                      <div class="flex h-8 items-center justify-between rounded border border-cyan-300 bg-white px-2 font-mono text-xs font-semibold text-cyan-800"><span>A</span><span class="text-[10px] font-normal text-slate-400">线圈</span></div>
+                      <div class="flex h-8 items-center justify-between rounded border border-cyan-300 bg-white px-2 font-mono text-xs font-semibold text-cyan-800"><span>B</span><span class="text-[10px] font-normal text-slate-400">线圈</span></div>
+                    </div>
+                    <div class="grid gap-10"><div class="h-px bg-cyan-300"></div><div class="h-px bg-cyan-300"></div></div>
+                    <div class="rounded-lg border-2 border-violet-300 bg-white px-2 py-3 text-center shadow-sm">
+                      <div class="font-mono text-sm font-bold text-violet-950">{{ module.name }}</div>
+                      <div class="mt-1 text-[10px] text-slate-500">继电器模块</div>
+                      <div class="mt-2 rounded border px-1.5 py-1 text-[10px] font-semibold" :class="moduleContactClosed(module) ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-slate-50 text-slate-500'">
+                        {{ moduleContactClosed(module) ? '触点导通' : '触点断开' }}
+                      </div>
+                    </div>
+                    <div class="grid gap-10"><div class="h-px bg-amber-300"></div><div class="h-px bg-amber-300"></div></div>
+                    <div class="grid gap-2">
+                      <div class="flex h-8 items-center justify-between rounded border border-amber-300 bg-white px-2 font-mono text-xs font-semibold text-amber-800"><span>COM</span><span class="text-[10px] font-normal text-slate-400">触点</span></div>
+                      <div class="flex h-8 items-center justify-between rounded border border-amber-300 bg-white px-2 font-mono text-xs font-semibold text-amber-800"><span>{{ moduleContactLabel(module) }}</span><span class="text-[10px] font-normal text-slate-400">触点</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-3 rounded-md border border-slate-200 bg-white p-3">
+                  <div class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">行为验证 / 原理探究</div>
+                  <div class="grid gap-2" :class="moduleInputCount(module) === 2 ? 'grid-cols-3' : 'grid-cols-2'">
                   <button
                     v-for="inputIndex in moduleInputCount(module)"
                     :key="inputIndex"
@@ -268,19 +304,6 @@ function renameModule(module: PublishedRelayModule) {
                   <div class="flex h-10 items-center rounded-md border border-slate-200 bg-white px-3 font-mono text-xs text-slate-600">
                     {{ module.ports.map((port) => port.label).join(' · ') }}
                   </div>
-                </div>
-                <div class="relative mt-3 rounded-md border border-dashed border-cyan-300 bg-white/70 px-3 pb-3 pt-5">
-                  <span class="absolute -top-2 left-2 rounded bg-cyan-50 px-1.5 text-[10px] font-medium text-cyan-800">继电器核心 · 2 个器件 / 4 个端点</span>
-                  <div class="grid grid-cols-[1fr_20px_1fr] items-center gap-2 text-xs">
-                    <div class="rounded border border-teal-200 bg-teal-50 px-2 py-2 text-center text-teal-900">
-                      <div class="font-medium">线圈</div>
-                      <div class="mt-1 font-mono text-[10px] text-teal-700">A · B</div>
-                    </div>
-                    <div class="h-px bg-cyan-400"></div>
-                    <div class="rounded border border-amber-200 bg-amber-50 px-2 py-2 text-center text-amber-900">
-                      <div class="font-medium">触点</div>
-                      <div class="mt-1 font-mono text-[10px] text-amber-700">COM · {{ module.behavior.contactMode === 'normally-closed' ? 'NC' : 'NO' }}</div>
-                    </div>
                   </div>
                 </div>
                 <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">

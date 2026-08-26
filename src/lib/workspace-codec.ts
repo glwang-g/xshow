@@ -20,7 +20,7 @@ function isFiniteNumber(value: unknown) {
 }
 
 function isTerminalKey(value: unknown) {
-  return value === "a" || value === "b";
+  return value === "a" || value === "b" || value === "com" || value === "out";
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -77,6 +77,14 @@ function isWorkspacePart(value: unknown) {
   }
 
   if (value.rotation !== undefined && !isFiniteNumber(value.rotation)) {
+    return false;
+  }
+
+  if (value.moduleId !== undefined && !isNonEmptyString(value.moduleId)) {
+    return false;
+  }
+
+  if (value.moduleContactMode !== undefined && value.moduleContactMode !== "normally-open" && value.moduleContactMode !== "normally-closed") {
     return false;
   }
 

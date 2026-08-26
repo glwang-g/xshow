@@ -50,6 +50,7 @@ const partTypeOrder: PartType[] = [
   "voltmeter",
   "buzzer",
   "motor",
+  "module",
 ];
 
 const partLabels: Record<PartType, string> = {
@@ -62,6 +63,7 @@ const partLabels: Record<PartType, string> = {
   diode: "二极管模块",
   led: "LED 模块",
   motor: "电机模块",
+  module: "自定义继电器模块",
   resistor: "可变电阻/电位器",
   switch: "开关模块",
   spring: "常开弹簧触点",
@@ -78,6 +80,7 @@ const partNotes: Record<PartType, string> = {
   diode: "注意正向和反向",
   led: "建议搭配限流电阻",
   motor: "通电后观察转速",
+  module: "A/B 接控制侧，COM 与 NO/NC 接目标电路",
   resistor: "用于限流或调节亮度",
   switch: "控制电路通断",
   spring: "需用控制连杆绑定电感线圈",
@@ -94,6 +97,7 @@ const partPurchaseKeywords: Record<PartType, string[]> = {
   diode: ["二极管模块", "1N4148 二极管"],
   led: ["LED 模块", "发光二极管模块"],
   motor: ["小电机模块", "直流电机模块"],
+  module: ["继电器模块", "自定义继电器"],
   resistor: ["可调电阻模块", "电位器模块"],
   switch: ["拨动开关模块", "电子积木开关"],
   spring: ["常开簧片开关", "继电器触点", "弹簧片触点"],

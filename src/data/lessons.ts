@@ -1,4 +1,4 @@
-import type { PartType } from "@/lib/circuit";
+import type { PartType, TerminalKey } from "@/lib/circuit";
 
 export type LessonCheckId =
   | "hasStarterParts"
@@ -49,13 +49,15 @@ export type LessonCheckId =
 
 export type LessonPartType = PartType;
 
-export type LessonTerminalKey = "a" | "b";
+export type LessonTerminalKey = TerminalKey;
 
 export type LessonWorkspacePart = {
   closed?: boolean;
   contactMode?: "normally-open" | "normally-closed";
   controlledBy?: string;
   id: string;
+  moduleContactMode?: "normally-open" | "normally-closed";
+  moduleId?: string;
   name: string;
   polarity?: "normal" | "reversed";
   resistance?: number;

@@ -8,6 +8,7 @@ export const partTypes = [
   "diode",
   "led",
   "motor",
+  "module",
   "resistor",
   "switch",
   "spring",
@@ -15,7 +16,8 @@ export const partTypes = [
 ] as const;
 
 export type PartType = (typeof partTypes)[number];
-export type TerminalKey = "a" | "b";
+export type BasicTerminalKey = "a" | "b";
+export type TerminalKey = BasicTerminalKey | "com" | "out";
 
 export type TerminalRef = {
   partId: string;
@@ -27,6 +29,8 @@ export type CircuitPart = {
   contactMode?: "normally-open" | "normally-closed";
   controlledBy?: string;
   id: string;
+  moduleContactMode?: "normally-open" | "normally-closed";
+  moduleId?: string;
   name: string;
   polarity?: "normal" | "reversed";
   resistance?: number;
@@ -152,11 +156,11 @@ export function batteryPolarity(part: CircuitPart) {
   return part.type === "battery" && part.polarity === "reversed" ? "reversed" : "normal";
 }
 
-export function batteryPositiveTerminal(part: CircuitPart): TerminalKey {
+export function batteryPositiveTerminal(part: CircuitPart): BasicTerminalKey {
   return batteryPolarity(part) === "reversed" ? "a" : "b";
 }
 
-export function batteryNegativeTerminal(part: CircuitPart): TerminalKey {
+export function batteryNegativeTerminal(part: CircuitPart): BasicTerminalKey {
   return batteryPolarity(part) === "reversed" ? "b" : "a";
 }
 
@@ -537,6 +541,9 @@ function wireDirectionThroughBattery(wire: Wire, battery: CircuitPart, edges: Ed
 }
 
 export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[]) {
+  const expanded = expandPublishedModules(sourceParts, sourceWires);
+  sourceParts = expanded.parts;
+  sourceWires = expanded.wires;
   const battery = sourceParts.find((part) => part.type === "battery");
   const bulbs = sourceParts.filter((part) => part.type === "bulb");
   const leds = sourceParts.filter((part) => part.type === "led");
@@ -771,6 +778,59 @@ export function evaluateCircuit(sourceParts: CircuitPart[], sourceWires: Wire[])
     motors: motorStates,
     voltmeters: voltmeterStates,
     wires: wireStates,
+  };
+}
+
+/**
+ * A published relay is a black-box part on the shared workbench. Internally
+ * the steady-state solver can still use its existing coil/contact model.
+ */
+function expandPublishedModules(parts: CircuitPart[], wires: Wire[]) {
+  const expandedParts: CircuitPart[] = [];
+  const terminalMap = new Map<string, { partId: string; terminal: BasicTerminalKey }>();
+
+  for (const part of parts) {
+    if (part.type !== "module") {
+      expandedParts.push(part);
+      continue;
+    }
+
+    const coilId = `${part.id}::coil`;
+    const springId = `${part.id}::contact`;
+    expandedParts.push(
+      {
+        id: coilId,
+        name: `${part.name} 线圈`,
+        resistance: 12,
+        type: "coil",
+        x: part.x,
+        y: part.y,
+      },
+      {
+        contactMode: part.moduleContactMode ?? "normally-open",
+        controlledBy: coilId,
+        id: springId,
+        name: `${part.name} 触点`,
+        type: "spring",
+        x: part.x,
+        y: part.y,
+      },
+    );
+    for (const terminal of ["a", "b", "com", "out"] as const) {
+      terminalMap.set(`${part.id}:${terminal}`, {
+        partId: terminal === "a" || terminal === "b" ? coilId : springId,
+        terminal: terminal === "com" ? "a" : terminal === "out" ? "b" : terminal,
+      });
+    }
+  }
+
+  return {
+    parts: expandedParts,
+    wires: wires.map((wire) => ({
+      ...wire,
+      from: terminalMap.get(`${wire.from.partId}:${wire.from.terminal}`) ?? wire.from,
+      to: terminalMap.get(`${wire.to.partId}:${wire.to.terminal}`) ?? wire.to,
+    })),
   };
 }
 

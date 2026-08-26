@@ -2,6 +2,7 @@ import {
   Activity,
   BatteryCharging,
   BatteryMedium,
+  CircuitBoard,
   CircleDot,
   CloudSync,
   Cog,
@@ -15,14 +16,14 @@ import {
   Trophy,
   Volume2,
 } from "@lucide/vue";
-import type { CircuitPart, PartType, TerminalKey } from "@/lib/circuit";
+import type { BasicTerminalKey, CircuitPart, PartType, TerminalKey } from "@/lib/circuit";
 
 export type PartSpec = {
   icon: unknown;
   label: string;
   width: number;
   height: number;
-  terminals: Record<TerminalKey, { x: number; y: number; label: string }>;
+  terminals: Record<BasicTerminalKey, { x: number; y: number; label: string }> & Partial<Record<Exclude<TerminalKey, BasicTerminalKey>, { x: number; y: number; label: string }>>;
 };
 
 export type PaletteItem = {
@@ -47,131 +48,143 @@ export const partSpecs: Record<PartType, PartSpec> = {
   battery: {
     icon: BatteryCharging,
     label: "电池",
-    width: 176,
-    height: 104,
+    width: 160,
+    height: 96,
     terminals: {
-      a: { x: 0, y: 52, label: "-" },
-      b: { x: 176, y: 52, label: "+" },
+      a: { x: 0, y: 48, label: "-" },
+      b: { x: 160, y: 48, label: "+" },
     },
   },
   switch: {
     icon: ToggleRight,
     label: "开关",
-    width: 168,
-    height: 96,
+    width: 152,
+    height: 88,
     terminals: {
-      a: { x: 0, y: 48, label: "A" },
-      b: { x: 168, y: 48, label: "B" },
+      a: { x: 0, y: 44, label: "A" },
+      b: { x: 152, y: 44, label: "B" },
     },
   },
   bulb: {
     icon: Lightbulb,
     label: "灯泡",
-    width: 156,
-    height: 156,
+    width: 144,
+    height: 140,
     terminals: {
-      a: { x: 0, y: 78, label: "A" },
-      b: { x: 156, y: 78, label: "B" },
+      a: { x: 0, y: 70, label: "A" },
+      b: { x: 144, y: 70, label: "B" },
     },
   },
   resistor: {
     icon: SlidersHorizontal,
     label: "可变电阻",
-    width: 216,
-    height: 110,
+    width: 192,
+    height: 100,
     terminals: {
-      a: { x: 0, y: 55, label: "A" },
-      b: { x: 216, y: 55, label: "B" },
+      a: { x: 0, y: 50, label: "A" },
+      b: { x: 192, y: 50, label: "B" },
     },
   },
   led: {
     icon: CircleDot,
     label: "LED",
-    width: 156,
-    height: 128,
+    width: 144,
+    height: 116,
     terminals: {
-      a: { x: 0, y: 64, label: "-" },
-      b: { x: 156, y: 64, label: "+" },
+      a: { x: 0, y: 58, label: "-" },
+      b: { x: 144, y: 58, label: "+" },
     },
   },
   diode: {
     icon: TriangleRight,
     label: "二极管",
-    width: 156,
-    height: 112,
+    width: 144,
+    height: 100,
     terminals: {
-      a: { x: 0, y: 56, label: "-" },
-      b: { x: 156, y: 56, label: "+" },
+      a: { x: 0, y: 50, label: "-" },
+      b: { x: 144, y: 50, label: "+" },
     },
   },
   capacitor: {
     icon: BatteryMedium,
     label: "电容",
-    width: 156,
-    height: 112,
+    width: 144,
+    height: 100,
     terminals: {
-      a: { x: 0, y: 56, label: "A" },
-      b: { x: 156, y: 56, label: "B" },
+      a: { x: 0, y: 50, label: "A" },
+      b: { x: 144, y: 50, label: "B" },
     },
   },
   spring: {
     icon: ToggleRight,
     label: "弹簧触点",
-    width: 176,
-    height: 112,
+    width: 160,
+    height: 100,
     terminals: {
-      a: { x: 0, y: 56, label: "COM" },
-      b: { x: 176, y: 56, label: "NO" },
+      a: { x: 0, y: 50, label: "COM" },
+      b: { x: 160, y: 50, label: "NO" },
     },
   },
   coil: {
     icon: Waves,
     label: "电感线圈",
-    width: 176,
-    height: 112,
+    width: 160,
+    height: 100,
     terminals: {
-      a: { x: 0, y: 56, label: "A" },
-      b: { x: 176, y: 56, label: "B" },
+      a: { x: 0, y: 50, label: "A" },
+      b: { x: 160, y: 50, label: "B" },
     },
   },
   ammeter: {
     icon: Activity,
     label: "电流表",
-    width: 156,
-    height: 112,
+    width: 144,
+    height: 100,
     terminals: {
-      a: { x: 0, y: 56, label: "A" },
-      b: { x: 156, y: 56, label: "B" },
+      a: { x: 0, y: 50, label: "A" },
+      b: { x: 144, y: 50, label: "B" },
     },
   },
   voltmeter: {
     icon: Gauge,
     label: "电压表",
-    width: 156,
-    height: 112,
+    width: 144,
+    height: 100,
     terminals: {
-      a: { x: 0, y: 56, label: "A" },
-      b: { x: 156, y: 56, label: "B" },
+      a: { x: 0, y: 50, label: "A" },
+      b: { x: 144, y: 50, label: "B" },
     },
   },
   buzzer: {
     icon: Volume2,
     label: "蜂鸣器",
-    width: 156,
-    height: 128,
+    width: 144,
+    height: 112,
     terminals: {
-      a: { x: 0, y: 64, label: "A" },
-      b: { x: 156, y: 64, label: "B" },
+      a: { x: 0, y: 56, label: "A" },
+      b: { x: 144, y: 56, label: "B" },
     },
   },
   motor: {
     icon: Cog,
     label: "电机",
-    width: 156,
-    height: 128,
+    width: 144,
+    height: 112,
     terminals: {
-      a: { x: 0, y: 64, label: "A" },
-      b: { x: 156, y: 64, label: "B" },
+      a: { x: 0, y: 56, label: "A" },
+      b: { x: 144, y: 56, label: "B" },
+    },
+  },
+  module: {
+    icon: CircuitBoard,
+    label: "自定义模块",
+    width: 144,
+    height: 88,
+    terminals: {
+      a: { x: 0, y: 27, label: "A" },
+      b: { x: 0, y: 61, label: "B" },
+      com: { x: 144, y: 27, label: "COM" },
+      out: { x: 144, y: 61, label: "NO" },
     },
   },
 };

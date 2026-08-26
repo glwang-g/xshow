@@ -12,3 +12,10 @@ test("logic lab exposes a source-expandable half adder composed from published g
   assert.match(logicLabSource, /composeFullAdder/);
   assert.match(logicLabSource, /两个半加器接力，再用 OR 合并两个进位。/);
 });
+
+test("published modules present a four-terminal custom component before the behavior table", () => {
+  assert.match(logicLabSource, /自定义元器件/);
+  assert.match(logicLabSource, />COM<\/span>/);
+  assert.match(logicLabSource, /moduleContactLabel\(module\)/);
+  assert.match(logicLabSource, /行为验证 \/ 原理探究/);
+});

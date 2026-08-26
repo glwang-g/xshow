@@ -1,5 +1,6 @@
 import {
   batteryPositiveTerminal,
+  type TerminalKey,
   partTypes,
   type CircuitPart,
   type CircuitSimulation,
@@ -726,9 +727,10 @@ export function repairLevelWirePath(level: RepairLevel, wireId: string) {
   return `M ${from.x} ${from.y} C ${midX} ${from.y}, ${midX} ${to.y}, ${to.x} ${to.y}`;
 }
 
-export function repairLevelTerminalPoint(part: CircuitPart, terminal: "a" | "b") {
+export function repairLevelTerminalPoint(part: CircuitPart, terminal: TerminalKey) {
   const spec = repairLevelSpec(part.type);
-  const terminalSpec = spec.terminals[terminal];
+  const basicTerminal = terminal === "com" ? "a" : terminal === "out" ? "b" : terminal;
+  const terminalSpec = spec.terminals[basicTerminal];
   return {
     x: part.x + terminalSpec.x,
     y: part.y + terminalSpec.y,
@@ -813,6 +815,14 @@ const repairLevelSpecs: Record<PartType, RepairLevelPartSpec> = {
       b: { x: 156, y: 64 },
     },
     width: 156,
+  },
+  module: {
+    height: 88,
+    terminals: {
+      a: { x: 0, y: 44 },
+      b: { x: 144, y: 44 },
+    },
+    width: 144,
   },
   resistor: {
     height: 110,

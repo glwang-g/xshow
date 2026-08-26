@@ -45,7 +45,7 @@ import { useExperimentReport } from "@/composables/useExperimentReport";
 import type { PhysicalBuildPlan } from "@/lib/physical-build";
 import { useWorkbenchImageExport } from "@/composables/useWorkbenchImageExport";
 import { useWorkbenchPartPresentation } from "@/composables/useWorkbenchPartPresentation";
-import { loadPublishedRelayModules } from "@/lib/published-modules";
+import { loadPublishedRelayModules, type PublishedRelayModule } from "@/lib/published-modules";
 import { useRelayPublication } from "@/composables/useRelayPublication";
 import { useCloudWorkspaceView } from "@/composables/useCloudWorkspaceView";
 import { useBeginnerGuide } from "@/composables/useBeginnerGuide";
@@ -101,6 +101,7 @@ const pwaUpdate = usePwaUpdate();
 const { apply: applyPwaUpdate, dismiss: dismissPwaUpdate, registration: pwaUpdateRegistration } = pwaUpdate;
 const route = useRoute();
 const workbenchMode = computed<"free" | "workshop">(() => route.name === "workbench-workshop" ? "workshop" : "free");
+const publishedModules = ref<PublishedRelayModule[]>(loadPublishedRelayModules());
 const {
   endPointerGesture: endCanvasGesture,
   handlePointerDown: handleCanvasPointerDown,
@@ -465,6 +466,51 @@ const {
   toggleBatteryPolarity: toggleBatteryPolarityFromParts,
   toggleSwitch: toggleSwitchFromParts,
 } = workbenchParts;
+
+function addPublishedModule(module: PublishedRelayModule) {
+  const index = parts.value.filter((part) => part.type === "module").length + 1;
+  const nextPart: CircuitPart = {
+    id: `module-${module.id}-${Date.now()}`,
+    moduleContactMode: module.behavior.contactMode,
+    moduleId: module.id,
+    name: module.name,
+    type: "module",
+    x: 180 + ((index * 120) % 520),
+    y: 160 + ((index * 80) % 300),
+  };
+  pushEditorHistory();
+  parts.value.push(nextPart);
+  clearInteractionState();
+  selectedPartId.value = nextPart.id;
+  statusPanelTab.value = "selection";
+  palettePanelOpen.value = false;
+}
+
+function handleModuleDrop(event: DragEvent) {
+  const moduleId = event.dataTransfer?.getData("application/x-xshow-module");
+  const module = publishedModules.value.find((item) => item.id === moduleId);
+  if (!module) return;
+  const index = parts.value.filter((part) => part.type === "module").length + 1;
+  const draft: CircuitPart = {
+    id: `module-${module.id}-${Date.now()}`,
+    moduleContactMode: module.behavior.contactMode,
+    moduleId: module.id,
+    name: module.name,
+    type: "module",
+    x: 0,
+    y: 0,
+  };
+  const point = boardPoint(event as unknown as PointerEvent);
+  const position = clampPartPosition(draft, point.x - getSpec(draft).width / 2, point.y - getSpec(draft).height / 2);
+  draft.x = position.x;
+  draft.y = position.y;
+  pushEditorHistory();
+  parts.value.push(draft);
+  clearInteractionState();
+  selectedPartId.value = draft.id;
+  statusPanelTab.value = "selection";
+  palettePanelOpen.value = false;
+}
 const partMovement = useWorkbenchPartMovement({
   boardPoint,
   clampPosition: clampPartPosition,
@@ -881,6 +927,8 @@ onBeforeUnmount(() => {
         <ComponentPalette
           class="xl:h-full"
           :open="palettePanelOpen"
+          :published-modules="publishedModules"
+          @add-module="addPublishedModule"
           @add-part="addPartFromParts"
           @close="palettePanelOpen = false"
         />
@@ -920,6 +968,7 @@ onBeforeUnmount(() => {
         :handle-canvas-pointer-down="handleCanvasPointerDown"
         :handle-canvas-pointer-move="handleCanvasPointerMove"
         :handle-part-pointer-down="handlePartPointerDown"
+        :handle-module-drop="handleModuleDrop"
         :handle-terminal-click="handleTerminalClick"
         :handle-workbench-pointer-move="handleWorkbenchPointerMove"
         :guide-assistant-mode="guideAssistantMode"

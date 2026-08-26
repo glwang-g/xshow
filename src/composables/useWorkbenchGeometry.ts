@@ -16,12 +16,13 @@ type Options = {
 
 export function useWorkbenchGeometry(options: Options) {
   function allTerminals() {
-    return options.parts.value.flatMap((part) =>
-      (["a", "b"] as TerminalKey[]).map((terminal) => ({
+    return options.parts.value.flatMap((part) => {
+      const terminals: TerminalKey[] = part.type === "module" ? ["a", "b", "com", "out"] : ["a", "b"];
+      return terminals.map((terminal) => ({
         ref: { partId: part.id, terminal },
         position: options.getTerminalPosition({ partId: part.id, terminal }),
-      })),
-    );
+      }));
+    });
   }
 
   function closestTerminal(point: Point, excluded?: TerminalRef) {

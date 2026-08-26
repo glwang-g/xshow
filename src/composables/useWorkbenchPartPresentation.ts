@@ -19,7 +19,8 @@ export function useWorkbenchPartPresentation(options: {
   function terminalDisplayLabel(part: CircuitPart, terminal: TerminalKey) {
     if (part.type === "battery") return batteryPositiveTerminal(part) === terminal ? "+" : "-";
     if (part.type === "spring") return terminal === "a" ? "COM" : part.contactMode === "normally-closed" ? "NC" : "NO";
-    return options.getSpec(part).terminals[terminal].label;
+    if (part.type === "module" && terminal === "out") return part.moduleContactMode === "normally-closed" ? "NC" : "NO";
+    return options.getSpec(part).terminals[terminal]!.label;
   }
 
   function partRotation(part: CircuitPart) {
@@ -36,7 +37,7 @@ export function useWorkbenchPartPresentation(options: {
 
   function rotatedTerminalOffset(part: CircuitPart, terminal: TerminalKey) {
     const spec = options.getSpec(part);
-    return rotateLocalPoint(spec.terminals[terminal], { x: spec.width / 2, y: spec.height / 2 }, partRotation(part));
+    return rotateLocalPoint(spec.terminals[terminal]!, { x: spec.width / 2, y: spec.height / 2 }, partRotation(part));
   }
 
   function getPart(partId: string) {
@@ -51,7 +52,7 @@ export function useWorkbenchPartPresentation(options: {
   }
 
   function terminalStyle(part: CircuitPart, terminal: TerminalKey) {
-    const offset = options.getSpec(part).terminals[terminal];
+    const offset = options.getSpec(part).terminals[terminal]!;
     return { left: `${offset.x - 16}px`, top: `${offset.y - 16}px` };
   }
 

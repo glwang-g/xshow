@@ -67,7 +67,9 @@ type GuideDiagnosis = {
   title: string;
 };
 
-const terminalKeys: TerminalKey[] = ["a", "b"];
+function terminalKeysFor(part: CircuitPart): TerminalKey[] {
+  return part.type === "module" ? ["a", "b", "com", "out"] : ["a", "b"];
+}
 
 const props = defineProps<{
   activeLesson: { title: string };
@@ -103,6 +105,7 @@ const props = defineProps<{
   handleCanvasPointerDown: (event: PointerEvent) => void;
   handleCanvasPointerMove: (event: PointerEvent) => void;
   handlePartPointerDown: (event: PointerEvent, part: CircuitPart) => void;
+  handleModuleDrop: (event: DragEvent) => void;
   handleTerminalClick: (part: CircuitPart, terminal: TerminalKey) => void;
   handleWorkbenchPointerMove: (event: PointerEvent) => void;
   handleBeginnerGuideAction: () => void;
@@ -644,6 +647,8 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
             @pointerup="endDrag"
             @pointercancel="endDrag"
             @pointerdown="handleWorkbenchSurfacePointerDown"
+            @dragover.prevent
+            @drop.prevent="handleModuleDrop"
           >
             <div
               v-if="selectedPart && !selectedWire"
@@ -677,6 +682,16 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               >
                 <BatteryCharging class="h-4 w-4" />
               </Button>
+              <RouterLink
+                v-if="selectedPart.type === 'module' && selectedPart.moduleId"
+                :to="{ path: '/workbench/workshop', query: { module: selectedPart.moduleId, view: 'verification' } }"
+                class="inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+                title="查看验证电路"
+                data-circuit-interactive="true"
+                @pointerdown.stop
+              >
+                <CircuitBoard class="h-4 w-4" />
+              </RouterLink>
               <Button variant="ghost" size="icon" title="复制元件" @pointerdown.stop @click.stop="duplicateSelectedPart">
                 <Copy class="h-4 w-4" />
               </Button>
@@ -830,17 +845,21 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               part.type === 'voltmeter' ? 'bg-indigo-50' : '',
               part.type === 'buzzer' ? 'bg-sky-50' : '',
               part.type === 'motor' ? 'bg-emerald-50' : '',
+              part.type === 'module' ? 'border-slate-400 bg-slate-50' : '',
               isBeginnerSwitchTarget(part) ? 'z-60 ring-4 ring-amber-300 ring-offset-2 ring-offset-white' : '',
             ]"
             :style="partStyle(part)"
             @pointerdown="handlePartPointerDown($event, part)"
           >
             <button
-              v-for="terminal in terminalKeys"
+              v-for="terminal in terminalKeysFor(part)"
               :key="terminal"
               class="absolute z-40 flex h-8 w-8 touch-none items-center justify-center rounded-full border-2 border-card bg-foreground text-[11px] font-bold text-background shadow-sm transition-transform hover:scale-110"
               data-circuit-interactive="true"
               :class="[
+                part.type === 'module' ? 'module-terminal h-7 w-7 border-[3px] border-slate-700 bg-white text-[9px] text-slate-700 shadow-[inset_0_0_0_2px_#e2e8f0]' : '',
+                part.type === 'module' && (terminal === 'a' || terminal === 'b') ? 'module-terminal-left' : '',
+                part.type === 'module' && (terminal === 'com' || terminal === 'out') ? 'module-terminal-right' : '',
                 isTerminalSelected(part, terminal) ? 'ring-4 ring-amber-300' : '',
                 isTerminalDropTarget(part, terminal) ? 'scale-125 bg-amber-500 text-amber-950' : '',
                 isLessonTerminalTarget(part, terminal) ? 'lesson-terminal-target' : '',
@@ -857,7 +876,21 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
               {{ terminalDisplayLabel(part, terminal) }}
             </button>
 
-            <div v-if="part.type === 'battery'" class="flex h-full flex-col justify-between p-4">
+            <div v-if="part.type === 'module'" class="flex h-full flex-col justify-center gap-2 px-3 py-2">
+              <div class="flex items-center justify-between gap-2">
+                <CircuitBoard class="h-3.5 w-3.5 shrink-0 text-slate-500" />
+                <div class="min-w-0 flex-1 truncate text-center text-[11px] font-semibold text-slate-900">{{ part.name }}</div>
+              </div>
+              <div class="flex items-center justify-center gap-1.5 text-slate-600">
+                <span class="h-3 w-3 rounded-full border-2 border-slate-600 bg-white" />
+                <span class="h-3 w-3 rounded-full border-2 border-slate-600 bg-white" />
+                <span class="h-5 w-px bg-slate-300" />
+                <span class="h-px w-5 bg-slate-500" />
+                <span class="text-[9px] font-semibold">{{ part.moduleContactMode === 'normally-closed' ? 'NC' : 'NO' }}</span>
+              </div>
+            </div>
+
+            <div v-else-if="part.type === 'battery'" class="flex h-full flex-col justify-between p-4">
               <div class="flex items-center justify-between">
                 <div>
                   <div class="text-xs text-white/60">Power</div>
@@ -1202,3 +1235,24 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
         </div>
       </section>
 </template>
+
+<style scoped>
+.module-terminal::before {
+  position: absolute;
+  top: 50%;
+  width: 13px;
+  height: 3px;
+  border-radius: 999px;
+  background: #64748b;
+  content: "";
+  transform: translateY(-50%);
+}
+
+.module-terminal-left::before {
+  left: -13px;
+}
+
+.module-terminal-right::before {
+  right: -13px;
+}
+</style>

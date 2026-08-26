@@ -31,9 +31,18 @@ export function useWorkbenchNavigation(options: Options) {
       : "build-a-relay";
     const sourceWorkspace = module.implementation.sourceWorkspace;
     const workspace = view === "verification" ? sourceWorkspace : undefined;
+    const modulePart = {
+      id: `module-${module.id}`,
+      moduleContactMode: module.behavior.contactMode,
+      moduleId: module.id,
+      name: module.name,
+      type: "module" as const,
+      x: 240,
+      y: 160,
+    };
     options.loadWorkspace({
-      parts: workspace?.parts ?? module.implementation.parts,
-      selectedPartId: module.implementation.springId,
+      parts: workspace?.parts ?? [modulePart],
+      selectedPartId: workspace ? module.implementation.springId : modulePart.id,
       wires: workspace?.wires ?? module.implementation.wires,
       zoom: 100,
     }, { adaptMobileStarterLayout: true });

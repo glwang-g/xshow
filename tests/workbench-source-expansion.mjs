@@ -10,7 +10,7 @@ test("opening a published module from a mainline layer restores its full verific
   assert.match(navigationSource, /const sourceWorkspace = module\.implementation\.sourceWorkspace;/);
   assert.match(navigationSource, /const workspace = view === "verification" \? sourceWorkspace : undefined;/);
   assert.match(navigationSource, /options\.pushHistory\(\);/);
-  assert.match(navigationSource, /parts: workspace\?\.parts \?\? module\.implementation\.parts/);
+  assert.match(navigationSource, /parts: workspace\?\.parts \?\? \[modulePart\]/);
   assert.match(navigationSource, /wires: workspace\?\.wires \?\? module\.implementation\.wires/);
   assert.match(navigationSource, /function loadWorkbenchMode\(mode: "free" \| "workshop", moduleId = "", view: "core" \| "verification" = "core"\)/);
 });

@@ -1,6 +1,6 @@
 import { computed } from "vue";
 import { roundedOrthogonalPath, routeWire, type WireRoutePoint } from "@/lib/wire-routing";
-import type { CircuitPart, TerminalRef, Wire, WireEnd } from "@/lib/circuit";
+import type { CircuitPart, TerminalKey, TerminalRef, Wire, WireEnd } from "@/lib/circuit";
 import type { PartSpec } from "@/lib/workbench-ui";
 
 type Point = { x: number; y: number };
@@ -29,7 +29,7 @@ type Options = {
   newWireDrag: { value: NewWireDrag | null };
   selectedWireId: { value: string | null };
   simulationWire: (wireId: string) => { active?: boolean } | undefined;
-  terminalDisplayLabel: (part: CircuitPart, terminal: "a" | "b") => string;
+  terminalDisplayLabel: (part: CircuitPart, terminal: TerminalKey) => string;
   wireEndpointPosition: (wire: Wire, end: WireEnd) => Point;
   wires: { value: Wire[] };
   workbenchLimitHeight: () => number;
@@ -41,7 +41,7 @@ export function useWorkbenchWirePresentation(options: Options) {
     const part = options.getPart(ref.partId);
     if (!part) return ref.terminal === "a" ? -1 : 1;
     const spec = options.getSpec(part);
-    const offset = spec.terminals[ref.terminal];
+    const offset = spec.terminals[ref.terminal]!;
     const dx = offset.x - spec.width / 2;
     if (Math.abs(dx) < 1) return ref.terminal === "a" ? -1 : 1;
     return dx < 0 ? -1 : 1;

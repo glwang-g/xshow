@@ -202,6 +202,30 @@ test("a normally-closed spring contact opens when its coil is energized", () => 
   assert.ok(released.bulbs.bulb.brightnessPercent > 0);
 });
 
+test("a published module exposes coil pins and relay contact pins to the simulator", () => {
+  const parts = [
+    part("battery", "battery"),
+    part("control-switch", "switch", { closed: true }),
+    part("module", "module", { moduleContactMode: "normally-open", moduleId: "relay-1" }),
+    part("bulb", "bulb"),
+    part("resistor", "resistor", { resistance: 48 }),
+  ];
+  const wires = [
+    wire("control-1", "battery", "b", "control-switch", "a"),
+    wire("control-2", "control-switch", "b", "module", "a"),
+    wire("control-3", "module", "b", "battery", "a"),
+    wire("load-1", "battery", "b", "bulb", "a"),
+    wire("load-2", "bulb", "b", "resistor", "a"),
+    wire("load-3", "resistor", "b", "module", "com"),
+    wire("load-4", "module", "out", "battery", "a"),
+  ];
+
+  const result = circuit.evaluateCircuit(parts, wires);
+
+  assert.equal(result.closed, true);
+  assert.ok(result.bulbs.bulb.brightnessPercent > 0);
+});
+
 test("series bulbs share one path and are dimmer than a single bulb", () => {
   const single = evaluate(singleBulbCircuit());
   const series = evaluate(seriesBulbsCircuit());

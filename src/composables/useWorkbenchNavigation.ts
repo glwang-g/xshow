@@ -21,7 +21,7 @@ export function useWorkbenchNavigation(options: Options) {
     options.loadWorkspace(lesson.starterWorkspace, { adaptMobileStarterLayout: true });
   }
 
-  function loadPublishedModuleFromRoute(moduleId: string) {
+  function loadPublishedModuleFromRoute(moduleId: string, view: "core" | "verification" = "core") {
     if (!moduleId) return false;
     const module = loadPublishedRelayModules().find((item) => item.id === moduleId);
     if (!module) return false;
@@ -30,18 +30,19 @@ export function useWorkbenchNavigation(options: Options) {
       ? module.verification?.lessonId as string
       : "build-a-relay";
     const sourceWorkspace = module.implementation.sourceWorkspace;
+    const workspace = view === "verification" ? sourceWorkspace : undefined;
     options.loadWorkspace({
-      parts: sourceWorkspace?.parts ?? module.implementation.parts,
+      parts: workspace?.parts ?? module.implementation.parts,
       selectedPartId: module.implementation.springId,
-      wires: sourceWorkspace?.wires ?? module.implementation.wires,
+      wires: workspace?.wires ?? module.implementation.wires,
       zoom: 100,
     }, { adaptMobileStarterLayout: true });
     options.setStatusTab("selection");
     return true;
   }
 
-  function loadWorkbenchMode(mode: "free" | "workshop", moduleId = "") {
-    if (mode === "workshop" && loadPublishedModuleFromRoute(moduleId)) {
+  function loadWorkbenchMode(mode: "free" | "workshop", moduleId = "", view: "core" | "verification" = "core") {
+    if (mode === "workshop" && loadPublishedModuleFromRoute(moduleId, view)) {
       options.setWorkshopCompletion(false);
       options.dismissLessonCompletion();
       return;

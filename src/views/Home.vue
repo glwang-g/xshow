@@ -786,7 +786,15 @@ const autosave = useWorkbenchAutosave({
 });
 autosave.restoreInitialWorkspace();
 
-watch([workbenchMode, () => route.query.module], ([mode, moduleId]) => loadWorkbenchMode(mode, typeof moduleId === "string" ? moduleId : ""), { immediate: true });
+watch(
+  [workbenchMode, () => route.query.module, () => route.query.view],
+  ([mode, moduleId, view]) => loadWorkbenchMode(
+    mode,
+    typeof moduleId === "string" ? moduleId : "",
+    view === "verification" ? "verification" : "core",
+  ),
+  { immediate: true },
+);
 function handleMobileViewportChange() {
   desktopViewport.value = isDesktopViewport();
   updateCanvasViewportSize();

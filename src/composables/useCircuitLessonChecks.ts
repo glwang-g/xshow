@@ -1,4 +1,4 @@
-import type { ComputedRef, Ref } from "vue";
+import { computed, ref, watch, type ComputedRef, type Ref } from "vue";
 import type { CircuitPart, CircuitSimulation, TerminalRef, Wire } from "@/lib/circuit";
 import { hasPath, sameTerminal, terminalId } from "@/lib/circuit";
 import type { LessonCheckId } from "@/data/lessons";
@@ -81,8 +81,24 @@ export function useCircuitLessonChecks(options: Options) {
   const hasEnergizedRelay = () => hasRelayLink() && Boolean(simulation.value.coils["coil-1"]?.energized);
   const hasRelayOutput = () => hasEnergizedRelay() && (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) > 0;
   const hasNormallyClosedContact = () => parts.value.some((part) => part.type === "spring" && part.contactMode === "normally-closed" && part.controlledBy === "coil-1");
-  const hasNotOutputOn = () => hasNormallyClosedContact() && parts.value.some((part) => part.id === "switch-1" && !part.closed) && (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) > 0;
-  const hasNotOutputOff = () => hasNormallyClosedContact() && parts.value.some((part) => part.id === "switch-1" && part.closed) && Boolean(simulation.value.coils["coil-1"]?.energized) && (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) === 0;
+  const hasNotOutputOnState = () => hasNormallyClosedContact() && parts.value.some((part) => part.id === "switch-1" && !part.closed) && (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) > 0;
+  const hasNotOutputOffState = () => hasNormallyClosedContact() && parts.value.some((part) => part.id === "switch-1" && part.closed) && Boolean(simulation.value.coils["coil-1"]?.energized) && (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) === 0;
+  const notValidation = ref({ outputOff: false, outputOn: false });
+  const notWorkspaceKey = computed(() => JSON.stringify({
+    parts: parts.value.map((part) => ({ contactMode: part.contactMode, controlledBy: part.controlledBy, id: part.id, type: part.type })),
+    wires: wires.value.map((wire) => ({ from: wire.from, id: wire.id, to: wire.to })),
+  }));
+  let observedNotWorkspaceKey = "";
+  watch([simulation, notWorkspaceKey], ([, workspaceKey]) => {
+    if (workspaceKey !== observedNotWorkspaceKey) {
+      observedNotWorkspaceKey = workspaceKey;
+      notValidation.value = { outputOff: false, outputOn: false };
+    }
+    if (hasNotOutputOnState()) notValidation.value.outputOn = true;
+    if (hasNotOutputOffState()) notValidation.value.outputOff = true;
+  }, { immediate: true });
+  const hasNotOutputOn = () => notValidation.value.outputOn;
+  const hasNotOutputOff = () => notValidation.value.outputOff;
   const hasTwoInputSwitches = () => parts.value.filter((part) => part.type === "switch").length >= 2 && hasRelayParts();
   const hasSeriesRelayInputs = () => hasTwoInputSwitches() && hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "switch-2", terminal: "a" }) && hasWireBetween({ partId: "switch-2", terminal: "b" }, { partId: "coil-1", terminal: "a" });
   const hasParallelRelayInputs = () => hasTwoInputSwitches() && hasWireBetween({ partId: "switch-1", terminal: "b" }, { partId: "coil-1", terminal: "a" }) && hasWireBetween({ partId: "switch-2", terminal: "b" }, { partId: "coil-1", terminal: "a" });

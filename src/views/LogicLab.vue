@@ -105,6 +105,10 @@ function relayOutput(module: PublishedRelayModule) {
   return evaluatePublishedModule(module, relayInputs.value[module.id] ?? []) ? 1 : 0;
 }
 
+function hasVerificationWorkspace(module: PublishedRelayModule) {
+  return Boolean(module.implementation.sourceWorkspace?.parts.length);
+}
+
 function removeModule(module: PublishedRelayModule) {
   if (!window.confirm(`删除“${module.name}”？这不会影响工作台中的原始电路。`)) {
     return;
@@ -282,13 +286,23 @@ function renameModule(module: PublishedRelayModule) {
                 <div class="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
                   <span>{{ module.verification ? `已通过 ${module.verification.lessonId} · ${module.verification.truthTable.length}/${module.verification.truthTable.length} 组输入` : '早期模块：未记录课程验证' }}</span>
                   <span>核心：{{ module.implementation.parts.length }} 个元件，{{ module.implementation.wires.length }} 根导线</span>
-                  <RouterLink
-                    :to="{ path: '/workbench/workshop', query: { module: module.id } }"
-                    class="inline-flex h-8 items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-2 text-xs font-medium text-cyan-800 hover:bg-cyan-100"
-                  >
-                    在工坊展开
-                    <ArrowRight class="h-3.5 w-3.5" />
-                  </RouterLink>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <RouterLink
+                      :to="{ path: '/workbench/workshop', query: { module: module.id, view: 'core' } }"
+                      class="inline-flex h-8 items-center gap-1 rounded-md border border-cyan-200 bg-cyan-50 px-2 text-xs font-medium text-cyan-800 hover:bg-cyan-100"
+                    >
+                      看元器件组
+                      <ArrowRight class="h-3.5 w-3.5" />
+                    </RouterLink>
+                    <RouterLink
+                      v-if="hasVerificationWorkspace(module)"
+                      :to="{ path: '/workbench/workshop', query: { module: module.id, view: 'verification' } }"
+                      class="inline-flex h-8 items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 text-xs font-medium text-amber-900 hover:bg-amber-100"
+                    >
+                      看验证电路
+                      <ArrowRight class="h-3.5 w-3.5" />
+                    </RouterLink>
+                  </div>
                 </div>
               </article>
             </div>

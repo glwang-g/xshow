@@ -114,6 +114,26 @@ test("lesson catalog has valid workspaces, guides, and check ids", () => {
   }
 });
 
+test("relay lessons teach the relay loop without requiring an unrelated resistor", () => {
+  for (const lessonId of ["build-a-relay", "build-not-gate", "build-and-gate", "build-or-gate"]) {
+    const lesson = lessons.lessonCatalog.find((item) => item.id === lessonId);
+    assert.ok(lesson, `${lessonId} should exist`);
+    assert.equal(
+      lesson.starterWorkspace.parts.some((part) => part.id === "resistor-1"),
+      false,
+      `${lessonId} should not include a resistor in its relay circuit`,
+    );
+    assert.ok(
+      lesson.starterWorkspace.wires.some(
+        (wire) =>
+          (wire.from.partId === "bulb-1" && wire.to.partId === "battery-1") ||
+          (wire.from.partId === "battery-1" && wire.to.partId === "bulb-1"),
+      ),
+      `${lessonId} should return the output lamp directly to the battery`,
+    );
+  }
+});
+
 test("repair level presets have valid topology and start unsolved", () => {
   assert.ok(repairLab.repairLevelPresets.length > 0);
   assertUnique(repairLab.repairLevelPresets.map((level) => level.id), "repair level ids");

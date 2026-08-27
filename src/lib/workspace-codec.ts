@@ -80,6 +80,12 @@ function isWorkspacePart(value: unknown) {
     return false;
   }
 
+  if (value.layoutScale !== undefined) {
+    if (typeof value.layoutScale !== "number" || !Number.isFinite(value.layoutScale)) return false;
+    const layoutScale: number = value.layoutScale;
+    if (layoutScale < 0.6 || layoutScale > 1.6) return false;
+  }
+
   if (value.moduleId !== undefined && !isNonEmptyString(value.moduleId)) {
     return false;
   }

@@ -32,7 +32,7 @@ import {
 import {
   cloudConfig,
 } from "@/lib/cloud";
-import { getSpec, workbench } from "@/lib/workbench-ui";
+import { getSpec, partSpecs, workbench } from "@/lib/workbench-ui";
 import {
   type CloudSyncState,
   type PersistedWorkspace,
@@ -45,7 +45,7 @@ import { useExperimentReport } from "@/composables/useExperimentReport";
 import type { PhysicalBuildPlan } from "@/lib/physical-build";
 import { useWorkbenchImageExport } from "@/composables/useWorkbenchImageExport";
 import { useWorkbenchPartPresentation } from "@/composables/useWorkbenchPartPresentation";
-import { loadPublishedRelayModules, type PublishedRelayModule } from "@/lib/published-modules";
+import { loadPublishedRelayModules, renamePublishedRelayModule, type PublishedRelayModule } from "@/lib/published-modules";
 import { useRelayPublication } from "@/composables/useRelayPublication";
 import { useCloudWorkspaceView } from "@/composables/useCloudWorkspaceView";
 import { useBeginnerGuide } from "@/composables/useBeginnerGuide";
@@ -164,6 +164,63 @@ const wires = ref<Wire[]>([
     to: { partId: "battery-1", terminal: "a" },
   },
 ]);
+const layoutZoom = ref(100);
+const scaleMode = ref<"layout" | "view">("view");
+const paletteWidth = ref(224);
+const statusWidth = ref(340);
+const paletteHidden = ref(false);
+const statusHidden = ref(false);
+const panelLayoutElement = ref<HTMLElement | null>(null);
+const resizingPanel = ref<"palette" | "status" | null>(null);
+const hoveredDivider = ref<"palette" | "status" | null>(null);
+let dividerHoverTimer: number | null = null;
+// The `columns` prop only distinguishes hidden (0, overlay) from visible.
+// The palette derives its column count from the real panel width via CSS
+// auto-fill, so no pixel thresholds are needed here.
+const paletteColumns = computed<0 | 1 | 2 | 3 | 4>(() => paletteHidden.value ? 0 : 1);
+const statusColumns = computed<0 | 1 | 2 | 3 | 4>(() => statusHidden.value ? 0 : 1);
+const desktopGridColumns = computed(() => {
+  const columns = [];
+  if (!paletteHidden.value) columns.push(`${paletteWidth.value}px`);
+  columns.push("minmax(700px, 1fr)");
+  if (!statusHidden.value) columns.push(`${statusWidth.value}px`);
+  return columns.join(" ");
+});
+function beginPanelResize(panel: "palette" | "status", event: PointerEvent) {
+  if (!desktopViewport.value) return;
+  resizingPanel.value = panel;
+  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+}
+function beginDividerHover(panel: "palette" | "status") {
+  if (dividerHoverTimer !== null) window.clearTimeout(dividerHoverTimer);
+  dividerHoverTimer = window.setTimeout(() => { hoveredDivider.value = panel; dividerHoverTimer = null; }, 350);
+}
+function endDividerHover(panel: "palette" | "status") {
+  if (dividerHoverTimer !== null) window.clearTimeout(dividerHoverTimer);
+  dividerHoverTimer = null;
+  if (resizingPanel.value !== panel) hoveredDivider.value = null;
+}
+function updatePanelResize(event: PointerEvent) {
+  if (!resizingPanel.value || !panelLayoutElement.value) return;
+  const rect = panelLayoutElement.value.getBoundingClientRect();
+  if (resizingPanel.value === "palette") {
+    const width = event.clientX - rect.left;
+    if (width < 72) { paletteHidden.value = true; return; }
+    // Min 120px: content ~99px < 134px, so the palette can shrink to 1 fixed column.
+    paletteWidth.value = Math.round(Math.max(120, Math.min(420, width)) / 4) * 4;
+  } else {
+    const width = rect.right - event.clientX;
+    if (width < 72) { statusHidden.value = true; return; }
+    statusWidth.value = Math.round(Math.max(220, Math.min(460, width)) / 4) * 4;
+  }
+}
+function endPanelResize() { resizingPanel.value = null; }
+watch(parts, (nextParts) => {
+  // Loaded workspaces persist each part's visual scale. Restore the common
+  // layout control from that scale without treating a newly added part as a
+  // new layout preset.
+  layoutZoom.value = Math.round((nextParts[0]?.layoutScale ?? 1) * 100);
+}, { deep: false });
 const mobileSizing = useMobileWorkbenchSizing({
   getSpec,
   isDesktopViewport,
@@ -201,22 +258,21 @@ const {
 } = mobileViewport;
 
 const effectiveWorkbenchSize = computed(() => {
-  if (isDesktopViewport()) {
-    return { height: workbench.height, width: workbench.width };
-  }
-
   const scale = board.zoom / 100;
-  const contentPadding = 280;
+  const contentPadding = isDesktopViewport() ? 160 : 280;
   const contentSize = parts.value.reduce(
     (size, part) => {
       const spec = getSpec(part);
+      const partScale = part.layoutScale ?? 1;
       return {
-        height: Math.max(size.height, part.y + spec.height + contentPadding),
-        width: Math.max(size.width, part.x + spec.width + contentPadding),
+        height: Math.max(size.height, part.y + spec.height * partScale + contentPadding),
+        width: Math.max(size.width, part.x + spec.width * partScale + contentPadding),
       };
     },
     { height: mobileWorkbenchBase.height, width: mobileWorkbenchBase.width },
   );
+
+  if (isDesktopViewport()) return contentSize;
 
   return {
     height: Math.ceil(
@@ -448,6 +504,7 @@ const workbenchParts = useWorkbenchParts({
   clearInteractionState,
   closePalette: () => { palettePanelOpen.value = false; },
   getSpec,
+  getNewPartLayoutScale: () => layoutZoom.value / 100,
   pushHistory: pushEditorHistory,
   selectedPartId,
   setStatusTab: (tab) => { statusPanelTab.value = tab; },
@@ -457,6 +514,7 @@ const workbenchParts = useWorkbenchParts({
 });
 const {
   addPart: addPartFromParts,
+  addPartAt: addPartAtFromParts,
   duplicateSelectedPart: duplicateSelectedPartFromParts,
   removeSelectedPart: removeSelectedPartFromParts,
   setPartPosition: setPartPositionFromParts,
@@ -478,6 +536,7 @@ function addPublishedModule(module: PublishedRelayModule) {
     x: 180 + ((index * 120) % 520),
     y: 160 + ((index * 80) % 300),
   };
+  if (layoutZoom.value !== 100) nextPart.layoutScale = layoutZoom.value / 100;
   pushEditorHistory();
   parts.value.push(nextPart);
   clearInteractionState();
@@ -486,10 +545,48 @@ function addPublishedModule(module: PublishedRelayModule) {
   palettePanelOpen.value = false;
 }
 
-function handleModuleDrop(event: DragEvent) {
+function setLayoutZoom(value: number) {
+  const next = Math.min(160, Math.max(60, Math.round(value / 5) * 5));
+  if (next === layoutZoom.value) return;
+  const ratio = next / layoutZoom.value;
+  const center = { x: workbench.width / 2, y: workbench.height / 2 };
+  pushEditorHistory();
+  for (const part of parts.value) {
+    const spec = getSpec(part);
+    const previousScale = part.layoutScale ?? 1;
+    const nextScale = previousScale * ratio;
+    part.x = Math.round(center.x + (part.x + (spec.width * previousScale) / 2 - center.x) * ratio - (spec.width * nextScale) / 2);
+    part.y = Math.round(center.y + (part.y + (spec.height * previousScale) / 2 - center.y) * ratio - (spec.height * nextScale) / 2);
+    if (nextScale === 1) delete part.layoutScale;
+    else part.layoutScale = nextScale;
+  }
+  layoutZoom.value = next;
+}
+
+function setScaleMode(mode: "layout" | "view") { scaleMode.value = mode; }
+
+function renamePublishedModule(module: PublishedRelayModule) {
+  const name = window.prompt("给这个逻辑模块起一个名字：", module.name);
+  if (name === null) return;
+  const nextName = name.trim().slice(0, 80);
+  if (!nextName) return;
+  if (!renamePublishedRelayModule(module.id, nextName)) return;
+  publishedModules.value = publishedModules.value.map((item) => item.id === module.id ? { ...item, name: nextName } : item);
+  for (const part of parts.value) {
+    if (part.type === "module" && part.moduleId === module.id) part.name = nextName;
+  }
+}
+
+function handlePaletteDrop(event: DragEvent) {
   const moduleId = event.dataTransfer?.getData("application/x-xshow-module");
   const module = publishedModules.value.find((item) => item.id === moduleId);
-  if (!module) return;
+  if (!module) {
+    const partType = event.dataTransfer?.getData("application/x-xshow-part");
+    if (!partType || !Object.prototype.hasOwnProperty.call(partSpecs, partType)) return;
+    const point = boardPoint(event as unknown as PointerEvent);
+    addPartAtFromParts(partType as PartType, point.x, point.y);
+    return;
+  }
   const index = parts.value.filter((part) => part.type === "module").length + 1;
   const draft: CircuitPart = {
     id: `module-${module.id}-${Date.now()}`,
@@ -500,6 +597,7 @@ function handleModuleDrop(event: DragEvent) {
     x: 0,
     y: 0,
   };
+  if (layoutZoom.value !== 100) draft.layoutScale = layoutZoom.value / 100;
   const point = boardPoint(event as unknown as PointerEvent);
   const position = clampPartPosition(draft, point.x - getSpec(draft).width / 2, point.y - getSpec(draft).height / 2);
   draft.x = position.x;
@@ -860,6 +958,7 @@ useWorkbenchWindowLifecycle({
 });
 
 onBeforeUnmount(() => {
+  if (dividerHoverTimer !== null) window.clearTimeout(dividerHoverTimer);
   disposeMobileViewport();
 
   workbenchParts.dispose();
@@ -893,6 +992,10 @@ onBeforeUnmount(() => {
       :open-report-panel="openExperimentReportPanel"
       :reset-demo="resetDemo"
       :saved-workspace-label="savedWorkspaceLabel"
+      :layout-zoom="layoutZoom"
+      :scale-mode="scaleMode"
+      :set-layout-zoom="setLayoutZoom"
+      :set-scale-mode="setScaleMode"
       :set-zoom="board.setZoom"
       :simulation="simulation"
       :workbench-mode="workbenchMode"
@@ -916,26 +1019,50 @@ onBeforeUnmount(() => {
       </RouterLink>
     </nav>
 
-    <section class="relative grid min-h-0 flex-1 grid-cols-1 xl:grid-cols-[224px_minmax(700px,1fr)_340px]">
+    <section ref="panelLayoutElement" class="relative grid min-h-0 flex-1 grid-cols-1" :style="desktopViewport ? { gridTemplateColumns: desktopGridColumns } : undefined" @pointermove="updatePanelResize" @pointerup="endPanelResize" @pointercancel="endPanelResize">
       <div
         v-if="palettePanelOpen || statusPanelOpen"
         class="fixed inset-0 z-30 bg-slate-950/20 backdrop-blur-[1px] xl:hidden"
         @click="palettePanelOpen = false; statusPanelOpen = false"
       />
 
-      <div v-if="desktopViewport || palettePanelOpen" class="contents xl:col-start-1 xl:row-start-1 xl:block xl:min-h-0">
+      <button
+        v-if="paletteHidden"
+        class="absolute left-0 top-1/2 z-20 hidden h-16 w-5 -translate-y-1/2 items-center justify-center rounded-r border border-l-0 bg-card/95 text-sm text-slate-500 shadow-sm hover:bg-cyan-50 hover:text-cyan-800 xl:flex"
+        title="展开元件栏"
+        @click="paletteHidden = false"
+      >»</button>
+      <button
+        v-if="statusHidden"
+        class="absolute right-0 top-1/2 z-20 hidden h-16 w-5 -translate-y-1/2 items-center justify-center rounded-l border border-r-0 bg-card/95 text-sm text-slate-500 shadow-sm hover:bg-cyan-50 hover:text-cyan-800 xl:flex"
+        title="展开状态栏"
+        @click="statusHidden = false"
+      >«</button>
+      <div v-if="!paletteHidden" class="absolute bottom-0 top-0 z-30 hidden w-[5px] -translate-x-1/2 cursor-col-resize transition-colors xl:block" :class="resizingPanel === 'palette' || hoveredDivider === 'palette' ? 'bg-orange-500' : 'bg-transparent'" :style="{ left: `${paletteWidth}px` }" title="拖动调整元件栏宽度" @pointerenter="beginDividerHover('palette')" @pointerleave="endDividerHover('palette')" @pointerdown.prevent="beginPanelResize('palette', $event)">
+        <span class="absolute inset-y-0 left-0 w-px transition-colors" :class="resizingPanel === 'palette' || hoveredDivider === 'palette' ? 'bg-transparent' : 'bg-slate-300'" />
+        <span class="absolute inset-y-0 right-0 w-px transition-colors" :class="resizingPanel === 'palette' || hoveredDivider === 'palette' ? 'bg-transparent' : 'bg-slate-300'" />
+      </div>
+      <div v-if="!statusHidden" class="absolute bottom-0 top-0 z-30 hidden w-[5px] -translate-x-1/2 cursor-col-resize transition-colors xl:block" :class="resizingPanel === 'status' || hoveredDivider === 'status' ? 'bg-orange-500' : 'bg-transparent'" :style="{ right: `${statusWidth}px` }" title="拖动调整状态栏宽度" @pointerenter="beginDividerHover('status')" @pointerleave="endDividerHover('status')" @pointerdown.prevent="beginPanelResize('status', $event)">
+        <span class="absolute inset-y-0 left-0 w-px transition-colors" :class="resizingPanel === 'status' || hoveredDivider === 'status' ? 'bg-transparent' : 'bg-slate-300'" />
+        <span class="absolute inset-y-0 right-0 w-px transition-colors" :class="resizingPanel === 'status' || hoveredDivider === 'status' ? 'bg-transparent' : 'bg-slate-300'" />
+      </div>
+
+      <div v-if="desktopViewport || palettePanelOpen" class="contents xl:row-start-1 xl:block xl:min-h-0" :style="desktopViewport ? { gridColumnStart: paletteHidden ? undefined : 1 } : undefined">
         <ComponentPalette
           class="xl:h-full"
+          :columns="paletteColumns"
           :open="palettePanelOpen"
           :published-modules="publishedModules"
           @add-module="addPublishedModule"
           @add-part="addPartFromParts"
+          @rename-module="renamePublishedModule"
           @close="palettePanelOpen = false"
         />
       </div>
 
       <WorkbenchCanvas
-        class="xl:col-start-2 xl:row-start-1"
+        class="xl:row-start-1"
+        :style="desktopViewport ? { gridColumnStart: paletteHidden ? 1 : 2 } : undefined"
         :active-lesson="activeLesson"
         :apply-pwa-update="applyPwaUpdate"
         :battery-polarity-label="batteryPolarityLabel"
@@ -968,7 +1095,7 @@ onBeforeUnmount(() => {
         :handle-canvas-pointer-down="handleCanvasPointerDown"
         :handle-canvas-pointer-move="handleCanvasPointerMove"
         :handle-part-pointer-down="handlePartPointerDown"
-        :handle-module-drop="handleModuleDrop"
+        :handle-palette-drop="handlePaletteDrop"
         :handle-terminal-click="handleTerminalClick"
         :handle-workbench-pointer-move="handleWorkbenchPointerMove"
         :guide-assistant-mode="guideAssistantMode"
@@ -1044,9 +1171,10 @@ onBeforeUnmount(() => {
         @toggle-status="statusPanelOpen = !statusPanelOpen; palettePanelOpen = false"
       />
 
-      <div v-if="desktopViewport || statusPanelOpen" class="contents xl:col-start-3 xl:row-start-1 xl:block xl:min-h-0">
+      <div v-if="desktopViewport || statusPanelOpen" class="contents xl:row-start-1 xl:block xl:min-h-0" :style="desktopViewport && !statusHidden ? { gridColumnStart: paletteHidden ? 2 : 3 } : undefined">
         <StatusPanel
           class="xl:h-full"
+          :columns="statusColumns"
           v-model:active-lesson-id="activeLessonId"
         v-model:cloud-email="cloudEmail"
         v-model:cloud-password="cloudPassword"

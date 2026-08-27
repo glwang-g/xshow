@@ -76,7 +76,7 @@ export function useCircuitLessonChecks(options: Options) {
     hasWireBetween({ partId: "resistor-1", terminal: "b" }, { partId: "diode-1", terminal: "b" }) &&
     hasWireBetween({ partId: "diode-1", terminal: "a" }, { partId: "battery-1", terminal: "a" });
 
-  const hasRelayParts = () => ["battery", "switch", "coil", "spring", "bulb", "resistor"].every((type) => parts.value.some((part) => part.type === type));
+  const hasRelayParts = () => ["battery", "switch", "coil", "spring", "bulb"].every((type) => parts.value.some((part) => part.type === type));
   const hasRelayLink = () => parts.value.some((part) => part.type === "spring" && part.controlledBy === "coil-1");
   const hasEnergizedRelay = () => hasRelayLink() && Boolean(simulation.value.coils["coil-1"]?.energized);
   const hasRelayOutput = () => hasEnergizedRelay() && (simulation.value.bulbs["bulb-1"]?.brightness ?? 0) > 0;

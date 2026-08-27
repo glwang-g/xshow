@@ -6,6 +6,7 @@ type Options = {
   clearInteractionState: () => void;
   closePalette: () => void;
   getSpec: (part: CircuitPart) => PartSpec;
+  getNewPartLayoutScale?: () => number;
   pushHistory: () => void;
   selectedPartId: Ref<string>;
   setStatusTab: (tab: "selection") => void;
@@ -17,7 +18,7 @@ type Options = {
 export function useWorkbenchParts(options: Options) {
   let editHistory: { key: string; timer: number } | null = null;
 
-  function addPart(type: PartType) {
+  function addPartAt(type: PartType, x?: number, y?: number) {
     const index = options.parts.value.filter((part) => part.type === type).length + 1;
     const spec = options.getSpec({ id: "new", name: "", type, x: 0, y: 0 });
     options.pushHistory();
@@ -25,11 +26,22 @@ export function useWorkbenchParts(options: Options) {
     if (type === "switch") nextPart.closed = false;
     if (type === "resistor") nextPart.resistance = 60;
     if (type === "spring") { nextPart.contactMode = "normally-open"; nextPart.closed = false; }
+    const layoutScale = options.getNewPartLayoutScale?.() ?? 1;
+    if (layoutScale !== 1) nextPart.layoutScale = layoutScale;
+    if (x !== undefined && y !== undefined) {
+      const position = options.clampPosition(nextPart, x - spec.width / 2, y - spec.height / 2);
+      nextPart.x = position.x;
+      nextPart.y = position.y;
+    }
     options.parts.value.push(nextPart);
     options.clearInteractionState();
     options.selectedPartId.value = nextPart.id;
     options.setStatusTab("selection");
     options.closePalette();
+  }
+
+  function addPart(type: PartType) {
+    addPartAt(type);
   }
 
   function duplicateSelectedPart() {
@@ -105,5 +117,5 @@ export function useWorkbenchParts(options: Options) {
     editHistory = null;
   }
 
-  return { addPart, dispose, duplicateSelectedPart, removeSelectedPart, setPartPosition, setPartRotation, setResistance, setSpringContactMode, toggleBatteryPolarity, toggleSwitch };
+  return { addPart, addPartAt, dispose, duplicateSelectedPart, removeSelectedPart, setPartPosition, setPartRotation, setResistance, setSpringContactMode, toggleBatteryPolarity, toggleSwitch };
 }

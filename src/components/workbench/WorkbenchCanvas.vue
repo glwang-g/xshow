@@ -105,7 +105,7 @@ const props = defineProps<{
   handleCanvasPointerDown: (event: PointerEvent) => void;
   handleCanvasPointerMove: (event: PointerEvent) => void;
   handlePartPointerDown: (event: PointerEvent, part: CircuitPart) => void;
-  handleModuleDrop: (event: DragEvent) => void;
+  handlePaletteDrop: (event: DragEvent) => void;
   handleTerminalClick: (part: CircuitPart, terminal: TerminalKey) => void;
   handleWorkbenchPointerMove: (event: PointerEvent) => void;
   handleBeginnerGuideAction: () => void;
@@ -276,8 +276,9 @@ const selectedPartToolbarStyle = computed(() => {
   }
 
   const spec = getSpec(selectedPart.value);
+  const scale = selectedPart.value.layoutScale ?? 1;
   return {
-    left: `${selectedPart.value.x + spec.width / 2}px`,
+    left: `${selectedPart.value.x + (spec.width * scale) / 2}px`,
     top: `${Math.max(12, selectedPart.value.y - 48)}px`,
     transform: "translateX(-50%)",
   };
@@ -648,7 +649,7 @@ function isBeginnerSwitchTarget(part: CircuitPart) {
             @pointercancel="endDrag"
             @pointerdown="handleWorkbenchSurfacePointerDown"
             @dragover.prevent
-            @drop.prevent="handleModuleDrop"
+            @drop.prevent="handlePaletteDrop"
           >
             <div
               v-if="selectedPart && !selectedWire"

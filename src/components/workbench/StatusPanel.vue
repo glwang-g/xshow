@@ -96,6 +96,7 @@ const props = defineProps<{
   cloudSyncLabel: string;
   cloudSyncState: CloudSyncState;
   cloudUserEmail: string | null;
+  columns: 0 | 1 | 2 | 3 | 4;
   dismissCloudInitialUploadSuggestion: () => void;
   experimentReportCopyState: "copied" | "idle" | "manual";
   formatSavedTime: (savedAt: string) => string;
@@ -180,6 +181,7 @@ const relayPublishFeedback = ref("");
 const modeLessons = computed(() => props.workbenchMode === "workshop"
   ? lessonCatalog.filter((lesson) => Boolean(lesson.nextStage))
   : lessonCatalog.filter((lesson) => !lesson.nextStage));
+const isOverlay = computed(() => props.columns === 0);
 
 function updateInput(event: Event) {
   return (event.target as HTMLInputElement).value;
@@ -204,16 +206,18 @@ function isRelayAssembly(part: CircuitPart | undefined) {
 <template>
   <aside
     class="fixed inset-x-3 bottom-20 z-40 flex max-h-[70dvh] min-h-0 flex-col rounded-md border bg-card shadow-panel transition-all duration-200 xl:static xl:inset-auto xl:z-auto xl:max-h-none xl:rounded-none xl:border-l xl:border-r-0 xl:border-t-0 xl:shadow-none"
-    :class="open ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0 xl:pointer-events-auto xl:translate-y-0 xl:opacity-100'"
+    :class="isOverlay ? (open ? 'xl:!fixed xl:!inset-x-3 xl:!bottom-6 xl:!translate-y-0 xl:!opacity-100' : 'xl:!fixed xl:!inset-x-3 xl:!bottom-6 xl:!pointer-events-none xl:!translate-y-4 xl:!opacity-0') : (open ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-4 opacity-0 xl:pointer-events-auto xl:translate-y-0 xl:opacity-100')"
   >
     <div class="flex items-center justify-between border-b px-3 py-2 xl:px-4 xl:py-3">
       <div>
         <div class="text-sm font-semibold">状态</div>
         <div class="text-xs text-muted-foreground">{{ selectedWire ? "导线" : selectedPart?.name ?? "未选择" }}</div>
       </div>
-      <Button class="xl:hidden" variant="ghost" size="icon" title="关闭状态面板" @click="emit('close')">
-        <X class="h-4 w-4" />
-      </Button>
+      <div class="flex items-center gap-1">
+        <Button :class="isOverlay ? '' : 'xl:hidden'" variant="ghost" size="icon" title="关闭状态面板" @click="emit('close')">
+          <X class="h-4 w-4" />
+        </Button>
+      </div>
     </div>
 
     <div class="grid grid-cols-3 gap-1.5 border-b bg-muted/25 p-2 xl:grid-cols-2">

@@ -9,10 +9,14 @@ defineProps<{
   clearWires: () => void;
   exportWorkbenchImage: () => void;
   githubRepositoryUrl: string;
+  layoutZoom: number;
   openGuideAssistant: () => void;
   openReportPanel: () => void;
   resetDemo: () => void;
   savedWorkspaceLabel: string;
+  scaleMode: "layout" | "view";
+  setLayoutZoom: (value: number) => void;
+  setScaleMode: (mode: "layout" | "view") => void;
   setZoom: (value: number) => void;
   simulation: CircuitSimulation;
   workbenchMode: "free" | "workshop";
@@ -44,11 +48,13 @@ defineProps<{
         <span>{{ savedWorkspaceLabel }}</span>
       </div>
       <div class="hidden items-center gap-1 rounded-md border bg-muted/60 p-1 md:flex">
-        <Button variant="ghost" size="icon" title="缩小" @click="setZoom(zoom - 5)">
+        <button class="rounded px-1.5 py-1 text-xs" :class="scaleMode === 'view' ? 'bg-white font-medium text-slate-900 shadow-sm' : 'text-muted-foreground'" title="缩放镜头，不改变电路布局" @click="setScaleMode('view')">视图</button>
+        <button class="rounded px-1.5 py-1 text-xs" :class="scaleMode === 'layout' ? 'bg-white font-medium text-slate-900 shadow-sm' : 'text-muted-foreground'" title="固定工作台，按比例缩放全部元件和连线" @click="setScaleMode('layout')">布局</button>
+        <Button variant="ghost" size="icon" :title="scaleMode === 'view' ? '缩小视图' : '缩小布局'" @click="scaleMode === 'view' ? setZoom(zoom - 5) : setLayoutZoom(layoutZoom - 5)">
           <ZoomOut class="h-4 w-4" />
         </Button>
-        <div class="min-w-14 text-center text-sm tabular-nums">{{ zoom }}%</div>
-        <Button variant="ghost" size="icon" title="放大" @click="setZoom(zoom + 5)">
+        <div class="min-w-14 text-center text-sm tabular-nums">{{ scaleMode === 'view' ? zoom : layoutZoom }}%</div>
+        <Button variant="ghost" size="icon" :title="scaleMode === 'view' ? '放大视图' : '放大布局'" @click="scaleMode === 'view' ? setZoom(zoom + 5) : setLayoutZoom(layoutZoom + 5)">
           <ZoomIn class="h-4 w-4" />
         </Button>
       </div>

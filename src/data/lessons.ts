@@ -56,6 +56,7 @@ export type LessonWorkspacePart = {
   contactMode?: "normally-open" | "normally-closed";
   controlledBy?: string;
   id: string;
+  layoutScale?: number;
   moduleContactMode?: "normally-open" | "normally-closed";
   moduleId?: string;
   name: string;
@@ -309,15 +310,13 @@ function relayLessonParts({
     // The 124px gap precisely matches the post-binding snap geometry.
     { id: "spring-1", name: contactMode === "normally-closed" ? "常闭触点" : "常开触点", type: "spring", contactMode, x: compactRelay ? 500 : 590, y: 156 },
     { id: "bulb-1", name: "输出灯泡", type: "bulb", x: compactRelay ? 770 : 820, y: 134 },
-    { id: "resistor-1", name: "输出限流电阻", type: "resistor", x: compactRelay ? 700 : 720, y: 320, resistance: 60 },
   ];
 }
 
 const relayOutputWires: LessonWorkspaceWire[] = [
   { id: "wire-output-1", from: { partId: "battery-1", terminal: "b" }, to: { partId: "spring-1", terminal: "a" } },
   { id: "wire-output-2", from: { partId: "spring-1", terminal: "b" }, to: { partId: "bulb-1", terminal: "a" } },
-  { id: "wire-output-3", from: { partId: "bulb-1", terminal: "b" }, to: { partId: "resistor-1", terminal: "b" } },
-  { id: "wire-output-4", from: { partId: "resistor-1", terminal: "a" }, to: { partId: "battery-1", terminal: "a" } },
+  { id: "wire-output-3", from: { partId: "bulb-1", terminal: "b" }, to: { partId: "battery-1", terminal: "a" } },
 ];
 
 const relaySingleInputWires: LessonWorkspaceWire[] = [
@@ -418,7 +417,7 @@ export const lessonCatalog: Lesson[] = [
       { id: "parts", description: "工作台上有线圈、常开触点和输出灯泡。", guide: { partIds: ["coil-1", "spring-1", "bulb-1"] }, hint: "线圈是控制回路，触点和灯泡组成输出回路。", checkId: "hasRelayParts" },
       { id: "link", description: "把常开触点绑定到继电器线圈。", guide: { partIds: ["spring-1", "coil-1"] }, hint: "选中常开触点，在属性面板选择继电器线圈。", checkId: "hasRelayLink" },
       { id: "energize", description: "闭合输入开关，让线圈吸合。", guide: { partIds: ["switch-1", "coil-1"] }, hint: "线圈电流达到吸合阈值后，触点会闭合。", checkId: "hasEnergizedRelay" },
-      { id: "output", description: "确认继电器触点接通了输出灯泡。", guide: { partIds: ["spring-1", "bulb-1"] }, hint: "输出回路需要从电池经过触点、灯泡和电阻回到电池。", checkId: "hasRelayOutput" },
+      { id: "output", description: "确认继电器触点接通了输出灯泡。", guide: { partIds: ["spring-1", "bulb-1"] }, hint: "输出回路应从电池经过触点和灯泡，再回到电池。", checkId: "hasRelayOutput" },
     ],
   },
   {

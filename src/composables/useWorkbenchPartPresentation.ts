@@ -27,6 +27,10 @@ export function useWorkbenchPartPresentation(options: {
     return normalizePartRotation(part.rotation ?? 0);
   }
 
+  function layoutScale(part: CircuitPart) {
+    return Math.min(1.6, Math.max(0.6, part.layoutScale ?? 1));
+  }
+
   function rotateLocalPoint(point: Point, center: Point, degrees: number): Point {
     if (degrees === 0) return point;
     const radians = (degrees * Math.PI) / 180;
@@ -37,7 +41,13 @@ export function useWorkbenchPartPresentation(options: {
 
   function rotatedTerminalOffset(part: CircuitPart, terminal: TerminalKey) {
     const spec = options.getSpec(part);
-    return rotateLocalPoint(spec.terminals[terminal]!, { x: spec.width / 2, y: spec.height / 2 }, partRotation(part));
+    const scale = layoutScale(part);
+    const offset = spec.terminals[terminal]!;
+    return rotateLocalPoint(
+      { x: offset.x * scale, y: offset.y * scale },
+      { x: (spec.width * scale) / 2, y: (spec.height * scale) / 2 },
+      partRotation(part),
+    );
   }
 
   function getPart(partId: string) {
@@ -58,9 +68,10 @@ export function useWorkbenchPartPresentation(options: {
 
   function partStyle(part: CircuitPart) {
     const spec = options.getSpec(part);
+    const scale = layoutScale(part);
     return {
-      left: `${part.x}px`, top: `${part.y}px`, width: `${spec.width}px`, height: `${spec.height}px`,
-      transform: `rotate(${partRotation(part)}deg)`, transformOrigin: "center",
+      left: `${part.x + ((scale - 1) * spec.width) / 2}px`, top: `${part.y + ((scale - 1) * spec.height) / 2}px`, width: `${spec.width}px`, height: `${spec.height}px`,
+      transform: `rotate(${partRotation(part)}deg) scale(${scale})`, transformOrigin: "center",
     };
   }
 
@@ -79,5 +90,5 @@ export function useWorkbenchPartPresentation(options: {
     return { x: (event.clientX - rect.left) / scale, y: (event.clientY - rect.top) / scale };
   }
 
-  return { batteryPolarityLabel, boardPoint, getPart, getTerminalPosition, partRotation, partStyle, terminalDisplayLabel, terminalStyle, wireEndpointPosition };
+  return { batteryPolarityLabel, boardPoint, getPart, getTerminalPosition, layoutScale, partRotation, partStyle, terminalDisplayLabel, terminalStyle, wireEndpointPosition };
 }

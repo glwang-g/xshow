@@ -29,6 +29,8 @@ export type CircuitPart = {
   contactMode?: "normally-open" | "normally-closed";
   controlledBy?: string;
   id: string;
+  /** Visual scale used by layout zoom; it does not alter circuit behavior. */
+  layoutScale?: number;
   moduleContactMode?: "normally-open" | "normally-closed";
   moduleId?: string;
   name: string;

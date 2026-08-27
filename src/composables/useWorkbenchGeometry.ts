@@ -37,10 +37,13 @@ export function useWorkbenchGeometry(options: Options) {
 
   function clampPosition(part: CircuitPart, x: number, y: number) {
     const spec = options.getSpec(part);
-    options.expandWorkbenchTo(x + spec.width, y + spec.height);
+    const scale = part.layoutScale ?? 1;
+    const width = spec.width * scale;
+    const height = spec.height * scale;
+    options.expandWorkbenchTo(x + width, y + height);
     return {
-      x: Math.round(Math.min(options.limitWidth() - spec.width - 16, Math.max(16, x))),
-      y: Math.round(Math.min(options.limitHeight() - spec.height - 16, Math.max(16, y))),
+      x: Math.round(Math.min(options.limitWidth() - width - 16, Math.max(16, x))),
+      y: Math.round(Math.min(options.limitHeight() - height - 16, Math.max(16, y))),
     };
   }
 

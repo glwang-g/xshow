@@ -17,6 +17,24 @@ const APP_SHELL = [
   versioned("/img/icons/apple-touch-icon.png")
 ];
 
+function fetchWithTimeout(request, timeoutMs) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  return fetch(request, { signal: controller.signal }).finally(() => {
+    clearTimeout(timeoutId);
+  });
+}
+
+async function cacheResponse(cacheKey, response) {
+  if (!response.ok || response.type !== "basic") {
+    return;
+  }
+
+  const cache = await caches.open(CACHE_NAME);
+  await cache.put(cacheKey, response);
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(precacheAppShell().then(() => self.skipWaiting()));
 });
@@ -59,17 +77,6 @@ async function precacheAppShell() {
       }
     })
   );
-}
-
-async function fetchWithTimeout(request, timeoutMs) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    return await fetch(request, { signal: controller.signal });
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 async function reloadWindowClients() {
@@ -154,11 +161,8 @@ self.addEventListener("fetch", (event) => {
         return cached;
       }
 
-      return fetch(request).then((response) => {
-        if (response.ok) {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        }
+      return fetchWithTimeout(request, NAVIGATION_TIMEOUT_MS).then((response) => {
+        event.waitUntil(cacheResponse(request, response.clone()).catch(() => {}));
 
         return response;
       });

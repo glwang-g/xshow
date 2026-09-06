@@ -84,5 +84,32 @@ The first type pass now lives in `src/lib/simulation-contract.ts`:
 - `SimulationReplay`
 - `SimulationVisualization`
 - `SimulationRuleModule`
+- `RuleMissionEvent`
 
-These types are intentionally broad. They should guide adapters without forcing immediate changes to the existing domain models.
+These types are intentionally broad. They should guide adapters without forcing immediate changes to the existing domain models. `RuleMissionEvent` is a teaching- and cross-project-facing projection: the clocked-register mission now projects its native capture event as `tick / actor / action / facts / consequences / visible_to` without replacing the native replay event.
+
+## First Integrated Teaching Adapter
+
+`LogicLab.vue` now consumes the clocked-register projection after each rising
+edge and displays a compact Rule Mission acknowledgement: the action, tick,
+facts, and consequences that caused `Q` to change. The mission's native replay
+still contains both the rising-edge capture and the subsequent clock-low hold;
+the UI deliberately preserves the captured projection before lowering the
+clock, so immediate feedback explains the causal event rather than only the
+following hold event. This is a thin view adapter, not a new authority or a
+rewrite of the Logic Lab.
+
+The Logic Lab source-level regression test also verifies that the acknowledgement
+is projected before the clock-low reset and renders its consequences.
+
+Tank Lab now also keeps parallel native `structuredEvents` for fire and hit
+facts (actor, type, tick, facts) without changing the existing display log.
+This supplies a reliable native source for the next Rule Mission adapter.
+Those events now project as `fire_tank`, `resolve_hit`, or `win_battle` Rule Missions.
+Tank Lab's source-level regression also verifies that the latest native event renders as an acknowledgement.
+
+The projection describes the current edge explicitly (`edge=rising` or
+`edge=none`); it does not label the current capture as a "previous" one.
+
+Validated on 2026-09-04 with `pnpm test` (118 tests), `pnpm typecheck`,
+`pnpm build`, and `pnpm test:dist`.

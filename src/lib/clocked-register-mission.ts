@@ -1,5 +1,5 @@
 import type { LogicBit } from "@/lib/logic-core";
-import type { SimulationAction, SimulationEvent, SimulationState } from "@/lib/simulation-contract";
+import type { RuleMissionEvent, SimulationAction, SimulationEvent, SimulationState } from "@/lib/simulation-contract";
 
 export type RegisterMissionAction = SimulationAction<{ clock?: LogicBit; data?: LogicBit }>;
 export type RegisterMissionEvent = SimulationEvent<{ clock: LogicBit; data: LogicBit; q: LogicBit; captured: boolean }>;
@@ -26,4 +26,18 @@ export function tickClockedRegisterMission(
   };
 
   return { ...state, data: { clock, data, q }, events: [...(state.events ?? []), event], status: "paused", tick };
+}
+
+export function projectRegisterMissionEvent(event: RegisterMissionEvent): RuleMissionEvent {
+  const payload = event.payload;
+  if (!payload) throw new Error("寄存器事件缺少回放载荷");
+  const { captured, clock, data, q } = payload;
+  return {
+    tick: event.tick,
+    actor: "learner",
+    action: captured ? "capture_register" : "hold_register",
+    facts: [`clock=${clock}`, `D=${data}`, `edge=${captured ? "rising" : "none"}`],
+    consequences: [captured ? `Q captured ${q}` : `Q remains ${q}`],
+    visible_to: ["learner", "history"],
+  };
 }

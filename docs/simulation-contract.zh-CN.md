@@ -84,5 +84,26 @@
 - `SimulationReplay`
 - `SimulationVisualization`
 - `SimulationRuleModule`
+- `RuleMissionEvent`
 
-这些类型故意保持宽松。它们用于指导 adapter，而不是要求现有领域模型立刻改形状。
+这些类型故意保持宽松。它们用于指导 adapter，而不是要求现有领域模型立刻改形状。`RuleMissionEvent`
+是面向教学和跨项目工具的投影形态：时钟寄存器任务已将其原生捕获事件投影为
+`tick / actor / action / facts / consequences / visible_to`，但不替换原有回放事件。
+
+## 首个已接入的教学 Adapter
+
+`LogicLab.vue` 现在会在每次上升沿后消费时钟寄存器投影，并显示紧凑的 Rule Mission
+回执：导致 `Q` 变化的 action、tick、facts 与 consequences。任务的原生回放仍同时保留
+上升沿捕获和随后降时钟的保持事件；界面会在降时钟前保留捕获投影，因此即时反馈解释的
+是真正的因果事件，而不是只显示紧随其后的“保持”事件。这只是薄的视图 adapter，不会
+新建权威状态，也不会重写 Logic Lab。
+
+Logic Lab 的源码级回归测试也会确认：回执在降时钟前完成投影，并渲染其 consequences。
+
+战车实验场也已开始保留并行的 `structuredEvents`：开火和命中以 actor、type、tick、facts 记录，同时不改变现有中文显示日志；它是下一条 Rule Mission adapter 的可靠原生来源。
+这些事件现已投影为 `fire_tank`、`resolve_hit`、`win_battle` Rule Mission。
+Tank Lab 的源码级回归也确认最新原生事件会显示为 Rule Mission 回执。
+
+投影会明确描述当前边沿（`edge=rising` 或 `edge=none`），不会把当前捕获误写成“此前的”捕获。
+
+已于 2026-09-04 验证：`pnpm test`（118 项）、`pnpm typecheck`、`pnpm build`、`pnpm test:dist`。

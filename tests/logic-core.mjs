@@ -79,3 +79,18 @@ test("clocked register mission records a replayable capture event", () => {
   assert.deepEqual(state.events.map((event) => event.type), ["register.held", "register.captured"]);
   assert.equal(state.events.at(-1).payload.captured, true);
 });
+
+test("clocked register capture projects to the shared Rule Mission event shape", () => {
+  let state = registerMission.createClockedRegisterMissionState();
+  state = registerMission.tickClockedRegisterMission(state, { source: "user", type: "set-input", payload: { data: 1, clock: 1 } });
+  const projected = registerMission.projectRegisterMissionEvent(state.events.at(-1));
+
+  assert.deepEqual(projected, {
+    tick: 1,
+    actor: "learner",
+    action: "capture_register",
+    facts: ["clock=1", "D=1", "edge=rising"],
+    consequences: ["Q captured 1"],
+    visible_to: ["learner", "history"],
+  });
+});

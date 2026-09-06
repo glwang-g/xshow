@@ -9,6 +9,7 @@
 | 页面外壳和编排层 | `src/views/Home.vue` | 负责两块工作台 UI 的编排、路由监听、少量页面级动作和资源生命周期；稳定的领域逻辑已由 composable 和 lib 承担。 |
 | 工作台 UI 区域 | `src/components/workbench` | 顶部栏、元器件库、工作台画布、状态面板已经从页面中拆出。 |
 | 电路领域模型和仿真 | `src/lib/circuit.ts` | 负责元器件类型、导线类型、极性辅助函数、导线节点合并、支路求解和电路求值。 |
+| 数字工作台状态与周期 | `src/lib/digital-workbench.ts`、`src/components/logic/DigitalWorkbench.vue` | 负责逻辑层起的离散操作边界：设置信号、推进完整时钟周期、投影回执和读取状态；不把自由电路元件混入数字操作区。 |
 | 工作台 UI 配置 | `src/lib/workbench-ui.ts` | 负责元器件规格、元器件库配置、状态面板标签和桌面尺寸。 |
 | 工作台导出 | `src/lib/workbench-export.ts` | 负责把当前电路绘制成 PNG，不再放在页面组件里。 |
 | 实体搭建清单 | `src/lib/physical-build.ts` | 负责把当前工作台转换成第一版物料清单、采购关键词、接线步骤和实体搭建注意事项。 |

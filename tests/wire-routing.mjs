@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { routeWire, roundedOrthogonalPath } from "../src/lib/wire-routing.ts";
+import { compiledModuleUrl } from "./helpers/compile-module.mjs";
+
+// Node's built-in test runner does not load TypeScript source files directly.
+// Compile the pure routing module the same way the other library tests do, so
+// this test exercises the source of truth instead of a copied JavaScript shim.
+const { routeWire, roundedOrthogonalPath } = await import(
+  await compiledModuleUrl("../src/lib/wire-routing.ts", import.meta.url),
+);
 
 const bounds = { width: 1060, height: 640 };
 

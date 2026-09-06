@@ -68,6 +68,16 @@ These two independent learning units do not split into two editors. They share o
 
 Repair tasks remain separate diagnostic practice. This makes both “try a circuit” and “build a component” explicit without forcing learners to move work between incompatible models.
 
+## Digital Workbench From The Logic Layer
+
+Free Experiment and the Component Workshop continue to share the analogue circuit workbench: batteries, switches, resistors, bulbs, relays, and wires can be connected freely and receive steady-state feedback from the current wiring. Logic and Memory no longer treats those ordinary circuit parts as operable parts. It uses a separate digital workbench that exposes only published/logic-layer modules, input signals, clocks, and observation ports.
+
+The digital workbench keeps the spatial workbench interaction instead of shrinking it into a control card: a digital-module library on the left, a canvas of draggable modules and wires in the middle, and selected-module/state/clock actions on the right; it can also switch to a workbench-fullscreen mode that covers the surrounding explanatory content. Executable shortcuts live on their source modules: data source `D` directly sets 0/1, and `CLOCK` directly advances one cycle; the right panel retains detailed entry points for the same actions. A register must be a wireable component box rather than an explanatory card; the first version explicitly exposes three terminals: `D` data input, `CLK` clock input, and `Q` state output. Its basic operation is “set inputs → advance one discrete cycle → read state/acknowledgement.” One learner cycle is fixed as `low → high (Q ← D) → low`. It contains two internal ticks, but is one operation to the learner. This boundary becomes the shared run/step semantics for the Machine and Algorithm layers: the first two layers explain how parts are built, while later layers explain how modules cooperate in discrete time.
+
+The digital canvas has no fixed right or bottom drag boundary. When a module approaches or passes the current content boundary, the canvas increases its width and height from the module frame plus padding and exposes a scrollable area; reset returns to the starter canvas size. Module positions, terminals, and wires therefore remain in one expandable coordinate system.
+
+The Logic page presents the digital workbench as its one default task. Workshop provenance, gate truth tables, adder material, and latch examples live in a deliberate “Modules and References” view, rather than mixing building operations, module management, and reading material around the canvas.
+
 ## First Course Loop
 
 The first mainline lessons start in the circuit workbench and explicitly name the module and ports that the next layer can consume:

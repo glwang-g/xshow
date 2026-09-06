@@ -70,11 +70,18 @@ export type BulletState = {
 export type TankLabBattle = {
   bullets: BulletState[];
   events: string[];
+  /** Native, replay-safe facts kept beside the legacy display strings. */
+  structuredEvents: TankStructuredEvent[];
   tanks: TankState[];
   tick: number;
   winnerId: string | null;
   world: TankWorld;
 };
+
+export type TankStructuredEvent = { actor: string; type: "fire" | "hit" | "victory"; tick: number; facts: string[] };
+export function projectTankMissionEvent(event: TankStructuredEvent): RuleMissionEvent {
+  return { tick: event.tick, actor: event.actor, action: event.type === "fire" ? "fire_tank" : event.type === "hit" ? "resolve_hit" : "win_battle", facts: event.facts, consequences: [event.type === "fire" ? "projectile entered the world" : event.type === "hit" ? "target health changed" : "battle ended"], visible_to: ["learner", "history"] };
+}
 
 const tankRadius = 18;
 const bulletRadius = 3.5;
@@ -90,6 +97,7 @@ export function createInitialTankBattle(): TankLabBattle {
   return {
     bullets: [],
     events: ["战场已就绪"],
+    structuredEvents: [],
     tanks: [
       {
         angle: 0,
@@ -166,6 +174,7 @@ export function stepTankBattle(
     const winner = battle.tanks.find((tank) => tank.id !== defeated.id);
     battle.winnerId = winner?.id ?? null;
     pushEvent(battle, `${winner?.label ?? "战车"}获胜`);
+    if (winner) battle.structuredEvents = [{ actor: winner.id, type: "victory" as const, tick: battle.tick, facts: [`opponent=${defeated.id}`, `hp=${winner.hp}`] }, ...battle.structuredEvents].slice(0, maxEvents);
   }
 
   return battle;
@@ -175,7 +184,7 @@ export function cloneTankBattle(battle: TankLabBattle): TankLabBattle {
   return {
     ...battle,
     bullets: battle.bullets.map((bullet) => ({ ...bullet })),
-    events: [...battle.events],
+    events: [...battle.events], structuredEvents: battle.structuredEvents.map((event) => ({ ...event, facts: [...event.facts] })),
     tanks: battle.tanks.map((tank) => ({ ...tank })),
     world: { ...battle.world },
   };
@@ -297,6 +306,7 @@ function advanceBullets(battle: TankLabBattle) {
         owner.hits += 1;
       }
       pushEvent(battle, `${target.label}被击中 -${bullet.damage}`);
+      battle.structuredEvents = [{ actor: target.id, type: "hit" as const, tick: battle.tick + 1, facts: [`damage=${bullet.damage}`, `hp=${target.hp}`] }, ...battle.structuredEvents].slice(0, maxEvents);
       continue;
     }
 
@@ -325,6 +335,7 @@ function fireBullet(battle: TankLabBattle, tank: TankState, power: number) {
   tank.heat = fireHeat;
   tank.shots += 1;
   pushEvent(battle, `${tank.label}开火`);
+  battle.structuredEvents = [{ actor: tank.id, type: "fire" as const, tick: battle.tick + 1, facts: [`damage=${damage}`, `energy=${Math.round(tank.energy)}`] }, ...battle.structuredEvents].slice(0, maxEvents);
 }
 
 function createContext(
@@ -439,3 +450,4 @@ function distanceBetween(
 ): number {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
+import type { RuleMissionEvent } from "@/lib/simulation-contract";

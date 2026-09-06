@@ -54,6 +54,7 @@ Goal: turn circuit signals into Boolean logic and remembered state.
 Existing foundation:
 
 - `/logic-lab`
+- A separate digital workbench: input signals, logic modules, observation ports, and discrete clock cycles
 - AND / OR / XOR / NOT truth tables
 - SR latch state-retention preview
 - 1-bit register rising-edge capture preview
@@ -64,7 +65,7 @@ Candidate capabilities:
 - Clocks, edges, and registers
 - Small RAM or memory-cell demonstrations
 
-This layer explains why circuits can express logic and why machines can retain state.
+This layer explains why circuits can express logic and why machines can retain state. The first two units retain the free analogue circuit workbench; from here, the common operation is “set inputs → advance a cycle → read state,” rather than operating ordinary circuit parts such as batteries, bulbs, or resistors.
 
 ### 4. Machine Layer
 

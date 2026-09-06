@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 import { compiledModuleUrl } from "./helpers/compile-module.mjs";
 
 const tankLab = await import(await compiledModuleUrl("../src/lib/tank-lab.ts", import.meta.url));
@@ -80,4 +81,23 @@ test("tank angle helpers normalize and turn toward targets", () => {
   assert.equal(tankLab.clamp(5, -2, 2), 2);
   assert.equal(tankLab.angleTo({ x: 0, y: 0 }, { x: 1, y: 0 }), 0);
   assert.ok(tankLab.turnToward(0, Math.PI) > 0);
+});
+
+test("tank structured events project to the shared Rule Mission shape", () => {
+  const projected = tankLab.projectTankMissionEvent({ actor: "player", type: "fire", tick: 3, facts: ["damage=12"] });
+  assert.deepEqual(projected, { tick: 3, actor: "player", action: "fire_tank", facts: ["damage=12"], consequences: ["projectile entered the world"], visible_to: ["learner", "history"] });
+});
+
+test("tank victory is retained as a structured native event", () => {
+  let battle = tankLab.createInitialTankBattle();
+  battle.tanks[1].hp = 0;
+  battle = tankLab.stepTankBattle(battle, () => ({}));
+  assert.equal(battle.structuredEvents[0].type, "victory");
+});
+
+test("Tank Lab renders the latest native event as a Rule Mission acknowledgement", async () => {
+  const source = await readFile(new URL("../src/views/TankLab.vue", import.meta.url), "utf8");
+  assert.match(source, /projectTankMissionEvent/);
+  assert.match(source, /Rule Mission 回执/);
+  assert.match(source, /latestRuleMission\.consequences\.join/);
 });

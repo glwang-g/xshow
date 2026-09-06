@@ -9,6 +9,7 @@
 | Page shell and orchestration | `src/views/Home.vue` | Composes the two workbench UI regions, watches routes, owns a small set of page actions, and coordinates resource teardown; stable domain logic lives in composables and libraries. |
 | Workbench UI regions | `src/components/workbench` | Header, component palette, canvas, and status panel are split from the page shell. |
 | Circuit domain model and simulation | `src/lib/circuit.ts` | Owns component types, wire types, polarity helpers, wire-node merging, branch solving, and circuit evaluation. |
+| Digital workbench state and cycles | `src/lib/digital-workbench.ts`, `src/components/logic/DigitalWorkbench.vue` | Owns the discrete-operation boundary from the logic layer onward: set signals, advance a complete clock cycle, project acknowledgements, and read state without mixing free-circuit parts into the digital operation area. |
 | Workbench UI configuration | `src/lib/workbench-ui.ts` | Owns reusable part specs, palette entries, status tabs, and board dimensions. |
 | Workbench export | `src/lib/workbench-export.ts` | Renders the current circuit to a PNG without living in the page component. |
 | Physical build plan | `src/lib/physical-build.ts` | Converts the current workspace into a first-pass component list, purchase keywords, wiring steps, and safety notes for hands-on building. |

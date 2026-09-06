@@ -22,6 +22,7 @@ import {
   cloneTankBattle,
   createInitialTankBattle,
   orbitRivalStrategy,
+  projectTankMissionEvent,
   rushRivalStrategy,
   sentryRivalStrategy,
   stepTankBattle,
@@ -140,6 +141,7 @@ const activeOpponent = computed(
 );
 const player = computed(() => battle.value.tanks[0]);
 const rival = computed(() => battle.value.tanks[1]);
+const latestRuleMission = computed(() => battle.value.structuredEvents[0] ? projectTankMissionEvent(battle.value.structuredEvents[0]) : null);
 const distanceToRival = computed(() => Math.round(Math.hypot(player.value.x - rival.value.x, player.value.y - rival.value.y)));
 const incomingBullets = computed(() => battle.value.bullets.filter((bullet) => bullet.ownerId !== player.value.id).length);
 const winner = computed(() =>
@@ -626,6 +628,11 @@ function formatTurn(value: number): string {
                 <span>{{ event }}</span>
               </div>
             </div>
+          </div>
+          <div v-if="latestRuleMission" class="rounded-md border border-violet-200 bg-violet-50 p-3 text-xs text-violet-900">
+            <div class="font-medium">Rule Mission 回执 · {{ latestRuleMission.action }}</div>
+            <div class="mt-1">事实：{{ latestRuleMission.facts.join(' · ') }}</div>
+            <div class="mt-1">后果：{{ latestRuleMission.consequences.join(' · ') }}</div>
           </div>
         </div>
       </aside>

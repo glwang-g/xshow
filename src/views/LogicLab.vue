@@ -6,7 +6,6 @@ import logoUrl from "@/assets/logo.png";
 import {
   buildRegisterTrace,
   buildSrLatchTrace,
-  defaultRegisterSamples,
   evaluateGate,
   logicGateSummaries,
   srLatchStep,
@@ -15,7 +14,7 @@ import {
   type LogicGateKind,
 } from "@/lib/logic-core";
 import { composeFullAdder, composeHalfAdder } from "@/lib/logic-composition";
-import { createClockedRegisterMissionState, tickClockedRegisterMission } from "@/lib/clocked-register-mission";
+import DigitalWorkbench from "@/components/logic/DigitalWorkbench.vue";
 import {
   evaluatePublishedModule,
   loadPublishedRelayModules,
@@ -30,9 +29,6 @@ const inputB = ref(false);
 const latchQ = ref<LogicBit>(0);
 const latchSet = ref(false);
 const latchReset = ref(false);
-const registerData = ref<LogicBit>(1);
-const registerQ = ref<LogicBit>(0);
-const registerMission = ref(createClockedRegisterMissionState());
 const publishedRelays = ref<PublishedRelayModule[]>([]);
 const relayInputs = ref<Record<string, boolean[]>>({});
 const moduleMessage = ref("");
@@ -41,6 +37,7 @@ const halfAdderB = ref(false);
 const fullAdderA = ref(false);
 const fullAdderB = ref(false);
 const fullAdderCarryIn = ref(false);
+const activeLogicView = ref<"workspace" | "reference">("workspace");
 
 onMounted(() => {
   publishedRelays.value = loadPublishedRelayModules();
@@ -77,18 +74,6 @@ function resetLatch() {
   latchQ.value = 0;
   latchSet.value = false;
   latchReset.value = false;
-}
-
-function pulseRegister() {
-  registerMission.value = tickClockedRegisterMission(registerMission.value, { source: "user", type: "pulse-clock", payload: { clock: 1, data: registerData.value } });
-  registerQ.value = registerMission.value.data.q;
-  registerMission.value = tickClockedRegisterMission(registerMission.value, { source: "system", type: "clock-low", payload: { clock: 0 } });
-}
-
-function resetRegister() {
-  registerQ.value = 0;
-  registerData.value = 1;
-  registerMission.value = createClockedRegisterMissionState();
 }
 
 function moduleInputCount(module: PublishedRelayModule) {
@@ -183,7 +168,7 @@ function renameModule(module: PublishedRelayModule) {
         </div>
       </header>
 
-      <section class="grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <section :class="activeLogicView === 'workspace' ? 'block min-w-0' : 'grid min-w-0 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_390px]'">
         <div class="flex min-w-0 flex-col gap-4">
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:p-7">
             <div class="flex flex-wrap items-start justify-between gap-4">
@@ -193,7 +178,7 @@ function renameModule(module: PublishedRelayModule) {
                   把通断信号组合成可记忆状态
                 </h1>
                 <p class="mt-4 max-w-3xl break-words text-sm leading-6 text-slate-600">
-                  从布尔门开始，继续看见 latch 如何保持 1 bit，再走到寄存器如何在时钟边沿保存数据。
+                  从布尔门开始，继续看见 latch 如何保持 1 bit，再在数字工作台中用统一的时钟周期写入寄存器。
                 </p>
               </div>
               <span class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-cyan-50 text-cyan-700">
@@ -216,6 +201,16 @@ function renameModule(module: PublishedRelayModule) {
               </div>
             </div>
           </section>
+
+          <nav class="flex flex-wrap gap-2 rounded-lg border border-slate-200 bg-white p-2 shadow-sm" aria-label="逻辑层内容模式">
+            <button type="button" class="h-9 rounded-md px-3 text-sm font-medium" :class="activeLogicView === 'workspace' ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-100'" @click="activeLogicView = 'workspace'">数字工作台</button>
+            <button type="button" class="h-9 rounded-md px-3 text-sm font-medium" :class="activeLogicView === 'reference' ? 'bg-slate-950 text-white' : 'text-slate-600 hover:bg-slate-100'" @click="activeLogicView = 'reference'">模块与原理资料</button>
+            <p class="self-center px-1 text-xs text-slate-500">{{ activeLogicView === 'workspace' ? '搭建、接线、设置信号并推进时钟。' : '查看工坊来源、真值表与组合逻辑说明。' }}</p>
+          </nav>
+
+          <DigitalWorkbench v-show="activeLogicView === 'workspace'" />
+
+          <div v-show="activeLogicView === 'reference'" class="flex min-w-0 flex-col gap-4">
 
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-cyan-200 bg-white p-5 shadow-sm">
             <div class="flex flex-wrap items-start justify-between gap-3">
@@ -537,70 +532,11 @@ function renameModule(module: PublishedRelayModule) {
               </div>
             </section>
 
-            <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-              <div class="flex items-center justify-between gap-3">
-                <div>
-                  <h2 class="text-sm font-semibold">1-bit Register</h2>
-                  <p class="text-xs text-slate-500">Rising edge capture</p>
-                </div>
-                <Binary class="h-5 w-5 text-cyan-700" />
-              </div>
-
-              <div class="mt-4 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  class="flex h-11 items-center justify-between rounded-md border px-3 text-sm font-medium"
-                  :class="registerData === 1 ? 'border-cyan-300 bg-cyan-50 text-cyan-800' : 'border-slate-200 bg-slate-50 text-slate-600'"
-                  @click="registerData = registerData === 1 ? 0 : 1"
-                >
-                  D
-                  <span class="font-mono font-bold">{{ registerData }}</span>
-                </button>
-                <div class="flex h-11 items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 text-sm font-medium text-slate-600">
-                  Q
-                  <span class="font-mono font-bold">{{ registerQ }}</span>
-                </div>
-              </div>
-
-              <div class="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  class="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-slate-950 px-3 text-sm font-medium text-white hover:bg-slate-800"
-                  @click="pulseRegister"
-                >
-                  <Activity class="h-4 w-4" />
-                  上升沿
-                </button>
-                <button
-                  type="button"
-                  class="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                  @click="resetRegister"
-                >
-                  <RotateCcw class="h-4 w-4" />
-                  复位
-                </button>
-              </div>
-
-              <p class="mt-3 rounded-md border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs text-cyan-800">
-                tick {{ registerMission.tick }} · {{ registerMission.events?.at(-1)?.message ?? "等待第一个时钟事件" }}
-              </p>
-
-              <div class="mt-4 grid grid-cols-6 gap-1.5">
-                <div
-                  v-for="sample in defaultRegisterSamples"
-                  :key="sample.label"
-                  class="rounded-md border border-slate-200 bg-slate-50 px-2 py-2 text-center"
-                >
-                  <div class="text-[11px] text-slate-500">{{ sample.label }}</div>
-                  <div class="mt-1 font-mono text-xs text-slate-700">C{{ Number(sample.clock) }}</div>
-                  <div class="font-mono text-xs text-slate-700">D{{ sample.data }}</div>
-                </div>
-              </div>
-            </section>
           </section>
+          </div>
         </div>
 
-        <aside class="flex w-full min-w-0 max-w-full flex-col gap-4">
+        <aside v-show="activeLogicView === 'reference'" class="flex w-full min-w-0 max-w-full flex-col gap-4">
           <section class="w-full min-w-0 max-w-full overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div class="flex items-center justify-between gap-2">
               <div>

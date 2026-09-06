@@ -36,6 +36,20 @@ export type SimulationEvent<TPayload = unknown> = {
   type: string;
 };
 
+/**
+ * Teaching-facing projection shared by the Freexlib world contract. Domain
+ * events stay native; adapters expose this compact, replay-safe explanation
+ * when a lesson or external tool needs a common event shape.
+ */
+export type RuleMissionEvent = {
+  action: string;
+  actor: string;
+  consequences: string[];
+  facts: string[];
+  tick: TickIndex;
+  visible_to: string[];
+};
+
 export type SimulationState<
   TData = unknown,
   TEntity extends SimulationEntity = SimulationEntity,
